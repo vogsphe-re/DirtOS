@@ -1,0 +1,41 @@
+# Rust build output
+target/
+
+# Node modules
+node_modules/
+
+# Build output
+dist/
+
+# Tauri generated files
+src-tauri/gen/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Editor directories
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# macOS
+.DS_Store
+
+# Database files (local data - never commit)
+*.db
+*.db-wal
+*.db-shm
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Type-check cache
+tsconfig.tsbuildinfo
+.vscode
