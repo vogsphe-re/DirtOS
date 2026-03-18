@@ -9,6 +9,46 @@
 export const commands = {
 async greet(name: string) : Promise<GreetResponse> {
     return await TAURI_INVOKE("greet", { name });
+},
+async listEnvironments() : Promise<Result<Environment[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_environments") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getEnvironment(id: number) : Promise<Result<Environment | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_environment", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createEnvironment(input: NewEnvironment) : Promise<Result<Environment, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_environment", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateEnvironment(id: number, input: UpdateEnvironment) : Promise<Result<Environment | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_environment", { id, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteEnvironment(id: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_environment", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -22,11 +62,14 @@ async greet(name: string) : Promise<GreetResponse> {
 
 /** user-defined types **/
 
+export type Environment = { id: number; name: string; latitude: number | null; longitude: number | null; elevation_m: number | null; timezone: string | null; climate_zone: string | null; created_at: string; updated_at: string }
 /**
  * Temporary smoke-test command to verify IPC and specta type export.
  * This command will be removed after Phase 0 verification.
  */
 export type GreetResponse = { message: string }
+export type NewEnvironment = { name: string; latitude: number | null; longitude: number | null; elevation_m: number | null; timezone: string | null; climate_zone: string | null }
+export type UpdateEnvironment = { name: string | null; latitude: number | null; longitude: number | null; elevation_m: number | null; timezone: string | null; climate_zone: string | null }
 
 /** tauri-specta globals **/
 

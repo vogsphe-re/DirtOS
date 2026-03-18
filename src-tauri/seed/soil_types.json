@@ -1,0 +1,107 @@
+[
+  {
+    "name": "Loam",
+    "composition": "Sand 40%, Silt 40%, Clay 20%",
+    "ph_default": 6.5,
+    "drainage_rating": "good",
+    "notes": "The ideal garden soil. Holds moisture well while draining excess water. Rich in nutrients and easy to work."
+  },
+  {
+    "name": "Sandy Loam",
+    "composition": "Sand 60%, Silt 25%, Clay 15%",
+    "ph_default": 6.5,
+    "drainage_rating": "excellent",
+    "notes": "Warms up quickly, easy to dig. Drains fast — needs frequent watering and fertilizing."
+  },
+  {
+    "name": "Clay",
+    "composition": "Clay 50%+, Silt 30%, Sand 20%",
+    "ph_default": 7.0,
+    "drainage_rating": "poor",
+    "notes": "Holds nutrients and moisture well but drains slowly. Compacts easily. Improve with compost and grit."
+  },
+  {
+    "name": "Sandy",
+    "composition": "Sand 80%+, Silt 10%, Clay 10%",
+    "ph_default": 6.5,
+    "drainage_rating": "excellent",
+    "notes": "Very free-draining; low nutrient retention. Ideal for cacti, succulents, and drought-tolerant plants."
+  },
+  {
+    "name": "Silty",
+    "composition": "Silt 80%+, Sand 10%, Clay 10%",
+    "ph_default": 6.5,
+    "drainage_rating": "moderate",
+    "notes": "Fertile and moisture-retentive but can compact. Excellent for vegetables with added organic matter."
+  },
+  {
+    "name": "Chalky / Alkaline",
+    "composition": "Calcium carbonate (chalk/limestone) with clay or loam base",
+    "ph_default": 7.8,
+    "drainage_rating": "good",
+    "notes": "Very alkaline. Limits nutrient availability. Suitable for brassicas, sweet peas, and lavender."
+  },
+  {
+    "name": "Peat",
+    "composition": "Decomposed organic matter >30%",
+    "ph_default": 4.5,
+    "drainage_rating": "poor",
+    "notes": "Highly acidic and moisture-retentive. Ideal for acid-loving plants like blueberries and azaleas."
+  },
+  {
+    "name": "All-Purpose Potting Mix",
+    "composition": "Peat or coco coir, perlite, vermiculite, lime",
+    "ph_default": 6.3,
+    "drainage_rating": "good",
+    "notes": "Commercial blend for container gardening. Lightweight, sterile, consistent."
+  },
+  {
+    "name": "Seed Starting Mix",
+    "composition": "Fine peat/coco coir, perlite, vermiculite — low nutrient",
+    "ph_default": 6.0,
+    "drainage_rating": "good",
+    "notes": "Fine-grained, sterile medium for germination. Nutrient-poor by design — seedlings get nutrition from cotyledons initially."
+  },
+  {
+    "name": "Cactus & Succulent Mix",
+    "composition": "Coarse sand 50%, potting soil 25%, perlite 25%",
+    "ph_default": 6.5,
+    "drainage_rating": "excellent",
+    "notes": "Fast-draining for drought-tolerant plants. Prevents root rot in succulents and cacti."
+  },
+  {
+    "name": "Raised Bed Mix",
+    "composition": "Topsoil 60%, compost 30%, perlite/coarse sand 10%",
+    "ph_default": 6.5,
+    "drainage_rating": "good",
+    "notes": "Balanced mix formulated for raised beds. Nutrient-rich and well-draining."
+  },
+  {
+    "name": "Compost",
+    "composition": "Fully decomposed organic matter",
+    "ph_default": 6.8,
+    "drainage_rating": "good",
+    "notes": "Soil amendment rather than a standalone growing medium. Improves drainage in clay and water retention in sandy soils."
+  },
+  {
+    "name": "Hydroponic Grow Medium (Rockwool)",
+    "composition": "Spun mineral rock fibers (basalt + chalk)",
+    "ph_default": 7.0,
+    "drainage_rating": "good",
+    "notes": "Sterile, inert grow medium for hydroponics. Soak in pH 5.5 water before use."
+  },
+  {
+    "name": "Hydroponic Grow Medium (Clay Pebbles)",
+    "composition": "Fired expanded clay aggregate",
+    "ph_default": 7.0,
+    "drainage_rating": "excellent",
+    "notes": "Reusable inert medium for DWC, ebb-and-flow, and drip systems. pH neutral once rinsed."
+  },
+  {
+    "name": "Coconut Coir",
+    "composition": "Processed coconut husk fiber",
+    "ph_default": 6.0,
+    "drainage_rating": "good",
+    "notes": "Sustainable peat alternative. Excellent water retention and aeration. Low nutrient content."
+  }
+]

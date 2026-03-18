@@ -14,12 +14,567 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SensorsRouteImport } from './routes/sensors'
 import { Route as SchedulesRouteImport } from './routes/schedules'
 import { Route as ReportsRouteImport } from './routes/reports'
-import { Route as PlantsRouteImport } from './routes/plants'
 import { Route as JournalRouteImport } from './routes/journal'
-import { Route as IssuesRouteImport } from './routes/issues'
 import { Route as IndoorRouteImport } from './routes/indoor'
+import { Route as IndoorIndexRouteImport } from './routes/indoor.index'
+import { Route as IndoorEnvironmentIdRouteImport } from './routes/indoor.$environmentId'
+import { Route as IssuesRouteImport } from './routes/issues'
+import { Route as IssuesIndexRouteImport } from './routes/issues.index'
+import { Route as IssuesIssueIdRouteImport } from './routes/issues.$issueId'
+import { Route as PlantsRouteImport } from './routes/plants'
+import { Route as PlantsIndexRouteImport } from './routes/plants.index'
+import { Route as PlantsSpeciesIdRouteImport } from './routes/plants.$speciesId'
+import { Route as PlantsIndividualsRouteImport } from './routes/plants.individuals'
+import { Route as PlantsIndividualsIndexRouteImport } from './routes/plants.individuals.index'
+import { Route as PlantsIndividualsPlantIdRouteImport } from './routes/plants.individuals.$plantId'
 import { Route as GardenRouteImport } from './routes/garden'
+import { Route as GardenIndexRouteImport } from './routes/garden.index'
+import { Route as GardenLocationIdRouteImport } from './routes/garden.$locationId'
 import { Route as IndexRouteImport } from './routes/index'
+
+// ---------------------------------------------------------------------------
+// Flat/leaf routes (children of root)
+// ---------------------------------------------------------------------------
+
+const WeatherRoute = WeatherRouteImport.update({
+  id: '/weather',
+  path: '/weather',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
+const SensorsRoute = SensorsRouteImport.update({
+  id: '/sensors',
+  path: '/sensors',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
+const SchedulesRoute = SchedulesRouteImport.update({
+  id: '/schedules',
+  path: '/schedules',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
+const JournalRoute = JournalRouteImport.update({
+  id: '/journal',
+  path: '/journal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
+// ---------------------------------------------------------------------------
+// Garden routes
+// ---------------------------------------------------------------------------
+
+const GardenRoute = GardenRouteImport.update({
+  id: '/garden',
+  path: '/garden',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
+const GardenIndexRoute = GardenIndexRouteImport.update({
+  id: '/garden/',
+  path: '/',
+  getParentRoute: () => GardenRoute,
+} as any)
+
+const GardenLocationIdRoute = GardenLocationIdRouteImport.update({
+  id: '/garden/$locationId',
+  path: '$locationId',
+  getParentRoute: () => GardenRoute,
+} as any)
+
+interface GardenRouteChildren {
+  GardenIndexRoute: typeof GardenIndexRoute
+  GardenLocationIdRoute: typeof GardenLocationIdRoute
+}
+const gardenRouteChildren: GardenRouteChildren = {
+  GardenIndexRoute,
+  GardenLocationIdRoute,
+}
+const GardenRouteWithChildren = GardenRoute._addFileChildren(gardenRouteChildren)
+
+// ---------------------------------------------------------------------------
+// Issues routes
+// ---------------------------------------------------------------------------
+
+const IssuesRoute = IssuesRouteImport.update({
+  id: '/issues',
+  path: '/issues',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
+const IssuesIndexRoute = IssuesIndexRouteImport.update({
+  id: '/issues/',
+  path: '/',
+  getParentRoute: () => IssuesRoute,
+} as any)
+
+const IssuesIssueIdRoute = IssuesIssueIdRouteImport.update({
+  id: '/issues/$issueId',
+  path: '$issueId',
+  getParentRoute: () => IssuesRoute,
+} as any)
+
+interface IssuesRouteChildren {
+  IssuesIndexRoute: typeof IssuesIndexRoute
+  IssuesIssueIdRoute: typeof IssuesIssueIdRoute
+}
+const issuesRouteChildren: IssuesRouteChildren = {
+  IssuesIndexRoute,
+  IssuesIssueIdRoute,
+}
+const IssuesRouteWithChildren = IssuesRoute._addFileChildren(issuesRouteChildren)
+
+// ---------------------------------------------------------------------------
+// Indoor routes
+// ---------------------------------------------------------------------------
+
+const IndoorRoute = IndoorRouteImport.update({
+  id: '/indoor',
+  path: '/indoor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
+const IndoorIndexRoute = IndoorIndexRouteImport.update({
+  id: '/indoor/',
+  path: '/',
+  getParentRoute: () => IndoorRoute,
+} as any)
+
+const IndoorEnvironmentIdRoute = IndoorEnvironmentIdRouteImport.update({
+  id: '/indoor/$environmentId',
+  path: '$environmentId',
+  getParentRoute: () => IndoorRoute,
+} as any)
+
+interface IndoorRouteChildren {
+  IndoorIndexRoute: typeof IndoorIndexRoute
+  IndoorEnvironmentIdRoute: typeof IndoorEnvironmentIdRoute
+}
+const indoorRouteChildren: IndoorRouteChildren = {
+  IndoorIndexRoute,
+  IndoorEnvironmentIdRoute,
+}
+const IndoorRouteWithChildren = IndoorRoute._addFileChildren(indoorRouteChildren)
+
+// ---------------------------------------------------------------------------
+// Plants routes (nested: /plants/individuals/*)
+// ---------------------------------------------------------------------------
+
+const PlantsRoute = PlantsRouteImport.update({
+  id: '/plants',
+  path: '/plants',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
+const PlantsIndexRoute = PlantsIndexRouteImport.update({
+  id: '/plants/',
+  path: '/',
+  getParentRoute: () => PlantsRoute,
+} as any)
+
+const PlantsSpeciesIdRoute = PlantsSpeciesIdRouteImport.update({
+  id: '/plants/$speciesId',
+  path: '$speciesId',
+  getParentRoute: () => PlantsRoute,
+} as any)
+
+const PlantsIndividualsRoute = PlantsIndividualsRouteImport.update({
+  id: '/plants/individuals',
+  path: 'individuals',
+  getParentRoute: () => PlantsRoute,
+} as any)
+
+const PlantsIndividualsIndexRoute = PlantsIndividualsIndexRouteImport.update({
+  id: '/plants/individuals/',
+  path: '/',
+  getParentRoute: () => PlantsIndividualsRoute,
+} as any)
+
+const PlantsIndividualsPlantIdRoute = PlantsIndividualsPlantIdRouteImport.update({
+  id: '/plants/individuals/$plantId',
+  path: '$plantId',
+  getParentRoute: () => PlantsIndividualsRoute,
+} as any)
+
+interface PlantsIndividualsRouteChildren {
+  PlantsIndividualsIndexRoute: typeof PlantsIndividualsIndexRoute
+  PlantsIndividualsPlantIdRoute: typeof PlantsIndividualsPlantIdRoute
+}
+const plantsIndividualsRouteChildren: PlantsIndividualsRouteChildren = {
+  PlantsIndividualsIndexRoute,
+  PlantsIndividualsPlantIdRoute,
+}
+const PlantsIndividualsRouteWithChildren = PlantsIndividualsRoute._addFileChildren(
+  plantsIndividualsRouteChildren,
+)
+
+interface PlantsRouteChildren {
+  PlantsIndexRoute: typeof PlantsIndexRoute
+  PlantsSpeciesIdRoute: typeof PlantsSpeciesIdRoute
+  PlantsIndividualsRoute: typeof PlantsIndividualsRouteWithChildren
+}
+const plantsRouteChildren: PlantsRouteChildren = {
+  PlantsIndexRoute,
+  PlantsSpeciesIdRoute,
+  PlantsIndividualsRoute: PlantsIndividualsRouteWithChildren,
+}
+const PlantsRouteWithChildren = PlantsRoute._addFileChildren(plantsRouteChildren)
+
+// ---------------------------------------------------------------------------
+// Root tree assembly
+// ---------------------------------------------------------------------------
+
+export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '/garden': typeof GardenRouteWithChildren
+  '/garden/': typeof GardenIndexRoute
+  '/garden/$locationId': typeof GardenLocationIdRoute
+  '/issues': typeof IssuesRouteWithChildren
+  '/issues/': typeof IssuesIndexRoute
+  '/issues/$issueId': typeof IssuesIssueIdRoute
+  '/indoor': typeof IndoorRouteWithChildren
+  '/indoor/': typeof IndoorIndexRoute
+  '/indoor/$environmentId': typeof IndoorEnvironmentIdRoute
+  '/plants': typeof PlantsRouteWithChildren
+  '/plants/': typeof PlantsIndexRoute
+  '/plants/$speciesId': typeof PlantsSpeciesIdRoute
+  '/plants/individuals': typeof PlantsIndividualsRouteWithChildren
+  '/plants/individuals/': typeof PlantsIndividualsIndexRoute
+  '/plants/individuals/$plantId': typeof PlantsIndividualsPlantIdRoute
+  '/journal': typeof JournalRoute
+  '/reports': typeof ReportsRoute
+  '/schedules': typeof SchedulesRoute
+  '/sensors': typeof SensorsRoute
+  '/settings': typeof SettingsRoute
+  '/weather': typeof WeatherRoute
+}
+
+export interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '/garden': typeof GardenIndexRoute
+  '/garden/$locationId': typeof GardenLocationIdRoute
+  '/issues': typeof IssuesIndexRoute
+  '/issues/$issueId': typeof IssuesIssueIdRoute
+  '/indoor': typeof IndoorIndexRoute
+  '/indoor/$environmentId': typeof IndoorEnvironmentIdRoute
+  '/plants': typeof PlantsIndexRoute
+  '/plants/$speciesId': typeof PlantsSpeciesIdRoute
+  '/plants/individuals': typeof PlantsIndividualsIndexRoute
+  '/plants/individuals/$plantId': typeof PlantsIndividualsPlantIdRoute
+  '/journal': typeof JournalRoute
+  '/reports': typeof ReportsRoute
+  '/schedules': typeof SchedulesRoute
+  '/sensors': typeof SensorsRoute
+  '/settings': typeof SettingsRoute
+  '/weather': typeof WeatherRoute
+}
+
+export interface FileRoutesById {
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/garden': typeof GardenRouteWithChildren
+  '/garden/': typeof GardenIndexRoute
+  '/garden/$locationId': typeof GardenLocationIdRoute
+  '/issues': typeof IssuesRouteWithChildren
+  '/issues/': typeof IssuesIndexRoute
+  '/issues/$issueId': typeof IssuesIssueIdRoute
+  '/indoor': typeof IndoorRouteWithChildren
+  '/indoor/': typeof IndoorIndexRoute
+  '/indoor/$environmentId': typeof IndoorEnvironmentIdRoute
+  '/plants': typeof PlantsRouteWithChildren
+  '/plants/': typeof PlantsIndexRoute
+  '/plants/$speciesId': typeof PlantsSpeciesIdRoute
+  '/plants/individuals': typeof PlantsIndividualsRouteWithChildren
+  '/plants/individuals/': typeof PlantsIndividualsIndexRoute
+  '/plants/individuals/$plantId': typeof PlantsIndividualsPlantIdRoute
+  '/journal': typeof JournalRoute
+  '/reports': typeof ReportsRoute
+  '/schedules': typeof SchedulesRoute
+  '/sensors': typeof SensorsRoute
+  '/settings': typeof SettingsRoute
+  '/weather': typeof WeatherRoute
+}
+
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/garden'
+    | '/garden/'
+    | '/garden/$locationId'
+    | '/issues'
+    | '/issues/'
+    | '/issues/$issueId'
+    | '/indoor'
+    | '/indoor/'
+    | '/indoor/$environmentId'
+    | '/plants'
+    | '/plants/'
+    | '/plants/$speciesId'
+    | '/plants/individuals'
+    | '/plants/individuals/'
+    | '/plants/individuals/$plantId'
+    | '/journal'
+    | '/reports'
+    | '/schedules'
+    | '/sensors'
+    | '/settings'
+    | '/weather'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/garden'
+    | '/garden/$locationId'
+    | '/issues'
+    | '/issues/$issueId'
+    | '/indoor'
+    | '/indoor/$environmentId'
+    | '/plants'
+    | '/plants/$speciesId'
+    | '/plants/individuals'
+    | '/plants/individuals/$plantId'
+    | '/journal'
+    | '/reports'
+    | '/schedules'
+    | '/sensors'
+    | '/settings'
+    | '/weather'
+  id:
+    | '__root__'
+    | '/'
+    | '/garden'
+    | '/garden/'
+    | '/garden/$locationId'
+    | '/issues'
+    | '/issues/'
+    | '/issues/$issueId'
+    | '/indoor'
+    | '/indoor/'
+    | '/indoor/$environmentId'
+    | '/plants'
+    | '/plants/'
+    | '/plants/$speciesId'
+    | '/plants/individuals'
+    | '/plants/individuals/'
+    | '/plants/individuals/$plantId'
+    | '/journal'
+    | '/reports'
+    | '/schedules'
+    | '/sensors'
+    | '/settings'
+    | '/weather'
+  fileRoutesById: FileRoutesById
+}
+
+export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  GardenRoute: typeof GardenRouteWithChildren
+  IssuesRoute: typeof IssuesRouteWithChildren
+  IndoorRoute: typeof IndoorRouteWithChildren
+  PlantsRoute: typeof PlantsRouteWithChildren
+  JournalRoute: typeof JournalRoute
+  ReportsRoute: typeof ReportsRoute
+  SchedulesRoute: typeof SchedulesRoute
+  SensorsRoute: typeof SensorsRoute
+  SettingsRoute: typeof SettingsRoute
+  WeatherRoute: typeof WeatherRoute
+}
+
+declare module '@tanstack/react-router' {
+  interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/garden': {
+      id: '/garden'
+      path: '/garden'
+      fullPath: '/garden'
+      preLoaderRoute: typeof GardenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/garden/': {
+      id: '/garden/'
+      path: '/'
+      fullPath: '/garden/'
+      preLoaderRoute: typeof GardenIndexRouteImport
+      parentRoute: typeof GardenRouteImport
+    }
+    '/garden/$locationId': {
+      id: '/garden/$locationId'
+      path: '$locationId'
+      fullPath: '/garden/$locationId'
+      preLoaderRoute: typeof GardenLocationIdRouteImport
+      parentRoute: typeof GardenRouteImport
+    }
+    '/issues': {
+      id: '/issues'
+      path: '/issues'
+      fullPath: '/issues'
+      preLoaderRoute: typeof IssuesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/issues/': {
+      id: '/issues/'
+      path: '/'
+      fullPath: '/issues/'
+      preLoaderRoute: typeof IssuesIndexRouteImport
+      parentRoute: typeof IssuesRouteImport
+    }
+    '/issues/$issueId': {
+      id: '/issues/$issueId'
+      path: '$issueId'
+      fullPath: '/issues/$issueId'
+      preLoaderRoute: typeof IssuesIssueIdRouteImport
+      parentRoute: typeof IssuesRouteImport
+    }
+    '/indoor': {
+      id: '/indoor'
+      path: '/indoor'
+      fullPath: '/indoor'
+      preLoaderRoute: typeof IndoorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/indoor/': {
+      id: '/indoor/'
+      path: '/'
+      fullPath: '/indoor/'
+      preLoaderRoute: typeof IndoorIndexRouteImport
+      parentRoute: typeof IndoorRouteImport
+    }
+    '/indoor/$environmentId': {
+      id: '/indoor/$environmentId'
+      path: '$environmentId'
+      fullPath: '/indoor/$environmentId'
+      preLoaderRoute: typeof IndoorEnvironmentIdRouteImport
+      parentRoute: typeof IndoorRouteImport
+    }
+    '/plants': {
+      id: '/plants'
+      path: '/plants'
+      fullPath: '/plants'
+      preLoaderRoute: typeof PlantsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plants/': {
+      id: '/plants/'
+      path: '/'
+      fullPath: '/plants/'
+      preLoaderRoute: typeof PlantsIndexRouteImport
+      parentRoute: typeof PlantsRouteImport
+    }
+    '/plants/$speciesId': {
+      id: '/plants/$speciesId'
+      path: '$speciesId'
+      fullPath: '/plants/$speciesId'
+      preLoaderRoute: typeof PlantsSpeciesIdRouteImport
+      parentRoute: typeof PlantsRouteImport
+    }
+    '/plants/individuals': {
+      id: '/plants/individuals'
+      path: 'individuals'
+      fullPath: '/plants/individuals'
+      preLoaderRoute: typeof PlantsIndividualsRouteImport
+      parentRoute: typeof PlantsRouteImport
+    }
+    '/plants/individuals/': {
+      id: '/plants/individuals/'
+      path: '/'
+      fullPath: '/plants/individuals/'
+      preLoaderRoute: typeof PlantsIndividualsIndexRouteImport
+      parentRoute: typeof PlantsIndividualsRouteImport
+    }
+    '/plants/individuals/$plantId': {
+      id: '/plants/individuals/$plantId'
+      path: '$plantId'
+      fullPath: '/plants/individuals/$plantId'
+      preLoaderRoute: typeof PlantsIndividualsPlantIdRouteImport
+      parentRoute: typeof PlantsIndividualsRouteImport
+    }
+    '/journal': {
+      id: '/journal'
+      path: '/journal'
+      fullPath: '/journal'
+      preLoaderRoute: typeof JournalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/schedules': {
+      id: '/schedules'
+      path: '/schedules'
+      fullPath: '/schedules'
+      preLoaderRoute: typeof SchedulesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sensors': {
+      id: '/sensors'
+      path: '/sensors'
+      fullPath: '/sensors'
+      preLoaderRoute: typeof SensorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/weather': {
+      id: '/weather'
+      path: '/weather'
+      fullPath: '/weather'
+      preLoaderRoute: typeof WeatherRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+  }
+}
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute,
+  GardenRoute: GardenRouteWithChildren,
+  IssuesRoute: IssuesRouteWithChildren,
+  IndoorRoute: IndoorRouteWithChildren,
+  PlantsRoute: PlantsRouteWithChildren,
+  JournalRoute,
+  ReportsRoute,
+  SchedulesRoute,
+  SensorsRoute,
+  SettingsRoute,
+  WeatherRoute,
+}
+
+export const routeTree = rootRouteImport
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
+
 
 const WeatherRoute = WeatherRouteImport.update({
   id: '/weather',

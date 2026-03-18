@@ -10,6 +10,11 @@ pub mod services;
 fn specta_builder() -> Builder<tauri::Wry> {
     Builder::<tauri::Wry>::new().commands(collect_commands![
         commands::greet,
+        commands::list_environments,
+        commands::get_environment,
+        commands::create_environment,
+        commands::update_environment,
+        commands::delete_environment,
     ])
 }
 
@@ -76,4 +81,12 @@ pub fn run() {
         .invoke_handler(invoke_handler)
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn export_bindings() {
+        super::export_bindings();
+    }
 }

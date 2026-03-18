@@ -12,7 +12,7 @@
     "vite:dev": "vite",
     "type-check": "tsc --noEmit",
     "lint": "eslint src/",
-    "generate-bindings": "cargo test -p dirtos-lib export_bindings --manifest-path src-tauri/Cargo.toml"
+    "generate-bindings": "cargo test --manifest-path src-tauri/Cargo.toml export_bindings"
   },
   "dependencies": {
     "@mantine/core": "^8.3.18",

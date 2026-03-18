@@ -1,7 +1,18 @@
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use std::path::Path;
 
+pub mod environments;
+pub mod harvests;
+pub mod indoor;
+pub mod issues;
+pub mod journal;
+pub mod locations;
 pub mod models;
+pub mod plants;
+pub mod schedules;
+pub mod seed;
+pub mod sensors;
+pub mod species;
 
 /// Initialise the SQLite connection pool and run any pending migrations.
 /// The database file is created at `{app_data_dir}/dirtos.db`.
@@ -32,5 +43,13 @@ pub async fn init_db(app_data_dir: &Path) -> Result<SqlitePool, sqlx::Error> {
     sqlx::migrate!("./migrations").run(&pool).await?;
 
     tracing::info!("Migrations complete");
+
+    // Seed reference data on first run (idempotent).
+    if let Err(e) = seed::seed_initial_data(&pool).await {
+        tracing::warn!("Seed data load failed: {:?}", e);
+    } else {
+        tracing::info!("Seed data loaded");
+    }
+
     Ok(pool)
 }

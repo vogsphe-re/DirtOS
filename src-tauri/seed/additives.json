@@ -1,0 +1,177 @@
+[
+  {
+    "name": "Fish Emulsion",
+    "type": "fertilizer",
+    "npk_n": 5.0, "npk_p": 1.0, "npk_k": 1.0,
+    "application_rate": 30.0, "application_unit": "ml/L",
+    "notes": "Liquid organic nitrogen source. Fast-acting. Can smell unpleasant. Dilute before applying."
+  },
+  {
+    "name": "Bone Meal",
+    "type": "amendment",
+    "npk_n": 3.0, "npk_p": 15.0, "npk_k": 0.0,
+    "application_rate": 100.0, "application_unit": "g/m²",
+    "notes": "Slow-release phosphorus source. Promotes root development and flowering. Work into soil at planting."
+  },
+  {
+    "name": "Blood Meal",
+    "type": "fertilizer",
+    "npk_n": 12.0, "npk_p": 0.0, "npk_k": 0.0,
+    "application_rate": 50.0, "application_unit": "g/m²",
+    "notes": "Fast-acting organic nitrogen source. Acidifies soil slightly. Can burn plants if over-applied."
+  },
+  {
+    "name": "Kelp Meal",
+    "type": "amendment",
+    "npk_n": 1.0, "npk_p": 0.1, "npk_k": 2.0,
+    "application_rate": 100.0, "application_unit": "g/m²",
+    "notes": "Rich in trace minerals, growth hormones, and micronutrients. Improves soil structure and microbial activity."
+  },
+  {
+    "name": "Liquid Kelp Extract",
+    "type": "fertilizer",
+    "npk_n": 0.1, "npk_p": 0.0, "npk_k": 0.1,
+    "application_rate": 20.0, "application_unit": "ml/L",
+    "notes": "Concentrated seaweed extract. Promotes root growth, improves stress tolerance, and enhances nutrient uptake."
+  },
+  {
+    "name": "Worm Castings",
+    "type": "amendment",
+    "npk_n": 1.5, "npk_p": 0.5, "npk_k": 0.5,
+    "application_rate": 200.0, "application_unit": "g/plant",
+    "notes": "Gentle, balanced slow-release organic fertilizer with beneficial microbes. Cannot burn plants."
+  },
+  {
+    "name": "Compost Tea",
+    "type": "amendment",
+    "npk_n": 0.5, "npk_p": 0.2, "npk_k": 0.3,
+    "application_rate": 1.0, "application_unit": "L/plant",
+    "notes": "Brewed liquid compost. Inoculates soil with beneficial microorganisms. Apply as drench or foliar spray."
+  },
+  {
+    "name": "Balanced NPK 10-10-10",
+    "type": "fertilizer",
+    "npk_n": 10.0, "npk_p": 10.0, "npk_k": 10.0,
+    "application_rate": 50.0, "application_unit": "g/m²",
+    "notes": "Synthetic balanced fertilizer for general use. Good for establishing plants and overall growth."
+  },
+  {
+    "name": "Tomato & Vegetable Fertilizer 5-6-5",
+    "type": "fertilizer",
+    "npk_n": 5.0, "npk_p": 6.0, "npk_k": 5.0,
+    "application_rate": 60.0, "application_unit": "g/m²",
+    "notes": "Formulated for fruiting vegetables. Apply at transplant and every 4 weeks."
+  },
+  {
+    "name": "High-Nitrogen Feed 20-5-5",
+    "type": "fertilizer",
+    "npk_n": 20.0, "npk_p": 5.0, "npk_k": 5.0,
+    "application_rate": 15.0, "application_unit": "g/L",
+    "notes": "For leafy greens and vigorous vegetative growth. Use cautiously on fruiting crops to avoid excess foliage."
+  },
+  {
+    "name": "Bloom Booster 2-10-10",
+    "type": "fertilizer",
+    "npk_n": 2.0, "npk_p": 10.0, "npk_k": 10.0,
+    "application_rate": 15.0, "application_unit": "g/L",
+    "notes": "High phosphorus and potassium to encourage flowering and fruit set. Switch to this at first bud."
+  },
+  {
+    "name": "Garden Lime (Calcitic)",
+    "type": "amendment",
+    "npk_n": 0.0, "npk_p": 0.0, "npk_k": 0.0,
+    "application_rate": 150.0, "application_unit": "g/m²",
+    "notes": "Raises soil pH. Apply in autumn; takes several months to act. Add calcium. Test pH before applying."
+  },
+  {
+    "name": "Dolomitic Lime",
+    "type": "amendment",
+    "npk_n": 0.0, "npk_p": 0.0, "npk_k": 0.0,
+    "application_rate": 150.0, "application_unit": "g/m²",
+    "notes": "Raises pH while adding calcium and magnesium. Good for magnesium-deficient soils."
+  },
+  {
+    "name": "Sulfur Powder",
+    "type": "amendment",
+    "npk_n": 0.0, "npk_p": 0.0, "npk_k": 0.0,
+    "application_rate": 30.0, "application_unit": "g/m²",
+    "notes": "Lowers soil pH for acid-loving plants. Also a fungicide when dusted on foliage. Slow-acting."
+  },
+  {
+    "name": "Perlite",
+    "type": "amendment",
+    "npk_n": 0.0, "npk_p": 0.0, "npk_k": 0.0,
+    "application_rate": 20.0, "application_unit": "%_by_volume",
+    "notes": "Volcanic glass beads added to improve drainage and aeration in containers and heavy soils."
+  },
+  {
+    "name": "Vermiculite",
+    "type": "amendment",
+    "npk_n": 0.0, "npk_p": 0.0, "npk_k": 0.0,
+    "application_rate": 20.0, "application_unit": "%_by_volume",
+    "notes": "Expanded mineral that improves water retention and cation exchange capacity. Good in seed starting mixes."
+  },
+  {
+    "name": "Neem Oil",
+    "type": "pesticide",
+    "npk_n": null, "npk_p": null, "npk_k": null,
+    "application_rate": 5.0, "application_unit": "ml/L",
+    "notes": "Broad-spectrum organic pesticide/fungicide. Disrupts insect life cycle. Apply in early morning or evening. Not bee-safe when wet."
+  },
+  {
+    "name": "Diatomaceous Earth",
+    "type": "pesticide",
+    "npk_n": null, "npk_p": null, "npk_k": null,
+    "application_rate": 20.0, "application_unit": "g/m²",
+    "notes": "Fossilized algae; physically damages soft-bodied insects. Effective when dry. Reapply after rain."
+  },
+  {
+    "name": "Insecticidal Soap",
+    "type": "pesticide",
+    "npk_n": null, "npk_p": null, "npk_k": null,
+    "application_rate": 20.0, "application_unit": "ml/L",
+    "notes": "Kills soft-bodied insects on contact. Safe for humans and most beneficials when dry. Coat undersides of leaves."
+  },
+  {
+    "name": "Copper Fungicide",
+    "type": "fungicide",
+    "npk_n": null, "npk_p": null, "npk_k": null,
+    "application_rate": 10.0, "application_unit": "ml/L",
+    "notes": "Broad-spectrum fungicide and bactericide. Prevents blight, powdery mildew, and canker. Can accumulate in soil."
+  },
+  {
+    "name": "Sulfur Fungicide",
+    "type": "fungicide",
+    "npk_n": null, "npk_p": null, "npk_k": null,
+    "application_rate": 3.0, "application_unit": "g/L",
+    "notes": "Preventive fungicide for powdery mildew and rust. Do not apply in temperatures above 30°C."
+  },
+  {
+    "name": "Bicarbonate Spray (Baking Soda)",
+    "type": "fungicide",
+    "npk_n": null, "npk_p": null, "npk_k": null,
+    "application_rate": 5.0, "application_unit": "g/L",
+    "notes": "Raises surface pH to inhibit fungal spores. Best as a preventive treatment. Mix with horticultural oil to stick."
+  },
+  {
+    "name": "Epsom Salt (Magnesium Sulfate)",
+    "type": "amendment",
+    "npk_n": 0.0, "npk_p": 0.0, "npk_k": 0.0,
+    "application_rate": 15.0, "application_unit": "g/L",
+    "notes": "Corrects magnesium and sulfur deficiency. Useful for tomatoes and peppers showing yellowing between leaf veins."
+  },
+  {
+    "name": "Wood Ash",
+    "type": "amendment",
+    "npk_n": 0.0, "npk_p": 0.5, "npk_k": 3.0,
+    "application_rate": 75.0, "application_unit": "g/m²",
+    "notes": "Raises soil pH and adds potassium and calcium. Do not use on acid-loving plants or near germinating seeds."
+  },
+  {
+    "name": "Mycorrhizal Inoculant",
+    "type": "amendment",
+    "npk_n": null, "npk_p": null, "npk_k": null,
+    "application_rate": 5.0, "application_unit": "g/plant",
+    "notes": "Beneficial fungi that colonize roots, extending their effective reach. Apply directly to roots at transplant."
+  }
+]
