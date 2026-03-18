@@ -2,6 +2,7 @@ use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use std::path::Path;
 
 pub mod environments;
+pub mod custom_fields;
 pub mod harvests;
 pub mod indoor;
 pub mod issues;

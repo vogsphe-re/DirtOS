@@ -371,6 +371,34 @@ pub struct CustomField {
     pub created_at: NaiveDateTime,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct NewCustomField {
+    pub entity_type: CustomFieldEntityType,
+    pub entity_id: i64,
+    pub field_name: String,
+    pub field_value: Option<String>,
+    pub field_type: CustomFieldType,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct UpdateCustomField {
+    pub field_name: Option<String>,
+    pub field_value: Option<String>,
+    pub field_type: Option<CustomFieldType>,
+}
+
+// ---------------------------------------------------------------------------
+// Species filters
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct SpeciesFilters {
+    pub query: Option<String>,
+    pub sun_requirement: Option<String>,
+    pub water_requirement: Option<String>,
+    pub growth_type: Option<String>,
+}
+
 // ---------------------------------------------------------------------------
 // Soil
 // ---------------------------------------------------------------------------

@@ -1,16 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Text, Title, Stack } from "@mantine/core";
+import { SpeciesDetail } from "../features/plants/SpeciesDetail";
 
 export const Route = createFileRoute("/plants/$speciesId")({
-  component: SpeciesDetail,
+  component: SpeciesDetailPage,
 });
 
-function SpeciesDetail() {
+function SpeciesDetailPage() {
   const { speciesId } = Route.useParams();
-  return (
-    <Stack p="md">
-      <Title order={2}>Species #{speciesId}</Title>
-      <Text c="dimmed">Species detail — Phase 3</Text>
-    </Stack>
-  );
+  return <SpeciesDetail speciesId={Number(speciesId)} />;
 }

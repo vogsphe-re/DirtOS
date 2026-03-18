@@ -1,0 +1,347 @@
+import {
+  Anchor,
+  Badge,
+  Button,
+  Group,
+  Image,
+  Loader,
+  SimpleGrid,
+  Stack,
+  Table,
+  Tabs,
+  Text,
+  Title,
+  Tooltip,
+} from "@mantine/core";
+import { notifications } from "@mantine/notifications";
+import {
+  IconArrowLeft,
+  IconBrandWikipedia,
+  IconExternalLink,
+  IconLeaf,
+  IconPlant,
+  IconPlus,
+} from "@tabler/icons-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { commands } from "../../lib/bindings";
+import { CustomFieldsEditor } from "./CustomFieldsEditor";
+import { AddPlantModal } from "./AddPlantModal";
+import type { Plant, Species } from "./types";
+import { PLANT_STATUS_COLORS, PLANT_STATUS_LABELS } from "./types";
+
+interface SpeciesDetailProps {
+  speciesId: number;
+}
+
+export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [addPlantOpen, setAddPlantOpen] = useState(false);
+
+  const { data: species, isLoading, isError } = useQuery({
+    queryKey: ["species", speciesId],
+    queryFn: async () => {
+      const res = await (commands as any).getSpecies(speciesId);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data as Species | null;
+    },
+  });
+
+  const { data: plants = [] } = useQuery({
+    queryKey: ["plants-by-species", speciesId],
+    queryFn: async () => {
+      const res = await (commands as any).listPlantsBySpecies(speciesId, 200, 0);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data as Plant[];
+    },
+  });
+
+  const enrichInat = useMutation({
+    mutationFn: async () => {
+      const res = await (commands as any).enrichSpeciesInaturalist(speciesId);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data as Species;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["species", speciesId] });
+      queryClient.invalidateQueries({ queryKey: ["species"] });
+      notifications.show({ title: "Enriched", message: "iNaturalist data applied.", color: "green" });
+    },
+    onError: (err: Error) =>
+      notifications.show({ title: "iNaturalist error", message: err.message, color: "red" }),
+  });
+
+  const enrichWiki = useMutation({
+    mutationFn: async () => {
+      const res = await (commands as any).enrichSpeciesWikipedia(speciesId);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data as Species;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["species", speciesId] });
+      queryClient.invalidateQueries({ queryKey: ["species"] });
+      notifications.show({ title: "Enriched", message: "Wikipedia description applied.", color: "green" });
+    },
+    onError: (err: Error) =>
+      notifications.show({ title: "Wikipedia error", message: err.message, color: "red" }),
+  });
+
+  if (isLoading) return <Loader m="xl" />;
+  if (isError || !species)
+    return <Text c="red" p="md">Species not found.</Text>;
+
+  const plantRows = plants.map((p) => (
+    <Table.Tr
+      key={p.id}
+      style={{ cursor: "pointer" }}
+      onClick={() =>
+        navigate({ to: "/plants/individuals/$plantId", params: { plantId: String(p.id) } })
+      }
+    >
+      <Table.Td>{p.name}</Table.Td>
+      <Table.Td>
+        <Badge color={PLANT_STATUS_COLORS[p.status]} variant="light" size="sm">
+          {PLANT_STATUS_LABELS[p.status]}
+        </Badge>
+      </Table.Td>
+      <Table.Td>
+        <Text size="sm">{p.planted_date ?? "—"}</Text>
+      </Table.Td>
+    </Table.Tr>
+  ));
+
+  return (
+    <Stack p="md" gap="md">
+      {/* Header */}
+      <Group>
+        <Tooltip label="Back to catalog">
+          <Button
+            variant="subtle"
+            size="xs"
+            leftSection={<IconArrowLeft size={14} />}
+            onClick={() => navigate({ to: "/plants" })}
+          >
+            Catalog
+          </Button>
+        </Tooltip>
+      </Group>
+
+      <Group align="flex-start" wrap="nowrap" gap="xl">
+        {species.image_url ? (
+          <Image
+            src={species.image_url}
+            w={120}
+            h={120}
+            radius="md"
+            fit="cover"
+            flex="none"
+          />
+        ) : (
+          <IconPlant size={80} stroke={0.8} style={{ flexShrink: 0 }} />
+        )}
+        <Stack gap={4} flex={1}>
+          <Title order={2}>{species.common_name}</Title>
+          {species.scientific_name && (
+            <Text fs="italic" c="dimmed">
+              {species.scientific_name}
+            </Text>
+          )}
+          <Group gap="xs" mt={4}>
+            {species.family && <Badge variant="outline" size="sm">{species.family}</Badge>}
+            {species.growth_type && <Badge variant="outline" size="sm">{species.growth_type}</Badge>}
+            {species.sun_requirement && (
+              <Badge variant="light" color="yellow" size="sm">
+                {species.sun_requirement.replace("_", " ")}
+              </Badge>
+            )}
+            {species.water_requirement && (
+              <Badge variant="light" color="blue" size="sm">
+                {species.water_requirement} water
+              </Badge>
+            )}
+          </Group>
+          <Group gap="xs" mt={8}>
+            <Button
+              size="xs"
+              variant="light"
+              leftSection={<IconLeaf size={14} />}
+              loading={enrichInat.isPending}
+              onClick={() => enrichInat.mutate()}
+            >
+              Enrich from iNaturalist
+            </Button>
+            <Button
+              size="xs"
+              variant="light"
+              color="gray"
+              leftSection={<IconBrandWikipedia size={14} />}
+              loading={enrichWiki.isPending}
+              onClick={() => enrichWiki.mutate()}
+            >
+              Enrich from Wikipedia
+            </Button>
+          </Group>
+        </Stack>
+      </Group>
+
+      <Tabs defaultValue="overview">
+        <Tabs.List>
+          <Tabs.Tab value="overview">Overview</Tabs.Tab>
+          <Tabs.Tab value="growing">Growing Info</Tabs.Tab>
+          <Tabs.Tab value="plants">
+            Individual Plants{plants.length > 0 ? ` (${plants.length})` : ""}
+          </Tabs.Tab>
+          <Tabs.Tab value="notes">Notes & Fields</Tabs.Tab>
+        </Tabs.List>
+
+        {/* Overview */}
+        <Tabs.Panel value="overview" pt="md">
+          <Stack gap="sm">
+            {species.description && (
+              <Text>{species.description}</Text>
+            )}
+            <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
+              <InfoItem label="Family" value={species.family} />
+              <InfoItem label="Genus" value={species.genus} />
+              <InfoItem label="Scientific name" value={species.scientific_name} />
+              <InfoItem label="iNaturalist ID" value={species.inaturalist_id?.toString()} />
+              <InfoItem
+                label="Wikipedia"
+                value={
+                  species.wikipedia_slug ? (
+                    <Anchor
+                      href={`https://en.wikipedia.org/wiki/${species.wikipedia_slug}`}
+                      target="_blank"
+                      size="sm"
+                    >
+                      {species.wikipedia_slug} <IconExternalLink size={12} />
+                    </Anchor>
+                  ) : null
+                }
+              />
+            </SimpleGrid>
+          </Stack>
+        </Tabs.Panel>
+
+        {/* Growing Info */}
+        <Tabs.Panel value="growing" pt="md">
+          <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
+            <InfoItem label="Sun requirement" value={species.sun_requirement} />
+            <InfoItem label="Water requirement" value={species.water_requirement} />
+            <InfoItem
+              label="Soil pH"
+              value={
+                species.soil_ph_min != null
+                  ? `${species.soil_ph_min}${species.soil_ph_max ? `–${species.soil_ph_max}` : ""}`
+                  : null
+              }
+            />
+            <InfoItem
+              label="Spacing (cm)"
+              value={species.spacing_cm?.toString()}
+            />
+            <InfoItem
+              label="Days to germination"
+              value={
+                species.days_to_germination_min != null
+                  ? `${species.days_to_germination_min}${species.days_to_germination_max ? `–${species.days_to_germination_max}` : ""}`
+                  : null
+              }
+            />
+            <InfoItem
+              label="Days to harvest"
+              value={
+                species.days_to_harvest_min != null
+                  ? `${species.days_to_harvest_min}${species.days_to_harvest_max ? `–${species.days_to_harvest_max}` : ""}`
+                  : null
+              }
+            />
+            <InfoItem label="Hardiness zone min" value={species.hardiness_zone_min} />
+            <InfoItem label="Hardiness zone max" value={species.hardiness_zone_max} />
+          </SimpleGrid>
+        </Tabs.Panel>
+
+        {/* Individual Plants */}
+        <Tabs.Panel value="plants" pt="md">
+          <Stack gap="sm">
+            <Group justify="flex-end">
+              <Button
+                size="xs"
+                leftSection={<IconPlus size={14} />}
+                onClick={() => setAddPlantOpen(true)}
+              >
+                Add plant
+              </Button>
+            </Group>
+            <Table highlightOnHover withTableBorder>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Name</Table.Th>
+                  <Table.Th>Status</Table.Th>
+                  <Table.Th>Planted</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {plantRows.length === 0 ? (
+                  <Table.Tr>
+                    <Table.Td colSpan={3}>
+                      <Text ta="center" c="dimmed" py="md">
+                        No individual plants recorded for this species.
+                      </Text>
+                    </Table.Td>
+                  </Table.Tr>
+                ) : (
+                  plantRows
+                )}
+              </Table.Tbody>
+            </Table>
+          </Stack>
+        </Tabs.Panel>
+
+        {/* Notes & custom fields */}
+        <Tabs.Panel value="notes" pt="md">
+          <CustomFieldsEditor entityType="species" entityId={speciesId} />
+        </Tabs.Panel>
+      </Tabs>
+
+      <AddPlantModal
+        opened={addPlantOpen}
+        onClose={() => setAddPlantOpen(false)}
+        defaultSpeciesId={speciesId}
+        onCreated={() => {
+          setAddPlantOpen(false);
+          queryClient.invalidateQueries({ queryKey: ["plants-by-species", speciesId] });
+        }}
+      />
+    </Stack>
+  );
+}
+
+function InfoItem({
+  label,
+  value,
+}: {
+  label: string;
+  value?: string | null | React.ReactNode;
+}) {
+  return (
+    <Stack gap={2}>
+      <Text size="xs" c="dimmed" fw={500}>
+        {label}
+      </Text>
+      {value ? (
+        typeof value === "string" ? (
+          <Text size="sm">{value}</Text>
+        ) : (
+          value
+        )
+      ) : (
+        <Text size="sm" c="dimmed">
+          —
+        </Text>
+      )}
+    </Stack>
+  );
+}

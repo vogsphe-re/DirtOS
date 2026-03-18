@@ -1,15 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Text, Title, Stack } from "@mantine/core";
+import { SpeciesCatalog } from "../features/plants/SpeciesCatalog";
 
 export const Route = createFileRoute("/plants/")({
-  component: PlantsIndex,
+  component: SpeciesCatalog,
 });
-
-function PlantsIndex() {
-  return (
-    <Stack p="md">
-      <Title order={2}>Plants</Title>
-      <Text c="dimmed">Species catalog & individual plants — Phase 3</Text>
-    </Stack>
-  );
-}

@@ -10,11 +10,36 @@ pub mod services;
 fn specta_builder() -> Builder<tauri::Wry> {
     Builder::<tauri::Wry>::new().commands(collect_commands![
         commands::greet,
+        // Environment
         commands::list_environments,
         commands::get_environment,
         commands::create_environment,
         commands::update_environment,
         commands::delete_environment,
+        // Species
+        commands::list_species,
+        commands::get_species,
+        commands::create_species,
+        commands::update_species,
+        commands::delete_species,
+        commands::search_inaturalist,
+        commands::enrich_species_inaturalist,
+        commands::search_wikipedia,
+        commands::enrich_species_wikipedia,
+        // Plants
+        commands::list_plants,
+        commands::list_all_plants,
+        commands::list_plants_by_species,
+        commands::get_plant,
+        commands::create_plant,
+        commands::update_plant,
+        commands::delete_plant,
+        commands::change_plant_status,
+        // Custom fields
+        commands::list_custom_fields,
+        commands::create_custom_field,
+        commands::update_custom_field,
+        commands::delete_custom_field,
     ])
 }
 

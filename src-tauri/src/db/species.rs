@@ -1,6 +1,6 @@
 use sqlx::SqlitePool;
 
-use super::models::{NewSpecies, Pagination, Species, UpdateSpecies};
+use super::models::{NewSpecies, Pagination, Species, SpeciesFilters, UpdateSpecies};
 
 pub async fn list_species(
     pool: &SqlitePool,
@@ -151,4 +151,99 @@ pub async fn count_species(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
         .fetch_one(pool)
         .await?;
     Ok(row.0)
+}
+
+/// Filtered species list supporting text search and category filters.
+pub async fn list_species_filtered(
+    pool: &SqlitePool,
+    filters: SpeciesFilters,
+    pagination: Pagination,
+) -> Result<Vec<Species>, sqlx::Error> {
+    let pattern = filters.query.as_deref().map(|q| format!("%{q}%"));
+    sqlx::query_as::<_, Species>(
+        "SELECT * FROM species
+         WHERE (? IS NULL OR (common_name LIKE ? OR scientific_name LIKE ?))
+           AND (? IS NULL OR sun_requirement = ?)
+           AND (? IS NULL OR water_requirement = ?)
+           AND (? IS NULL OR growth_type = ?)
+         ORDER BY common_name ASC LIMIT ? OFFSET ?",
+    )
+    .bind(&pattern)
+    .bind(&pattern)
+    .bind(&pattern)
+    .bind(&filters.sun_requirement)
+    .bind(&filters.sun_requirement)
+    .bind(&filters.water_requirement)
+    .bind(&filters.water_requirement)
+    .bind(&filters.growth_type)
+    .bind(&filters.growth_type)
+    .bind(pagination.limit)
+    .bind(pagination.offset)
+    .fetch_all(pool)
+    .await
+}
+
+/// Persist iNaturalist enrichment data on a species row.
+pub async fn update_species_inaturalist(
+    pool: &SqlitePool,
+    id: i64,
+    inaturalist_id: i64,
+    scientific_name: Option<String>,
+    family: Option<String>,
+    genus: Option<String>,
+    image_url: Option<String>,
+    description: Option<String>,
+    cached_json: String,
+) -> Result<Option<Species>, sqlx::Error> {
+    sqlx::query(
+        "UPDATE species SET
+            inaturalist_id          = ?,
+            scientific_name         = COALESCE(?, scientific_name),
+            family                  = COALESCE(?, family),
+            genus                   = COALESCE(?, genus),
+            image_url               = COALESCE(?, image_url),
+            description             = COALESCE(?, description),
+            cached_inaturalist_json = ?,
+            updated_at              = datetime('now')
+         WHERE id = ?",
+    )
+    .bind(inaturalist_id)
+    .bind(scientific_name)
+    .bind(family)
+    .bind(genus)
+    .bind(image_url)
+    .bind(description)
+    .bind(cached_json)
+    .bind(id)
+    .execute(pool)
+    .await?;
+    get_species(pool, id).await
+}
+
+/// Persist Wikipedia enrichment data on a species row.
+pub async fn update_species_wikipedia(
+    pool: &SqlitePool,
+    id: i64,
+    wikipedia_slug: String,
+    description: Option<String>,
+    image_url: Option<String>,
+    cached_json: String,
+) -> Result<Option<Species>, sqlx::Error> {
+    sqlx::query(
+        "UPDATE species SET
+            wikipedia_slug        = ?,
+            description           = COALESCE(?, description),
+            image_url             = COALESCE(?, image_url),
+            cached_wikipedia_json = ?,
+            updated_at            = datetime('now')
+         WHERE id = ?",
+    )
+    .bind(wikipedia_slug)
+    .bind(description)
+    .bind(image_url)
+    .bind(cached_json)
+    .bind(id)
+    .execute(pool)
+    .await?;
+    get_species(pool, id).await
 }

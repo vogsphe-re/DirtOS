@@ -134,3 +134,65 @@ pub async fn delete_plant(pool: &SqlitePool, id: i64) -> Result<bool, sqlx::Erro
         .await?;
     Ok(result.rows_affected() > 0)
 }
+
+/// List all plants across every environment.
+pub async fn list_all_plants(
+    pool: &SqlitePool,
+    pagination: Pagination,
+) -> Result<Vec<Plant>, sqlx::Error> {
+    sqlx::query_as::<_, Plant>(
+        "SELECT * FROM plants ORDER BY environment_id ASC, name ASC LIMIT ? OFFSET ?",
+    )
+    .bind(pagination.limit)
+    .bind(pagination.offset)
+    .fetch_all(pool)
+    .await
+}
+
+/// List plants belonging to a particular species.
+pub async fn list_plants_by_species(
+    pool: &SqlitePool,
+    species_id: i64,
+    pagination: Pagination,
+) -> Result<Vec<Plant>, sqlx::Error> {
+    sqlx::query_as::<_, Plant>(
+        "SELECT * FROM plants WHERE species_id = ? ORDER BY name ASC LIMIT ? OFFSET ?",
+    )
+    .bind(species_id)
+    .bind(pagination.limit)
+    .bind(pagination.offset)
+    .fetch_all(pool)
+    .await
+}
+
+/// Change only the status of a plant (and set removed_date when transitioning to a terminal status).
+pub async fn change_plant_status(
+    pool: &SqlitePool,
+    id: i64,
+    status: PlantStatus,
+) -> Result<Option<Plant>, sqlx::Error> {
+    let removed_date: Option<&str> = match status {
+        PlantStatus::Harvested | PlantStatus::Removed | PlantStatus::Dead => {
+            Some("date('now')")
+        }
+        _ => None,
+    };
+    if removed_date.is_some() {
+        sqlx::query(
+            "UPDATE plants SET status = ?, removed_date = date('now'), updated_at = datetime('now') WHERE id = ?",
+        )
+        .bind(&status)
+        .bind(id)
+        .execute(pool)
+        .await?;
+    } else {
+        sqlx::query(
+            "UPDATE plants SET status = ?, updated_at = datetime('now') WHERE id = ?",
+        )
+        .bind(&status)
+        .bind(id)
+        .execute(pool)
+        .await?;
+    }
+    get_plant(pool, id).await
+}
