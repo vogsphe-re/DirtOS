@@ -1,0 +1,3 @@
+-- Phase 0 placeholder migration.
+-- The full schema is created in Phase 1 (phase-01-database.md).
+-- This migration intentionally left blank so `sqlx::migrate!` succeeds on first run.

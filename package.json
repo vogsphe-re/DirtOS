@@ -1,0 +1,56 @@
+{
+  "name": "dirtos",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "preview": "vite preview",
+    "vite:dev": "vite",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src/",
+    "generate-bindings": "cargo test -p dirtos-lib export_bindings --manifest-path src-tauri/Cargo.toml"
+  },
+  "dependencies": {
+    "@mantine/core": "^8.3.18",
+    "@mantine/dates": "^8.3.18",
+    "@mantine/hooks": "^8.3.18",
+    "@mantine/notifications": "^8.3.18",
+    "@tabler/icons-react": "^3.40.0",
+    "@tanstack/react-query": "^5.90.21",
+    "@tanstack/react-router": "^1.167.4",
+    "@tauri-apps/api": "^2.10.1",
+    "dayjs": "^1.11.20",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@tanstack/router-vite-plugin": "^1.166.13",
+    "@tauri-apps/cli": "^2",
+    "@tauri-apps/plugin-dialog": "^2.6.0",
+    "@tauri-apps/plugin-fs": "^2.4.5",
+    "@tauri-apps/plugin-notification": "^2.3.3",
+    "@tauri-apps/plugin-shell": "^2.3.5",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^10.0.3",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.4.0",
+    "typescript": "^5.6.2",
+    "typescript-eslint": "^8.57.1",
+    "vite": "^8.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "@tauri-apps/cli"
+    ]
+  }
+}
