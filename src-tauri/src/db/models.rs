@@ -20,6 +20,7 @@ pub enum LocationType {
 
 #[derive(Debug, Clone, PartialEq, sqlx::Type, Serialize, Deserialize, Type)]
 #[sqlx(type_name = "TEXT", rename_all = "snake_case")]
+#[serde(rename_all = "lowercase")]
 pub enum PlantStatus {
     Planned,
     Seedling,
@@ -721,6 +722,17 @@ pub struct SeedLot {
 }
 
 // ---------------------------------------------------------------------------
+// Canvas state (full Konva JSON per environment)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
+pub struct CanvasState {
+    pub environment_id: i64,
+    pub canvas_json: String,
+    pub updated_at: NaiveDateTime,
+}
+
+// ---------------------------------------------------------------------------
 // Canvas objects
 // ---------------------------------------------------------------------------
 
@@ -833,8 +845,54 @@ pub struct PlantGroup {
     pub description: Option<String>,
     pub group_type: Option<String>,
     pub filter_criteria_json: Option<String>,
+    pub color: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct NewPlantGroup {
+    pub environment_id: i64,
+    pub name: String,
+    pub description: Option<String>,
+    pub group_type: Option<String>,
+    pub color: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct UpdatePlantGroup {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub group_type: Option<String>,
+    pub color: Option<String>,
+}
+
+// ---------------------------------------------------------------------------
+// Seedling observations (Phase 5)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
+pub struct SeedlingObservation {
+    pub id: i64,
+    pub plant_id: i64,
+    pub observed_at: String,
+    pub height_cm: Option<f64>,
+    pub stem_thickness_mm: Option<f64>,
+    pub leaf_node_count: Option<i64>,
+    pub leaf_node_spacing_mm: Option<f64>,
+    pub notes: Option<String>,
+    pub created_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct NewSeedlingObservation {
+    pub plant_id: i64,
+    pub observed_at: Option<String>,
+    pub height_cm: Option<f64>,
+    pub stem_thickness_mm: Option<f64>,
+    pub leaf_node_count: Option<i64>,
+    pub leaf_node_spacing_mm: Option<f64>,
+    pub notes: Option<String>,
 }
 
 // ---------------------------------------------------------------------------

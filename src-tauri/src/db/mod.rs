@@ -1,6 +1,7 @@
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use std::path::Path;
 
+pub mod canvas;
 pub mod environments;
 pub mod custom_fields;
 pub mod harvests;
@@ -9,9 +10,11 @@ pub mod issues;
 pub mod journal;
 pub mod locations;
 pub mod models;
+pub mod plant_groups;
 pub mod plants;
 pub mod schedules;
 pub mod seed;
+pub mod seedling_observations;
 pub mod sensors;
 pub mod species;
 

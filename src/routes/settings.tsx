@@ -248,7 +248,7 @@ function SettingsPage() {
         {creatingNew && (
           <>
             <EnvironmentForm
-              onSave={(values) => createMutation.mutateAsync(values)}
+              onSave={async (values) => { await createMutation.mutateAsync(values); }}
               onCancel={() => setCreatingNew(false)}
               busy={createMutation.isPending}
             />

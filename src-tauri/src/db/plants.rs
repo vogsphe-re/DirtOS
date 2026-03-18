@@ -165,7 +165,67 @@ pub async fn list_plants_by_species(
     .await
 }
 
-/// Change only the status of a plant (and set removed_date when transitioning to a terminal status).
+/// Validated lifecycle transition — auto-stamps date fields.
+pub async fn transition_plant_status(
+    pool: &SqlitePool,
+    id: i64,
+    from: &PlantStatus,
+    to: PlantStatus,
+) -> Result<Plant, sqlx::Error> {
+    match (&from, &to) {
+        (_, PlantStatus::Seedling) => {
+            sqlx::query(
+                "UPDATE plants SET status = ?, germinated_date = COALESCE(germinated_date, date('now')), updated_at = datetime('now') WHERE id = ?",
+            )
+            .bind(&to)
+            .bind(id)
+            .execute(pool)
+            .await?;
+        }
+        (PlantStatus::Seedling, PlantStatus::Active) => {
+            sqlx::query(
+                "UPDATE plants SET status = ?, transplanted_date = COALESCE(transplanted_date, date('now')), updated_at = datetime('now') WHERE id = ?",
+            )
+            .bind(&to)
+            .bind(id)
+            .execute(pool)
+            .await?;
+        }
+        (_, PlantStatus::Active) => {
+            // planned → active (direct sow): stamp planted_date
+            sqlx::query(
+                "UPDATE plants SET status = ?, planted_date = COALESCE(planted_date, date('now')), updated_at = datetime('now') WHERE id = ?",
+            )
+            .bind(&to)
+            .bind(id)
+            .execute(pool)
+            .await?;
+        }
+        (_, PlantStatus::Harvested) | (_, PlantStatus::Removed) | (_, PlantStatus::Dead) => {
+            sqlx::query(
+                "UPDATE plants SET status = ?, removed_date = COALESCE(removed_date, date('now')), updated_at = datetime('now') WHERE id = ?",
+            )
+            .bind(&to)
+            .bind(id)
+            .execute(pool)
+            .await?;
+        }
+        _ => {
+            sqlx::query(
+                "UPDATE plants SET status = ?, updated_at = datetime('now') WHERE id = ?",
+            )
+            .bind(&to)
+            .bind(id)
+            .execute(pool)
+            .await?;
+        }
+    }
+
+    get_plant(pool, id)
+        .await?
+        .ok_or(sqlx::Error::RowNotFound)
+}
+
 pub async fn change_plant_status(
     pool: &SqlitePool,
     id: i64,

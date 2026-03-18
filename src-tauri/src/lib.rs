@@ -30,16 +30,41 @@ fn specta_builder() -> Builder<tauri::Wry> {
         commands::list_plants,
         commands::list_all_plants,
         commands::list_plants_by_species,
+        commands::list_plants_by_status,
+        commands::list_plants_by_location,
         commands::get_plant,
         commands::create_plant,
         commands::update_plant,
         commands::delete_plant,
         commands::change_plant_status,
+        commands::transition_plant_status,
+        // Seedling observations
+        commands::list_seedling_observations,
+        commands::create_seedling_observation,
+        commands::delete_seedling_observation,
+        // Plant groups
+        commands::list_plant_groups,
+        commands::get_plant_group,
+        commands::create_plant_group,
+        commands::update_plant_group,
+        commands::delete_plant_group,
+        commands::add_plant_to_group,
+        commands::remove_plant_from_group,
+        commands::list_plant_group_plants,
         // Custom fields
         commands::list_custom_fields,
         commands::create_custom_field,
         commands::update_custom_field,
         commands::delete_custom_field,
+        // Canvas
+        commands::save_canvas,
+        commands::load_canvas,
+        commands::list_locations,
+        commands::get_location,
+        commands::create_location,
+        commands::update_location,
+        commands::delete_location,
+        commands::list_child_locations,
     ])
 }
 

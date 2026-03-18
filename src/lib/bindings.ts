@@ -49,6 +49,367 @@ async deleteEnvironment(id: number) : Promise<Result<boolean, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async listSpecies(query: string | null, sunRequirement: string | null, waterRequirement: string | null, growthType: string | null, limit: number | null, offset: number | null) : Promise<Result<Species[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_species", { query, sunRequirement, waterRequirement, growthType, limit, offset }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getSpecies(id: number) : Promise<Result<Species | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_species", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createSpecies(input: NewSpecies) : Promise<Result<Species, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_species", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateSpecies(id: number, input: UpdateSpecies) : Promise<Result<Species | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_species", { id, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteSpecies(id: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_species", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Search iNaturalist for taxa matching the given query.
+ * Returns up to 20 results — the frontend presents them for the user to pick.
+ */
+async searchInaturalist(query: string) : Promise<Result<TaxonResult[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("search_inaturalist", { query }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Enrich an existing species record with data fetched from iNaturalist.
+ * Uses the species' inaturalist_id if already set; otherwise falls back to
+ * searching by scientific_name then common_name.
+ */
+async enrichSpeciesInaturalist(speciesId: number) : Promise<Result<Species, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("enrich_species_inaturalist", { speciesId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Search Wikipedia for pages matching the given query.
+ */
+async searchWikipedia(query: string) : Promise<Result<WikiSummary, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("search_wikipedia", { query }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Enrich an existing species record with data fetched from Wikipedia.
+ * Uses the species' wikipedia_slug if already set, otherwise derives a slug
+ * from scientific_name or common_name.
+ */
+async enrichSpeciesWikipedia(speciesId: number) : Promise<Result<Species, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("enrich_species_wikipedia", { speciesId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listPlants(environmentId: number, limit: number | null, offset: number | null) : Promise<Result<Plant[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_plants", { environmentId, limit, offset }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listAllPlants(limit: number | null, offset: number | null) : Promise<Result<Plant[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_all_plants", { limit, offset }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listPlantsBySpecies(speciesId: number, limit: number | null, offset: number | null) : Promise<Result<Plant[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_plants_by_species", { speciesId, limit, offset }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listPlantsByStatus(environmentId: number, status: PlantStatus, limit: number | null, offset: number | null) : Promise<Result<Plant[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_plants_by_status", { environmentId, status, limit, offset }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listPlantsByLocation(locationId: number, limit: number | null, offset: number | null) : Promise<Result<Plant[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_plants_by_location", { locationId, limit, offset }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getPlant(id: number) : Promise<Result<Plant | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_plant", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createPlant(input: NewPlant) : Promise<Result<Plant, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_plant", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updatePlant(id: number, input: UpdatePlant) : Promise<Result<Plant | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_plant", { id, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deletePlant(id: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_plant", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changePlantStatus(id: number, status: PlantStatus) : Promise<Result<Plant | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_plant_status", { id, status }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async transitionPlantStatus(plantId: number, newStatus: PlantStatus) : Promise<Result<Plant, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("transition_plant_status", { plantId, newStatus }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listSeedlingObservations(plantId: number) : Promise<Result<SeedlingObservation[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_seedling_observations", { plantId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createSeedlingObservation(input: NewSeedlingObservation) : Promise<Result<SeedlingObservation, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_seedling_observation", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteSeedlingObservation(id: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_seedling_observation", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listPlantGroups(environmentId: number, limit: number | null, offset: number | null) : Promise<Result<PlantGroup[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_plant_groups", { environmentId, limit, offset }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getPlantGroup(id: number) : Promise<Result<PlantGroup | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_plant_group", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createPlantGroup(input: NewPlantGroup) : Promise<Result<PlantGroup, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_plant_group", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updatePlantGroup(id: number, input: UpdatePlantGroup) : Promise<Result<PlantGroup | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_plant_group", { id, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deletePlantGroup(id: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_plant_group", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async addPlantToGroup(groupId: number, plantId: number) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("add_plant_to_group", { groupId, plantId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async removePlantFromGroup(groupId: number, plantId: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("remove_plant_from_group", { groupId, plantId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listPlantGroupPlants(groupId: number) : Promise<Result<Plant[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_plant_group_plants", { groupId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listCustomFields(entityType: CustomFieldEntityType, entityId: number) : Promise<Result<CustomField[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_custom_fields", { entityType, entityId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createCustomField(input: NewCustomField) : Promise<Result<CustomField, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_custom_field", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateCustomField(id: number, input: UpdateCustomField) : Promise<Result<CustomField | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_custom_field", { id, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteCustomField(id: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_custom_field", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async saveCanvas(environmentId: number, canvasJson: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("save_canvas", { environmentId, canvasJson }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async loadCanvas(environmentId: number) : Promise<Result<string | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("load_canvas", { environmentId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listLocations(environmentId: number) : Promise<Result<Location[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_locations", { environmentId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getLocation(id: number) : Promise<Result<Location | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_location", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createLocation(input: NewLocation) : Promise<Result<Location, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_location", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateLocation(id: number, input: UpdateLocation) : Promise<Result<Location | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_location", { id, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteLocation(id: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_location", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listChildLocations(parentId: number) : Promise<Result<Location[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_child_locations", { parentId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -62,14 +423,37 @@ async deleteEnvironment(id: number) : Promise<Result<boolean, string>> {
 
 /** user-defined types **/
 
+export type CustomField = { id: number; entity_type: CustomFieldEntityType; entity_id: number; field_name: string; field_value: string | null; field_type: CustomFieldType; created_at: string }
+export type CustomFieldEntityType = "Species" | "Plant" | "Location" | "SoilTest"
+export type CustomFieldType = "Text" | "Number" | "Date" | "Boolean"
 export type Environment = { id: number; name: string; latitude: number | null; longitude: number | null; elevation_m: number | null; timezone: string | null; climate_zone: string | null; created_at: string; updated_at: string }
 /**
  * Temporary smoke-test command to verify IPC and specta type export.
  * This command will be removed after Phase 0 verification.
  */
 export type GreetResponse = { message: string }
+export type Location = { id: number; environment_id: number; parent_id: number | null; location_type: LocationType; name: string; label: string | null; position_x: number | null; position_y: number | null; width: number | null; height: number | null; canvas_data_json: string | null; notes: string | null; created_at: string; updated_at: string }
+export type LocationType = "Plot" | "Space" | "Tent" | "Tray" | "Pot" | "Shed"
+export type NewCustomField = { entity_type: CustomFieldEntityType; entity_id: number; field_name: string; field_value: string | null; field_type: CustomFieldType }
 export type NewEnvironment = { name: string; latitude: number | null; longitude: number | null; elevation_m: number | null; timezone: string | null; climate_zone: string | null }
+export type NewLocation = { environment_id: number; parent_id: number | null; location_type: LocationType; name: string; label: string | null; position_x: number | null; position_y: number | null; width: number | null; height: number | null; canvas_data_json: string | null; notes: string | null }
+export type NewPlant = { species_id: number | null; location_id: number | null; environment_id: number; status: PlantStatus | null; name: string; label: string | null; planted_date: string | null; notes: string | null }
+export type NewPlantGroup = { environment_id: number; name: string; description: string | null; group_type: string | null; color: string | null }
+export type NewSeedlingObservation = { plant_id: number; observed_at: string | null; height_cm: number | null; stem_thickness_mm: number | null; leaf_node_count: number | null; leaf_node_spacing_mm: number | null; notes: string | null }
+export type NewSpecies = { common_name: string; scientific_name: string | null; family: string | null; genus: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; description: string | null; image_url: string | null; is_user_added: boolean | null }
+export type Plant = { id: number; species_id: number | null; location_id: number | null; environment_id: number; status: PlantStatus; name: string; label: string | null; planted_date: string | null; germinated_date: string | null; transplanted_date: string | null; removed_date: string | null; parent_plant_id: number | null; seed_lot_id: number | null; purchase_source: string | null; purchase_date: string | null; purchase_price: number | null; notes: string | null; created_at: string; updated_at: string }
+export type PlantGroup = { id: number; environment_id: number; name: string; description: string | null; group_type: string | null; filter_criteria_json: string | null; color: string | null; created_at: string; updated_at: string }
+export type PlantStatus = "planned" | "seedling" | "active" | "harvested" | "removed" | "dead"
+export type SeedlingObservation = { id: number; plant_id: number; observed_at: string; height_cm: number | null; stem_thickness_mm: number | null; leaf_node_count: number | null; leaf_node_spacing_mm: number | null; notes: string | null; created_at: string }
+export type Species = { id: number; common_name: string; scientific_name: string | null; family: string | null; genus: string | null; inaturalist_id: number | null; wikipedia_slug: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; description: string | null; image_url: string | null; cached_inaturalist_json: string | null; cached_wikipedia_json: string | null; is_user_added: boolean; created_at: string; updated_at: string }
+export type TaxonResult = { id: number; name: string; preferred_common_name: string | null; rank: string | null; default_photo_url: string | null; wikipedia_url: string | null; matched_term: string | null }
+export type UpdateCustomField = { field_name: string | null; field_value: string | null; field_type: CustomFieldType | null }
 export type UpdateEnvironment = { name: string | null; latitude: number | null; longitude: number | null; elevation_m: number | null; timezone: string | null; climate_zone: string | null }
+export type UpdateLocation = { parent_id: number | null; location_type: LocationType | null; name: string | null; label: string | null; position_x: number | null; position_y: number | null; width: number | null; height: number | null; canvas_data_json: string | null; notes: string | null }
+export type UpdatePlant = { species_id: number | null; location_id: number | null; status: PlantStatus | null; name: string | null; label: string | null; planted_date: string | null; germinated_date: string | null; transplanted_date: string | null; removed_date: string | null; parent_plant_id: number | null; seed_lot_id: number | null; purchase_source: string | null; purchase_date: string | null; purchase_price: number | null; notes: string | null }
+export type UpdatePlantGroup = { name: string | null; description: string | null; group_type: string | null; color: string | null }
+export type UpdateSpecies = { common_name: string | null; scientific_name: string | null; family: string | null; genus: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; description: string | null; image_url: string | null }
+export type WikiSummary = { title: string; slug: string; extract: string | null; thumbnail_url: string | null; page_url: string | null; raw_json: string }
 
 /** tauri-specta globals **/
 

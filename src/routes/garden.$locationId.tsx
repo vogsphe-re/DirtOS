@@ -1,16 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Text, Title, Stack } from "@mantine/core";
+import { GardenPage } from "../features/garden/GardenPage";
 
-export const Route = createFileRoute("/garden/$locationId")({
-  component: GardenLocation,
-});
+export const Route = createFileRoute("/garden/$locationId")(
+  { component: GardenLocationPage },
+);
 
-function GardenLocation() {
+function GardenLocationPage() {
   const { locationId } = Route.useParams();
-  return (
-    <Stack p="md">
-      <Title order={2}>Garden — Location {locationId}</Title>
-      <Text c="dimmed">Specific plot view — Phase 4</Text>
-    </Stack>
-  );
+  return <GardenPage locationId={locationId} />;
 }
