@@ -22,6 +22,7 @@ import { commands } from "../lib/bindings";
 import { useAppStore } from "../stores/appStore";
 import { useEnvironmentStore, type Environment } from "../stores/environmentStore";
 import { Sidebar } from "./Sidebar";
+import { NotificationCenter } from "./NotificationCenter";
 
 // ---------------------------------------------------------------------------
 // First-launch wizard
@@ -209,6 +210,7 @@ export function AppLayout() {
               >
                 {colorScheme === "dark" ? <IconSun size={18} /> : <IconMoon size={18} />}
               </ActionIcon>
+              <NotificationCenter />
             </Group>
           </Group>
         </AppShell.Header>

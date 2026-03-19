@@ -1,6 +1,7 @@
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use std::path::Path;
 
+pub mod additives;
 pub mod canvas;
 pub mod environments;
 pub mod custom_fields;

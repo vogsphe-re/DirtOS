@@ -20,6 +20,7 @@ import { Route as IssuesRouteImport } from './routes/issues'
 import { Route as IndoorRouteImport } from './routes/indoor'
 import { Route as GardenRouteImport } from './routes/garden'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SchedulesIndexRouteImport } from './routes/schedules.index'
 import { Route as PlantsIndexRouteImport } from './routes/plants.index'
 import { Route as JournalIndexRouteImport } from './routes/journal.index'
 import { Route as IssuesIndexRouteImport } from './routes/issues.index'
@@ -90,6 +91,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const SchedulesIndexRoute = SchedulesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SchedulesRoute,
 } as any)
 const PlantsIndexRoute = PlantsIndexRouteImport.update({
   id: '/',
@@ -176,7 +182,7 @@ export interface FileRoutesByFullPath {
   '/journal': typeof JournalRouteWithChildren
   '/plants': typeof PlantsRouteWithChildren
   '/reports': typeof ReportsRoute
-  '/schedules': typeof SchedulesRoute
+  '/schedules': typeof SchedulesRouteWithChildren
   '/sensors': typeof SensorsRoute
   '/settings': typeof SettingsRoute
   '/weather': typeof WeatherRoute
@@ -193,13 +199,13 @@ export interface FileRoutesByFullPath {
   '/issues/': typeof IssuesIndexRoute
   '/journal/': typeof JournalIndexRoute
   '/plants/': typeof PlantsIndexRoute
+  '/schedules/': typeof SchedulesIndexRoute
   '/plants/individuals/$plantId': typeof PlantsIndividualsPlantIdRoute
   '/plants/individuals/': typeof PlantsIndividualsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/reports': typeof ReportsRoute
-  '/schedules': typeof SchedulesRoute
   '/sensors': typeof SensorsRoute
   '/settings': typeof SettingsRoute
   '/weather': typeof WeatherRoute
@@ -215,6 +221,7 @@ export interface FileRoutesByTo {
   '/issues': typeof IssuesIndexRoute
   '/journal': typeof JournalIndexRoute
   '/plants': typeof PlantsIndexRoute
+  '/schedules': typeof SchedulesIndexRoute
   '/plants/individuals/$plantId': typeof PlantsIndividualsPlantIdRoute
   '/plants/individuals': typeof PlantsIndividualsIndexRoute
 }
@@ -227,7 +234,7 @@ export interface FileRoutesById {
   '/journal': typeof JournalRouteWithChildren
   '/plants': typeof PlantsRouteWithChildren
   '/reports': typeof ReportsRoute
-  '/schedules': typeof SchedulesRoute
+  '/schedules': typeof SchedulesRouteWithChildren
   '/sensors': typeof SensorsRoute
   '/settings': typeof SettingsRoute
   '/weather': typeof WeatherRoute
@@ -244,6 +251,7 @@ export interface FileRoutesById {
   '/issues/': typeof IssuesIndexRoute
   '/journal/': typeof JournalIndexRoute
   '/plants/': typeof PlantsIndexRoute
+  '/schedules/': typeof SchedulesIndexRoute
   '/plants/individuals/$plantId': typeof PlantsIndividualsPlantIdRoute
   '/plants/individuals/': typeof PlantsIndividualsIndexRoute
 }
@@ -274,13 +282,13 @@ export interface FileRouteTypes {
     | '/issues/'
     | '/journal/'
     | '/plants/'
+    | '/schedules/'
     | '/plants/individuals/$plantId'
     | '/plants/individuals/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/reports'
-    | '/schedules'
     | '/sensors'
     | '/settings'
     | '/weather'
@@ -296,6 +304,7 @@ export interface FileRouteTypes {
     | '/issues'
     | '/journal'
     | '/plants'
+    | '/schedules'
     | '/plants/individuals/$plantId'
     | '/plants/individuals'
   id:
@@ -324,6 +333,7 @@ export interface FileRouteTypes {
     | '/issues/'
     | '/journal/'
     | '/plants/'
+    | '/schedules/'
     | '/plants/individuals/$plantId'
     | '/plants/individuals/'
   fileRoutesById: FileRoutesById
@@ -336,7 +346,7 @@ export interface RootRouteChildren {
   JournalRoute: typeof JournalRouteWithChildren
   PlantsRoute: typeof PlantsRouteWithChildren
   ReportsRoute: typeof ReportsRoute
-  SchedulesRoute: typeof SchedulesRoute
+  SchedulesRoute: typeof SchedulesRouteWithChildren
   SensorsRoute: typeof SensorsRoute
   SettingsRoute: typeof SettingsRoute
   WeatherRoute: typeof WeatherRoute
@@ -420,6 +430,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/schedules/': {
+      id: '/schedules/'
+      path: '/'
+      fullPath: '/schedules/'
+      preLoaderRoute: typeof SchedulesIndexRouteImport
+      parentRoute: typeof SchedulesRoute
     }
     '/plants/': {
       id: '/plants/'
@@ -613,6 +630,18 @@ const PlantsRouteChildren: PlantsRouteChildren = {
 const PlantsRouteWithChildren =
   PlantsRoute._addFileChildren(PlantsRouteChildren)
 
+interface SchedulesRouteChildren {
+  SchedulesIndexRoute: typeof SchedulesIndexRoute
+}
+
+const SchedulesRouteChildren: SchedulesRouteChildren = {
+  SchedulesIndexRoute: SchedulesIndexRoute,
+}
+
+const SchedulesRouteWithChildren = SchedulesRoute._addFileChildren(
+  SchedulesRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   GardenRoute: GardenRouteWithChildren,
@@ -621,7 +650,7 @@ const rootRouteChildren: RootRouteChildren = {
   JournalRoute: JournalRouteWithChildren,
   PlantsRoute: PlantsRouteWithChildren,
   ReportsRoute: ReportsRoute,
-  SchedulesRoute: SchedulesRoute,
+  SchedulesRoute: SchedulesRouteWithChildren,
   SensorsRoute: SensorsRoute,
   SettingsRoute: SettingsRoute,
   WeatherRoute: WeatherRoute,

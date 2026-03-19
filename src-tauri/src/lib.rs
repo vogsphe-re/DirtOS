@@ -95,6 +95,17 @@ fn specta_builder() -> Builder<tauri::Wry> {
         commands::list_media,
         commands::delete_media,
         commands::read_media_base64,
+        // Schedules
+        commands::list_schedules,
+        commands::get_schedule,
+        commands::create_schedule,
+        commands::update_schedule,
+        commands::delete_schedule,
+        commands::toggle_schedule,
+        commands::list_schedule_runs,
+        commands::get_calendar_events,
+        commands::list_additives,
+        commands::get_schedule_suggestions,
     ])
 }
 
@@ -148,6 +159,12 @@ pub fn run() {
                 match db::init_db(&app_data_dir).await {
                     Ok(pool) => {
                         tracing::info!("Database initialised successfully");
+                        // Start the cron scheduler before managing the pool
+                        let sched_pool = pool.clone();
+                        let sched_app = app_handle.clone();
+                        tauri::async_runtime::spawn(async move {
+                            services::scheduler::start(sched_app, sched_pool).await;
+                        });
                         app_handle.manage(pool);
                     }
                     Err(e) => {

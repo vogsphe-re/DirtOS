@@ -35,3 +35,4 @@ tokio-cron-scheduler = "0.13"
 uuid = { version = "1", features = ["v4"] }
 image = "0.25"
 base64 = "0.22"
+cron = "0.12"

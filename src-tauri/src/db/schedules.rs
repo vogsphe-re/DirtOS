@@ -102,6 +102,47 @@ pub async fn delete_schedule(pool: &SqlitePool, id: i64) -> Result<bool, sqlx::E
     Ok(result.rows_affected() > 0)
 }
 
+pub async fn update_schedule(
+    pool: &SqlitePool,
+    id: i64,
+    input: super::models::UpdateSchedule,
+    next_run_at: Option<chrono::NaiveDateTime>,
+) -> Result<Option<Schedule>, sqlx::Error> {
+    let current = match get_schedule(pool, id).await? {
+        Some(s) => s,
+        None => return Ok(None),
+    };
+    let stype = input.schedule_type.unwrap_or(current.schedule_type);
+    let title = input.title.unwrap_or(current.title);
+    let cron_expr = if input.cron_expression.is_some() { input.cron_expression } else { current.cron_expression };
+    let is_active = input.is_active.unwrap_or(current.is_active);
+    let plant_id = if input.plant_id.is_some() { input.plant_id } else { current.plant_id };
+    let location_id = if input.location_id.is_some() { input.location_id } else { current.location_id };
+    let additive_id = if input.additive_id.is_some() { input.additive_id } else { current.additive_id };
+    let notes = if input.notes.is_some() { input.notes } else { current.notes };
+    let run_at = if next_run_at.is_some() { next_run_at } else { current.next_run_at };
+
+    sqlx::query(
+        "UPDATE schedules SET type=?, title=?, cron_expression=?, next_run_at=?,
+         is_active=?, plant_id=?, location_id=?, additive_id=?, notes=?,
+         updated_at=datetime('now') WHERE id=?",
+    )
+    .bind(&stype)
+    .bind(&title)
+    .bind(&cron_expr)
+    .bind(run_at)
+    .bind(is_active)
+    .bind(plant_id)
+    .bind(location_id)
+    .bind(additive_id)
+    .bind(&notes)
+    .bind(id)
+    .execute(pool)
+    .await?;
+
+    get_schedule(pool, id).await
+}
+
 // ---------------------------------------------------------------------------
 // Schedule runs
 // ---------------------------------------------------------------------------

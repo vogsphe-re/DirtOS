@@ -629,6 +629,18 @@ pub struct NewSchedule {
     pub notes: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct UpdateSchedule {
+    pub schedule_type: Option<ScheduleType>,
+    pub title: Option<String>,
+    pub cron_expression: Option<String>,
+    pub is_active: Option<bool>,
+    pub plant_id: Option<i64>,
+    pub location_id: Option<i64>,
+    pub additive_id: Option<i64>,
+    pub notes: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
 pub struct ScheduleRun {
     pub id: i64,
@@ -636,6 +648,40 @@ pub struct ScheduleRun {
     pub issue_id: Option<i64>,
     pub ran_at: NaiveDateTime,
     pub status: ScheduleRunStatus,
+}
+
+// ---------------------------------------------------------------------------
+// Calendar Events
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, sqlx::Type, Serialize, Deserialize, Type)]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
+pub enum CalendarEventType {
+    Schedule,
+    PlantingDate,
+    HarvestDate,
+    IssueCreated,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct CalendarEvent {
+    pub id: String,
+    pub event_type: CalendarEventType,
+    pub date: String,
+    pub title: String,
+    pub color: Option<String>,
+    pub plant_id: Option<i64>,
+    pub schedule_id: Option<i64>,
+    pub issue_id: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ScheduleSuggestion {
+    pub schedule_type: ScheduleType,
+    pub title: String,
+    pub cron_expression: String,
+    pub cron_label: String,
+    pub notes: Option<String>,
 }
 
 // ---------------------------------------------------------------------------

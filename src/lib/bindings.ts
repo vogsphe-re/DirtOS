@@ -610,6 +610,86 @@ async readMediaBase64(id: number, thumbnail: boolean) : Promise<Result<MediaBase
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async listSchedules(environmentId: number) : Promise<Result<Schedule[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_schedules", { environmentId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getSchedule(id: number) : Promise<Result<Schedule | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_schedule", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createSchedule(input: NewSchedule) : Promise<Result<Schedule, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_schedule", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateSchedule(id: number, input: UpdateSchedule) : Promise<Result<Schedule | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_schedule", { id, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteSchedule(id: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_schedule", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async toggleSchedule(id: number, active: boolean) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("toggle_schedule", { id, active }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listScheduleRuns(scheduleId: number, limit: number | null) : Promise<Result<ScheduleRun[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_schedule_runs", { scheduleId, limit }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getCalendarEvents(environmentId: number, startDate: string, endDate: string) : Promise<Result<CalendarEvent[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_calendar_events", { environmentId, startDate, endDate }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listAdditives() : Promise<Result<Additive[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_additives") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getScheduleSuggestions(plantId: number) : Promise<Result<ScheduleSuggestion[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_schedule_suggestions", { plantId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -623,6 +703,10 @@ async readMediaBase64(id: number, thumbnail: boolean) : Promise<Result<MediaBase
 
 /** user-defined types **/
 
+export type Additive = { id: number; name: string; additive_type: AdditiveType; npk_n: number | null; npk_p: number | null; npk_k: number | null; application_rate: number | null; application_unit: string | null; notes: string | null }
+export type AdditiveType = "fertilizer" | "amendment" | "pesticide" | "fungicide" | "other"
+export type CalendarEvent = { id: string; event_type: CalendarEventType; date: string; title: string; color: string | null; plant_id: number | null; schedule_id: number | null; issue_id: number | null }
+export type CalendarEventType = "Schedule" | "PlantingDate" | "HarvestDate" | "IssueCreated"
 export type CustomField = { id: number; entity_type: CustomFieldEntityType; entity_id: number; field_name: string; field_value: string | null; field_type: CustomFieldType; created_at: string }
 export type CustomFieldEntityType = "Species" | "Plant" | "Location" | "SoilTest"
 export type CustomFieldType = "Text" | "Number" | "Date" | "Boolean"
@@ -648,6 +732,7 @@ export type NewIssue = { environment_id: number | null; plant_id: number | null;
 export type NewIssueLabel = { name: string; color: string | null; icon: string | null }
 export type NewJournalEntry = { environment_id: number | null; plant_id: number | null; location_id: number | null; title: string; body: string | null; conditions_json: string | null }
 export type NewLocation = { environment_id: number; parent_id: number | null; location_type: LocationType; name: string; label: string | null; position_x: number | null; position_y: number | null; width: number | null; height: number | null; canvas_data_json: string | null; notes: string | null }
+export type NewSchedule = { environment_id: number | null; plant_id: number | null; location_id: number | null; schedule_type: ScheduleType; title: string; cron_expression: string | null; next_run_at: string | null; is_active: boolean | null; additive_id: number | null; notes: string | null }
 export type NewPlant = { species_id: number | null; location_id: number | null; environment_id: number; status: PlantStatus | null; name: string; label: string | null; planted_date: string | null; notes: string | null }
 export type NewPlantGroup = { environment_id: number; name: string; description: string | null; group_type: string | null; color: string | null }
 export type NewSeedlingObservation = { plant_id: number; observed_at: string | null; height_cm: number | null; stem_thickness_mm: number | null; leaf_node_count: number | null; leaf_node_spacing_mm: number | null; notes: string | null }
@@ -656,6 +741,11 @@ export type Plant = { id: number; species_id: number | null; location_id: number
 export type PlantGroup = { id: number; environment_id: number; name: string; description: string | null; group_type: string | null; filter_criteria_json: string | null; color: string | null; created_at: string; updated_at: string }
 export type PlantStatus = "planned" | "seedling" | "active" | "harvested" | "removed" | "dead"
 export type SeedlingObservation = { id: number; plant_id: number; observed_at: string; height_cm: number | null; stem_thickness_mm: number | null; leaf_node_count: number | null; leaf_node_spacing_mm: number | null; notes: string | null; created_at: string }
+export type Schedule = { id: number; environment_id: number | null; plant_id: number | null; location_id: number | null; schedule_type: ScheduleType; title: string; cron_expression: string | null; next_run_at: string | null; is_active: boolean; additive_id: number | null; notes: string | null; created_at: string; updated_at: string }
+export type ScheduleRun = { id: number; schedule_id: number; issue_id: number | null; ran_at: string; status: ScheduleRunStatus }
+export type ScheduleRunStatus = "completed" | "skipped" | "missed"
+export type ScheduleSuggestion = { schedule_type: ScheduleType; title: string; cron_expression: string; cron_label: string; notes: string | null }
+export type ScheduleType = "water" | "feed" | "maintenance" | "treatment" | "sample" | "custom"
 export type Species = { id: number; common_name: string; scientific_name: string | null; family: string | null; genus: string | null; inaturalist_id: number | null; wikipedia_slug: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; description: string | null; image_url: string | null; cached_inaturalist_json: string | null; cached_wikipedia_json: string | null; is_user_added: boolean; created_at: string; updated_at: string }
 export type TaxonResult = { id: number; name: string; preferred_common_name: string | null; rank: string | null; default_photo_url: string | null; wikipedia_url: string | null; matched_term: string | null }
 export type UpdateCustomField = { field_name: string | null; field_value: string | null; field_type: CustomFieldType | null }
@@ -663,6 +753,7 @@ export type UpdateEnvironment = { name: string | null; latitude: number | null; 
 export type UpdateIssue = { title: string | null; description: string | null; status: IssueStatus | null; priority: IssuePriority | null; plant_id: number | null; location_id: number | null }
 export type UpdateIssueLabel = { name: string | null; color: string | null; icon: string | null }
 export type UpdateJournalEntry = { title: string | null; body: string | null; conditions_json: string | null }
+export type UpdateSchedule = { schedule_type: ScheduleType | null; title: string | null; cron_expression: string | null; is_active: boolean | null; plant_id: number | null; location_id: number | null; additive_id: number | null; notes: string | null }
 export type UpdateLocation = { parent_id: number | null; location_type: LocationType | null; name: string | null; label: string | null; position_x: number | null; position_y: number | null; width: number | null; height: number | null; canvas_data_json: string | null; notes: string | null }
 export type UpdatePlant = { species_id: number | null; location_id: number | null; status: PlantStatus | null; name: string | null; label: string | null; planted_date: string | null; germinated_date: string | null; transplanted_date: string | null; removed_date: string | null; parent_plant_id: number | null; seed_lot_id: number | null; purchase_source: string | null; purchase_date: string | null; purchase_price: number | null; notes: string | null }
 export type UpdatePlantGroup = { name: string | null; description: string | null; group_type: string | null; color: string | null }
