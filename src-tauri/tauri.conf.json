@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.dirtos.app",
   "build": {
-    "beforeDevCommand": "bash -c 'source ~/.nvm/nvm.sh && nvm use 22 && pnpm vite:dev'",
+    "beforeDevCommand": "pnpm vite:dev",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "pnpm vite build",
     "frontendDist": "../dist"
