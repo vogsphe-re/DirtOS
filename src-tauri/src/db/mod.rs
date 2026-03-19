@@ -9,6 +9,7 @@ pub mod indoor;
 pub mod issues;
 pub mod journal;
 pub mod locations;
+pub mod media;
 pub mod models;
 pub mod plant_groups;
 pub mod plants;

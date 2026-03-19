@@ -21,6 +21,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { commands } from "../../lib/bindings";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
+import { PlantJournalTab } from "../journal/PlantJournalTab";
 import type { Plant, PlantStatus, Species } from "./types";
 import { PLANT_STATUS_COLORS, PLANT_STATUS_LABELS } from "./types";
 
@@ -211,7 +212,7 @@ export function PlantDetail({ plantId }: PlantDetailProps) {
         </Tabs.Panel>
 
         <Tabs.Panel value="journal" pt="md">
-          <Text c="dimmed" py="md">Journal entries — Phase 5</Text>
+          <PlantJournalTab plantId={plantId} />
         </Tabs.Panel>
 
         <Tabs.Panel value="issues" pt="md">

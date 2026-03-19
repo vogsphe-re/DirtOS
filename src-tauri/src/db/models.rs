@@ -582,6 +582,17 @@ pub struct Media {
     pub created_at: NaiveDateTime,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct NewMedia {
+    pub entity_type: String,
+    pub entity_id: i64,
+    pub file_path: String,
+    pub file_name: String,
+    pub mime_type: Option<String>,
+    pub thumbnail_path: Option<String>,
+    pub caption: Option<String>,
+}
+
 // ---------------------------------------------------------------------------
 // Schedules
 // ---------------------------------------------------------------------------

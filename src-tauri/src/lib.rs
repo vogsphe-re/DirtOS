@@ -84,6 +84,17 @@ fn specta_builder() -> Builder<tauri::Wry> {
         commands::list_issue_comments,
         commands::add_issue_comment,
         commands::delete_issue_comment,
+        // Journal
+        commands::list_journal_entries,
+        commands::get_journal_entry,
+        commands::create_journal_entry,
+        commands::update_journal_entry,
+        commands::delete_journal_entry,
+        // Media
+        commands::upload_media,
+        commands::list_media,
+        commands::delete_media,
+        commands::read_media_base64,
     ])
 }
 

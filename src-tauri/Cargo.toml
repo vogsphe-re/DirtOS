@@ -34,3 +34,4 @@ tauri-specta = { version = "2.0.0-rc.21", features = ["derive", "typescript"] }
 tokio-cron-scheduler = "0.13"
 uuid = { version = "1", features = ["v4"] }
 image = "0.25"
+base64 = "0.22"

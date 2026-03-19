@@ -538,6 +538,78 @@ async deleteIssueComment(id: number) : Promise<Result<boolean, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async listJournalEntries(environmentId: number, plantId: number | null, limit: number | null, offset: number | null) : Promise<Result<JournalEntry[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_journal_entries", { environmentId, plantId, limit, offset }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getJournalEntry(id: number) : Promise<Result<JournalEntry | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_journal_entry", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createJournalEntry(input: NewJournalEntry) : Promise<Result<JournalEntry, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_journal_entry", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateJournalEntry(id: number, input: UpdateJournalEntry) : Promise<Result<JournalEntry | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_journal_entry", { id, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteJournalEntry(id: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_journal_entry", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async uploadMedia(entityType: string, entityId: number, filePath: string) : Promise<Result<Media, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("upload_media", { entityType, entityId, filePath }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listMedia(entityType: string, entityId: number) : Promise<Result<Media[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_media", { entityType, entityId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteMedia(id: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_media", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async readMediaBase64(id: number, thumbnail: boolean) : Promise<Result<MediaBase64, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("read_media_base64", { id, thumbnail }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -565,12 +637,16 @@ export type IssueComment = { id: number; issue_id: number; body: string; created
 export type IssueLabel = { id: number; name: string; color: string | null; icon: string | null }
 export type IssuePriority = "low" | "medium" | "high" | "critical"
 export type IssueStatus = "new" | "open" | "in_progress" | "closed"
+export type JournalEntry = { id: number; environment_id: number | null; plant_id: number | null; location_id: number | null; title: string; body: string | null; conditions_json: string | null; created_at: string; updated_at: string }
 export type Location = { id: number; environment_id: number; parent_id: number | null; location_type: LocationType; name: string; label: string | null; position_x: number | null; position_y: number | null; width: number | null; height: number | null; canvas_data_json: string | null; notes: string | null; created_at: string; updated_at: string }
 export type LocationType = "Plot" | "Space" | "Tent" | "Tray" | "Pot" | "Shed"
+export type Media = { id: number; entity_type: string; entity_id: number; file_path: string; file_name: string; mime_type: string | null; thumbnail_path: string | null; caption: string | null; created_at: string }
+export type MediaBase64 = { id: number; mime_type: string; data: string; is_thumbnail: boolean }
 export type NewCustomField = { entity_type: CustomFieldEntityType; entity_id: number; field_name: string; field_value: string | null; field_type: CustomFieldType }
 export type NewEnvironment = { name: string; latitude: number | null; longitude: number | null; elevation_m: number | null; timezone: string | null; climate_zone: string | null }
 export type NewIssue = { environment_id: number | null; plant_id: number | null; location_id: number | null; title: string; description: string | null; status: IssueStatus | null; priority: IssuePriority | null }
 export type NewIssueLabel = { name: string; color: string | null; icon: string | null }
+export type NewJournalEntry = { environment_id: number | null; plant_id: number | null; location_id: number | null; title: string; body: string | null; conditions_json: string | null }
 export type NewLocation = { environment_id: number; parent_id: number | null; location_type: LocationType; name: string; label: string | null; position_x: number | null; position_y: number | null; width: number | null; height: number | null; canvas_data_json: string | null; notes: string | null }
 export type NewPlant = { species_id: number | null; location_id: number | null; environment_id: number; status: PlantStatus | null; name: string; label: string | null; planted_date: string | null; notes: string | null }
 export type NewPlantGroup = { environment_id: number; name: string; description: string | null; group_type: string | null; color: string | null }
@@ -586,6 +662,7 @@ export type UpdateCustomField = { field_name: string | null; field_value: string
 export type UpdateEnvironment = { name: string | null; latitude: number | null; longitude: number | null; elevation_m: number | null; timezone: string | null; climate_zone: string | null }
 export type UpdateIssue = { title: string | null; description: string | null; status: IssueStatus | null; priority: IssuePriority | null; plant_id: number | null; location_id: number | null }
 export type UpdateIssueLabel = { name: string | null; color: string | null; icon: string | null }
+export type UpdateJournalEntry = { title: string | null; body: string | null; conditions_json: string | null }
 export type UpdateLocation = { parent_id: number | null; location_type: LocationType | null; name: string | null; label: string | null; position_x: number | null; position_y: number | null; width: number | null; height: number | null; canvas_data_json: string | null; notes: string | null }
 export type UpdatePlant = { species_id: number | null; location_id: number | null; status: PlantStatus | null; name: string | null; label: string | null; planted_date: string | null; germinated_date: string | null; transplanted_date: string | null; removed_date: string | null; parent_plant_id: number | null; seed_lot_id: number | null; purchase_source: string | null; purchase_date: string | null; purchase_price: number | null; notes: string | null }
 export type UpdatePlantGroup = { name: string | null; description: string | null; group_type: string | null; color: string | null }

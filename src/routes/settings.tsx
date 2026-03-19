@@ -19,6 +19,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { commands } from "../lib/bindings";
+import { LabelManager } from "../features/issues/LabelManager";
 import { useAppStore } from "../stores/appStore";
 import { useEnvironmentStore, type Environment } from "../stores/environmentStore";
 
@@ -280,6 +281,11 @@ function SettingsPage() {
             </Text>
           )}
         </Stack>
+      </Card>
+
+      {/* ---- Issue Labels section ---- */}
+      <Card withBorder>
+        <LabelManager />
       </Card>
     </Stack>
   );
