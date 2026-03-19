@@ -17,9 +17,9 @@ import {
   IconAlertTriangle,
   IconCircleCheck,
   IconCircleDot,
+  IconPlus,
   IconPlayerPause,
   IconPlayerPlay,
-  IconPlus,
 } from "@tabler/icons-react";
 import { listen } from "@tauri-apps/api/event";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -28,10 +28,7 @@ import { LineChart, Line, ResponsiveContainer, Tooltip as ChartTooltip } from "r
 import { commands } from "../../lib/bindings";
 import type { Sensor, SensorLimit, SensorReading } from "../../lib/bindings";
 import { useAppStore } from "../../stores/appStore";
-import { SensorForm } from "./SensorForm";
-import { SensorDetail } from "./SensorDetail";
-import { SensorList } from "./SensorList";
-import { SoilTests } from "./SoilTests";
+import { SensorList, SoilTests } from ".";
 
 const SENSOR_TYPE_LABELS: Record<string, string> = {
   moisture: "Moisture",
@@ -187,8 +184,7 @@ function SensorCard({ sensor, liveValue, onSelect, onToggle }: SensorCardProps) 
 export function SensorDashboard() {
   const activeEnvId = useAppStore((s) => s.activeEnvironmentId);
   const queryClient = useQueryClient();
-  const [addOpen, setAddOpen] = useState(false);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<string | null>("dashboard");
   const [liveValues, setLiveValues] = useState<Record<number, number>>({});
 
   const { data: sensors = [], isLoading } = useQuery<Sensor[]>({
@@ -244,7 +240,7 @@ export function SensorDashboard() {
   }
 
   return (
-    <Tabs defaultValue="dashboard" p="md">
+    <Tabs value={activeTab} onChange={setActiveTab} p="md">
       <Group justify="space-between" mb="md">
         <Title order={2}>Sensors</Title>
         <Group>
@@ -253,7 +249,10 @@ export function SensorDashboard() {
             <Tabs.Tab value="list">Sensor List</Tabs.Tab>
             <Tabs.Tab value="soil">Soil Tests</Tabs.Tab>
           </Tabs.List>
-          <Button leftSection={<IconPlus size={16} />} onClick={() => setAddOpen(true)}>
+          <Button
+            leftSection={<IconPlus size={16} />}
+            onClick={() => setActiveTab("list")}
+          >
             Add Sensor
           </Button>
         </Group>
@@ -263,7 +262,12 @@ export function SensorDashboard() {
         {isLoading ? (
           <Loader />
         ) : sensors.length === 0 ? (
-          <Text c="dimmed">No sensors configured. Add a sensor to get started.</Text>
+          <Stack gap="xs">
+            <Text c="dimmed">No sensors configured. Add a sensor to get started.</Text>
+            <Group>
+              <Button variant="light" onClick={() => setActiveTab("list")}>Open Sensor List</Button>
+            </Group>
+          </Stack>
         ) : (
           <Grid>
             {sensors.map((sensor) => (
@@ -271,7 +275,7 @@ export function SensorDashboard() {
                 <SensorCard
                   sensor={sensor}
                   liveValue={liveValues[sensor.id] ?? null}
-                  onSelect={setSelectedId}
+                  onSelect={() => {}}
                   onToggle={(id, active) => toggleMutation.mutate({ id, active })}
                 />
               </Grid.Col>
@@ -287,23 +291,6 @@ export function SensorDashboard() {
       <Tabs.Panel value="soil">
         <SoilTests />
       </Tabs.Panel>
-
-      <SensorForm
-        opened={addOpen}
-        environmentId={activeEnvId}
-        onClose={() => setAddOpen(false)}
-        onSaved={() => {
-          queryClient.invalidateQueries({ queryKey: ["sensors", activeEnvId] });
-          setAddOpen(false);
-        }}
-      />
-
-      {selectedId !== null && (
-        <SensorDetail
-          sensorId={selectedId}
-          onClose={() => setSelectedId(null)}
-        />
-      )}
     </Tabs>
   );
 }

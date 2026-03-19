@@ -1,6 +1,10 @@
 use sqlx::SqlitePool;
 
-use super::models::{IndoorEnvironment, IndoorReading, NewIndoorEnvironment, NewIndoorReading, UpdateIndoorEnvironment};
+use super::models::{
+    IndoorEnvironment, IndoorNutrientLog, IndoorReading, IndoorReservoirTarget,
+    IndoorWaterChange, NewIndoorEnvironment, NewIndoorReading, UpdateIndoorEnvironment,
+    UpsertIndoorReservoirTarget,
+};
 
 pub async fn get_indoor_environment(
     pool: &SqlitePool,
@@ -11,6 +15,34 @@ pub async fn get_indoor_environment(
     )
     .bind(location_id)
     .fetch_optional(pool)
+    .await
+}
+
+pub async fn get_indoor_environment_by_id(
+    pool: &SqlitePool,
+    id: i64,
+) -> Result<Option<IndoorEnvironment>, sqlx::Error> {
+    sqlx::query_as::<_, IndoorEnvironment>(
+        "SELECT * FROM indoor_environments WHERE id = ?",
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await
+}
+
+pub async fn list_indoor_environments(
+    pool: &SqlitePool,
+    environment_id: i64,
+) -> Result<Vec<IndoorEnvironment>, sqlx::Error> {
+    sqlx::query_as::<_, IndoorEnvironment>(
+        "SELECT ie.*
+         FROM indoor_environments ie
+         JOIN locations l ON l.id = ie.location_id
+         WHERE l.environment_id = ?
+         ORDER BY l.name ASC",
+    )
+    .bind(environment_id)
+    .fetch_all(pool)
     .await
 }
 
@@ -156,4 +188,198 @@ pub async fn list_indoor_readings_since(
     .bind(since)
     .fetch_all(pool)
     .await
+}
+
+pub async fn latest_indoor_reading(
+    pool: &SqlitePool,
+    indoor_environment_id: i64,
+) -> Result<Option<IndoorReading>, sqlx::Error> {
+    sqlx::query_as::<_, IndoorReading>(
+        "SELECT * FROM indoor_readings
+         WHERE indoor_environment_id = ?
+         ORDER BY recorded_at DESC
+         LIMIT 1",
+    )
+    .bind(indoor_environment_id)
+    .fetch_optional(pool)
+    .await
+}
+
+// ---------------------------------------------------------------------------
+// Nutrient logs
+// ---------------------------------------------------------------------------
+
+pub async fn log_nutrient_addition(
+    pool: &SqlitePool,
+    indoor_environment_id: i64,
+    additive_id: Option<i64>,
+    amount: f64,
+    unit: Option<String>,
+) -> Result<IndoorNutrientLog, sqlx::Error> {
+    let result = sqlx::query(
+        "INSERT INTO indoor_nutrient_logs
+            (indoor_environment_id, additive_id, amount, unit, created_at)
+         VALUES (?, ?, ?, ?, datetime('now'))",
+    )
+    .bind(indoor_environment_id)
+    .bind(additive_id)
+    .bind(amount)
+    .bind(unit.unwrap_or_else(|| "ml".to_string()))
+    .execute(pool)
+    .await?;
+
+    sqlx::query_as::<_, IndoorNutrientLog>(
+        "SELECT * FROM indoor_nutrient_logs WHERE id = ?",
+    )
+    .bind(result.last_insert_rowid())
+    .fetch_one(pool)
+    .await
+}
+
+pub async fn list_nutrient_logs(
+    pool: &SqlitePool,
+    indoor_environment_id: i64,
+) -> Result<Vec<IndoorNutrientLog>, sqlx::Error> {
+    sqlx::query_as::<_, IndoorNutrientLog>(
+        "SELECT * FROM indoor_nutrient_logs
+         WHERE indoor_environment_id = ?
+         ORDER BY created_at DESC",
+    )
+    .bind(indoor_environment_id)
+    .fetch_all(pool)
+    .await
+}
+
+pub async fn nutrient_total_since(
+    pool: &SqlitePool,
+    indoor_environment_id: i64,
+    since: Option<chrono::NaiveDateTime>,
+) -> Result<f64, sqlx::Error> {
+    let row: (Option<f64>,) = if let Some(since) = since {
+        sqlx::query_as(
+            "SELECT SUM(amount) FROM indoor_nutrient_logs
+             WHERE indoor_environment_id = ? AND created_at >= ?",
+        )
+        .bind(indoor_environment_id)
+        .bind(since)
+        .fetch_one(pool)
+        .await?
+    } else {
+        sqlx::query_as(
+            "SELECT SUM(amount) FROM indoor_nutrient_logs
+             WHERE indoor_environment_id = ?",
+        )
+        .bind(indoor_environment_id)
+        .fetch_one(pool)
+        .await?
+    };
+
+    Ok(row.0.unwrap_or(0.0))
+}
+
+// ---------------------------------------------------------------------------
+// Water changes
+// ---------------------------------------------------------------------------
+
+pub async fn log_water_change(
+    pool: &SqlitePool,
+    indoor_environment_id: i64,
+    volume_liters: Option<f64>,
+    notes: Option<String>,
+) -> Result<IndoorWaterChange, sqlx::Error> {
+    let result = sqlx::query(
+        "INSERT INTO indoor_water_changes
+            (indoor_environment_id, volume_liters, notes, created_at)
+         VALUES (?, ?, ?, datetime('now'))",
+    )
+    .bind(indoor_environment_id)
+    .bind(volume_liters)
+    .bind(notes)
+    .execute(pool)
+    .await?;
+
+    sqlx::query_as::<_, IndoorWaterChange>(
+        "SELECT * FROM indoor_water_changes WHERE id = ?",
+    )
+    .bind(result.last_insert_rowid())
+    .fetch_one(pool)
+    .await
+}
+
+pub async fn list_water_changes(
+    pool: &SqlitePool,
+    indoor_environment_id: i64,
+) -> Result<Vec<IndoorWaterChange>, sqlx::Error> {
+    sqlx::query_as::<_, IndoorWaterChange>(
+        "SELECT * FROM indoor_water_changes
+         WHERE indoor_environment_id = ?
+         ORDER BY created_at DESC",
+    )
+    .bind(indoor_environment_id)
+    .fetch_all(pool)
+    .await
+}
+
+pub async fn latest_water_change(
+    pool: &SqlitePool,
+    indoor_environment_id: i64,
+) -> Result<Option<IndoorWaterChange>, sqlx::Error> {
+    sqlx::query_as::<_, IndoorWaterChange>(
+        "SELECT * FROM indoor_water_changes
+         WHERE indoor_environment_id = ?
+         ORDER BY created_at DESC LIMIT 1",
+    )
+    .bind(indoor_environment_id)
+    .fetch_optional(pool)
+    .await
+}
+
+// ---------------------------------------------------------------------------
+// Reservoir targets
+// ---------------------------------------------------------------------------
+
+pub async fn get_reservoir_target(
+    pool: &SqlitePool,
+    indoor_environment_id: i64,
+) -> Result<Option<IndoorReservoirTarget>, sqlx::Error> {
+    sqlx::query_as::<_, IndoorReservoirTarget>(
+        "SELECT * FROM indoor_reservoir_targets
+         WHERE indoor_environment_id = ?",
+    )
+    .bind(indoor_environment_id)
+    .fetch_optional(pool)
+    .await
+}
+
+pub async fn upsert_reservoir_target(
+    pool: &SqlitePool,
+    indoor_environment_id: i64,
+    input: UpsertIndoorReservoirTarget,
+) -> Result<IndoorReservoirTarget, sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO indoor_reservoir_targets
+            (indoor_environment_id, ph_min, ph_max, ec_min, ec_max, ppm_min, ppm_max, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+         ON CONFLICT(indoor_environment_id) DO UPDATE SET
+            ph_min = excluded.ph_min,
+            ph_max = excluded.ph_max,
+            ec_min = excluded.ec_min,
+            ec_max = excluded.ec_max,
+            ppm_min = excluded.ppm_min,
+            ppm_max = excluded.ppm_max,
+            updated_at = excluded.updated_at",
+    )
+    .bind(indoor_environment_id)
+    .bind(input.ph_min)
+    .bind(input.ph_max)
+    .bind(input.ec_min)
+    .bind(input.ec_max)
+    .bind(input.ppm_min)
+    .bind(input.ppm_max)
+    .execute(pool)
+    .await?;
+
+    get_reservoir_target(pool, indoor_environment_id)
+        .await?
+        .ok_or(sqlx::Error::RowNotFound)
 }

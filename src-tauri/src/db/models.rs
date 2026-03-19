@@ -1219,6 +1219,102 @@ pub struct NewIndoorReading {
     pub vpd: Option<f64>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
+pub struct IndoorNutrientLog {
+    pub id: i64,
+    pub indoor_environment_id: i64,
+    pub additive_id: Option<i64>,
+    pub amount: f64,
+    pub unit: String,
+    pub created_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
+pub struct IndoorWaterChange {
+    pub id: i64,
+    pub indoor_environment_id: i64,
+    pub volume_liters: Option<f64>,
+    pub notes: Option<String>,
+    pub created_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
+pub struct IndoorReservoirTarget {
+    pub id: i64,
+    pub indoor_environment_id: i64,
+    pub ph_min: Option<f64>,
+    pub ph_max: Option<f64>,
+    pub ec_min: Option<f64>,
+    pub ec_max: Option<f64>,
+    pub ppm_min: Option<f64>,
+    pub ppm_max: Option<f64>,
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct UpsertIndoorReservoirTarget {
+    pub ph_min: Option<f64>,
+    pub ph_max: Option<f64>,
+    pub ec_min: Option<f64>,
+    pub ec_max: Option<f64>,
+    pub ppm_min: Option<f64>,
+    pub ppm_max: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct IndoorEnvironmentSetupInput {
+    pub environment_id: i64,
+    pub parent_id: Option<i64>,
+    pub name: String,
+    pub label: Option<String>,
+    pub notes: Option<String>,
+    pub tent_width: Option<f64>,
+    pub tent_depth: Option<f64>,
+    pub tent_height: Option<f64>,
+    pub grow_method: Option<GrowMethod>,
+    pub light_type: Option<String>,
+    pub light_wattage: Option<f64>,
+    pub light_schedule_on: Option<String>,
+    pub light_schedule_off: Option<String>,
+    pub ventilation_type: Option<String>,
+    pub ventilation_cfm: Option<f64>,
+    pub reservoir_capacity_liters: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct IndoorEnvironmentSummary {
+    pub indoor_environment: IndoorEnvironment,
+    pub location: Location,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ReservoirStatus {
+    pub indoor_environment_id: i64,
+    pub current_volume_liters: Option<f64>,
+    pub last_water_change_at: Option<String>,
+    pub days_since_water_change: Option<i64>,
+    pub target: Option<IndoorReservoirTarget>,
+    pub current_ph: Option<f64>,
+    pub current_ec: Option<f64>,
+    pub current_ppm: Option<f64>,
+    pub nutrient_total_since_change: f64,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct IndoorDashboardSummary {
+    pub indoor_environment: IndoorEnvironment,
+    pub location: Location,
+    pub latest_reading: Option<IndoorReading>,
+    pub reservoir_status: ReservoirStatus,
+    pub active_plant_count: i64,
+    pub total_plant_count: i64,
+    pub upcoming_schedules: Vec<Schedule>,
+    pub recent_issues: Vec<Issue>,
+    pub air_exchange_per_hour: Option<f64>,
+    pub dli_estimate: Option<f64>,
+}
+
 // ---------------------------------------------------------------------------
 // Plant groups
 // ---------------------------------------------------------------------------

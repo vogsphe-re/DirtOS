@@ -299,6 +299,119 @@ async listSpeciesForIntegration(limit: number | null) : Promise<Result<Species[]
     else return { status: "error", error: e  as any };
 }
 },
+async createIndoorEnvironment(input: IndoorEnvironmentSetupInput) : Promise<Result<IndoorEnvironmentSummary, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_indoor_environment", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateIndoorEnvironment(id: number, input: UpdateIndoorEnvironment) : Promise<Result<IndoorEnvironment | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_indoor_environment", { id, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getIndoorEnvironment(id: number) : Promise<Result<IndoorEnvironmentSummary | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_indoor_environment", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listIndoorEnvironments(environmentId: number) : Promise<Result<IndoorEnvironmentSummary[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_indoor_environments", { environmentId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async logIndoorReading(input: NewIndoorReading) : Promise<Result<IndoorReading, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("log_indoor_reading", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listIndoorReadings(indoorEnvId: number, start: string | null, end: string | null) : Promise<Result<IndoorReading[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_indoor_readings", { indoorEnvId, start, end }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async logNutrientAddition(indoorEnvId: number, additiveId: number | null, amount: number, unit: string | null) : Promise<Result<IndoorNutrientLog, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("log_nutrient_addition", { indoorEnvId, additiveId, amount, unit }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listNutrientLogs(indoorEnvId: number) : Promise<Result<IndoorNutrientLog[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_nutrient_logs", { indoorEnvId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async logWaterChange(indoorEnvId: number, volumeLiters: number | null, notes: string | null) : Promise<Result<IndoorWaterChange, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("log_water_change", { indoorEnvId, volumeLiters, notes }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getReservoirStatus(indoorEnvId: number) : Promise<Result<ReservoirStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_reservoir_status", { indoorEnvId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getIndoorDashboardSummary(indoorEnvId: number) : Promise<Result<IndoorDashboardSummary, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_indoor_dashboard_summary", { indoorEnvId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getIndoorReservoirTarget(indoorEnvId: number) : Promise<Result<IndoorReservoirTarget | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_indoor_reservoir_target", { indoorEnvId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async upsertIndoorReservoirTarget(indoorEnvId: number, input: UpsertIndoorReservoirTarget) : Promise<Result<IndoorReservoirTarget, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("upsert_indoor_reservoir_target", { indoorEnvId, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async calculateVpd(airTemp: number, humidity: number) : Promise<number> {
+    return await TAURI_INVOKE("calculate_vpd", { airTemp, humidity });
+},
+async calculateDli(wattage: number, lightType: string | null, distanceCm: number, hoursOn: number) : Promise<number> {
+    return await TAURI_INVOKE("calculate_dli", { wattage, lightType, distanceCm, hoursOn });
+},
+async listGrowMethods() : Promise<GrowMethod[]> {
+    return await TAURI_INVOKE("list_grow_methods");
+},
 async listPlants(environmentId: number, limit: number | null, offset: number | null) : Promise<Result<Plant[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("list_plants", { environmentId, limit, offset }) };
@@ -1057,9 +1170,18 @@ export type ForecastItem = { dt: number; temperature_c: number; feels_like_c: nu
  * This command will be removed after Phase 0 verification.
  */
 export type GreetResponse = { message: string }
+export type GrowMethod = "Soil" | "HydroponicDwc" | "HydroponicNft" | "HydroponicEbbFlow" | "HydroponicDrip" | "Aeroponic" | "Aquaponic"
 export type ImportPayload = { format: BackupFormat; content: string; is_base64: boolean }
+export type IndoorDashboardSummary = { indoor_environment: IndoorEnvironment; location: Location; latest_reading: IndoorReading | null; reservoir_status: ReservoirStatus; active_plant_count: number; total_plant_count: number; upcoming_schedules: Schedule[]; recent_issues: Issue[]; air_exchange_per_hour: number | null; dli_estimate: number | null }
+export type IndoorEnvironment = { id: number; location_id: number; grow_method: GrowMethod | null; light_type: string | null; light_wattage: number | null; light_schedule_on: string | null; light_schedule_off: string | null; ventilation_type: string | null; ventilation_cfm: number | null; tent_width: number | null; tent_depth: number | null; tent_height: number | null; reservoir_capacity_liters: number | null; notes: string | null; created_at: string; updated_at: string }
+export type IndoorEnvironmentSetupInput = { environment_id: number; parent_id: number | null; name: string; label: string | null; notes: string | null; tent_width: number | null; tent_depth: number | null; tent_height: number | null; grow_method: GrowMethod | null; light_type: string | null; light_wattage: number | null; light_schedule_on: string | null; light_schedule_off: string | null; ventilation_type: string | null; ventilation_cfm: number | null; reservoir_capacity_liters: number | null }
+export type IndoorEnvironmentSummary = { indoor_environment: IndoorEnvironment; location: Location }
+export type IndoorNutrientLog = { id: number; indoor_environment_id: number; additive_id: number | null; amount: number; unit: string; created_at: string }
+export type IndoorReading = { id: number; indoor_environment_id: number; water_temp: number | null; water_ph: number | null; water_ec: number | null; water_ppm: number | null; air_temp: number | null; air_humidity: number | null; co2_ppm: number | null; vpd: number | null; recorded_at: string }
+export type IndoorReservoirTarget = { id: number; indoor_environment_id: number; ph_min: number | null; ph_max: number | null; ec_min: number | null; ec_max: number | null; ppm_min: number | null; ppm_max: number | null; updated_at: string }
+export type IndoorWaterChange = { id: number; indoor_environment_id: number; volume_liters: number | null; notes: string | null; created_at: string }
 export type IntegrationConfig = { id: number; provider: IntegrationProvider; enabled: boolean; auth_json: string | null; settings_json: string | null; sync_interval_minutes: number | null; cache_ttl_minutes: number | null; rate_limit_per_minute: number | null; last_synced_at: string | null; last_error: string | null; updated_at: string }
-export type IntegrationProvider = "inaturalist" | "wikipedia" | "osm" | "home_assistant" | "n_8n"
+export type IntegrationProvider = "inaturalist" | "wikipedia" | "osm" | "home_assistant" | "n8n"
 export type IntegrationSyncRun = { id: number; provider: string; operation: string; status: string; records_fetched: number | null; records_upserted: number | null; error_message: string | null; started_at: string; finished_at: string | null }
 export type IntegrationWebhookToken = { id: number; provider: string; name: string; token: string; is_active: boolean; created_at: string }
 export type Issue = { id: number; environment_id: number | null; plant_id: number | null; location_id: number | null; title: string; description: string | null; status: IssueStatus; priority: IssuePriority; created_at: string; updated_at: string; closed_at: string | null }
@@ -1076,6 +1198,7 @@ export type MediaBase64 = { id: number; mime_type: string; data: string; is_thum
 export type NewBackupJob = { name: string; schedule_cron: string | null; format: BackupFormat; include_secrets: boolean; is_active: boolean }
 export type NewCustomField = { entity_type: CustomFieldEntityType; entity_id: number; field_name: string; field_value: string | null; field_type: CustomFieldType }
 export type NewEnvironment = { name: string; latitude: number | null; longitude: number | null; elevation_m: number | null; timezone: string | null; climate_zone: string | null }
+export type NewIndoorReading = { indoor_environment_id: number; water_temp: number | null; water_ph: number | null; water_ec: number | null; water_ppm: number | null; air_temp: number | null; air_humidity: number | null; co2_ppm: number | null; vpd: number | null }
 export type NewIssue = { environment_id: number | null; plant_id: number | null; location_id: number | null; title: string; description: string | null; status: IssueStatus | null; priority: IssuePriority | null }
 export type NewIssueLabel = { name: string; color: string | null; icon: string | null }
 export type NewJournalEntry = { environment_id: number | null; plant_id: number | null; location_id: number | null; title: string; body: string | null; conditions_json: string | null }
@@ -1091,6 +1214,7 @@ export type OSMPlaceResult = { display_name: string; latitude: number; longitude
 export type Plant = { id: number; species_id: number | null; location_id: number | null; environment_id: number; status: PlantStatus; name: string; label: string | null; planted_date: string | null; germinated_date: string | null; transplanted_date: string | null; removed_date: string | null; parent_plant_id: number | null; seed_lot_id: number | null; purchase_source: string | null; purchase_date: string | null; purchase_price: number | null; notes: string | null; created_at: string; updated_at: string }
 export type PlantGroup = { id: number; environment_id: number; name: string; description: string | null; group_type: string | null; filter_criteria_json: string | null; color: string | null; created_at: string; updated_at: string }
 export type PlantStatus = "planned" | "seedling" | "active" | "harvested" | "removed" | "dead"
+export type ReservoirStatus = { indoor_environment_id: number; current_volume_liters: number | null; last_water_change_at: string | null; days_since_water_change: number | null; target: IndoorReservoirTarget | null; current_ph: number | null; current_ec: number | null; current_ppm: number | null; nutrient_total_since_change: number; status: string }
 export type Schedule = { id: number; environment_id: number | null; plant_id: number | null; location_id: number | null; schedule_type: ScheduleType; title: string; cron_expression: string | null; next_run_at: string | null; is_active: boolean; additive_id: number | null; notes: string | null; created_at: string; updated_at: string }
 export type ScheduleRun = { id: number; schedule_id: number; issue_id: number | null; ran_at: string; status: ScheduleRunStatus }
 export type ScheduleRunStatus = "completed" | "skipped" | "missed"
@@ -1110,6 +1234,7 @@ export type TaxonResult = { id: number; name: string; preferred_common_name: str
 export type UpdateBackupJob = { name: string | null; schedule_cron: string | null; format: BackupFormat | null; include_secrets: boolean | null; is_active: boolean | null }
 export type UpdateCustomField = { field_name: string | null; field_value: string | null; field_type: CustomFieldType | null }
 export type UpdateEnvironment = { name: string | null; latitude: number | null; longitude: number | null; elevation_m: number | null; timezone: string | null; climate_zone: string | null }
+export type UpdateIndoorEnvironment = { grow_method: GrowMethod | null; light_type: string | null; light_wattage: number | null; light_schedule_on: string | null; light_schedule_off: string | null; ventilation_type: string | null; ventilation_cfm: number | null; tent_width: number | null; tent_depth: number | null; tent_height: number | null; reservoir_capacity_liters: number | null; notes: string | null }
 export type UpdateIssue = { title: string | null; description: string | null; status: IssueStatus | null; priority: IssuePriority | null; plant_id: number | null; location_id: number | null }
 export type UpdateIssueLabel = { name: string | null; color: string | null; icon: string | null }
 export type UpdateJournalEntry = { title: string | null; body: string | null; conditions_json: string | null }
@@ -1120,6 +1245,7 @@ export type UpdateSchedule = { schedule_type: ScheduleType | null; title: string
 export type UpdateSensor = { name: string | null; sensor_type: SensorType | null; connection_type: SensorConnectionType | null; connection_config_json: string | null; poll_interval_seconds: number | null; location_id: number | null; plant_id: number | null; is_active: boolean | null }
 export type UpdateSpecies = { common_name: string | null; scientific_name: string | null; family: string | null; genus: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; description: string | null; image_url: string | null }
 export type UpsertEnvironmentMapSetting = { latitude: number | null; longitude: number | null; zoom_level: number | null; geocode_json: string | null; weather_overlay: boolean; soil_overlay: boolean; boundaries_geojson: string | null; privacy_level: MapPrivacyLevel; allow_sharing: boolean }
+export type UpsertIndoorReservoirTarget = { ph_min: number | null; ph_max: number | null; ec_min: number | null; ec_max: number | null; ppm_min: number | null; ppm_max: number | null }
 export type UpsertIntegrationConfig = { enabled: boolean; auth_json: string | null; settings_json: string | null; sync_interval_minutes: number | null; cache_ttl_minutes: number | null; rate_limit_per_minute: number | null }
 export type WeatherData = { current: CurrentWeather; hourly: ForecastItem[]; daily: DailyForecast[]; from_cache: boolean; fetched_at: string }
 export type WikiSummary = { title: string; slug: string; extract: string | null; thumbnail_url: string | null; page_url: string | null; raw_json: string }
