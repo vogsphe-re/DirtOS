@@ -7,6 +7,7 @@ pub mod environments;
 pub mod custom_fields;
 pub mod harvests;
 pub mod indoor;
+pub mod integrations;
 pub mod issues;
 pub mod journal;
 pub mod locations;

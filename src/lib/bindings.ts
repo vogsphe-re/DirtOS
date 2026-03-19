@@ -139,6 +139,166 @@ async enrichSpeciesWikipedia(speciesId: number) : Promise<Result<Species, string
     else return { status: "error", error: e  as any };
 }
 },
+async listIntegrationConfigs() : Promise<Result<IntegrationConfig[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_integration_configs") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async upsertIntegrationConfig(provider: IntegrationProvider, input: UpsertIntegrationConfig) : Promise<Result<IntegrationConfig, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("upsert_integration_config", { provider, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listSpeciesExternalSources(speciesId: number) : Promise<Result<SpeciesExternalSource[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_species_external_sources", { speciesId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async syncSpeciesExternalSources(speciesId: number) : Promise<Result<SyncSpeciesResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("sync_species_external_sources", { speciesId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listIntegrationSyncRuns(provider: string | null, limit: number | null) : Promise<Result<IntegrationSyncRun[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_integration_sync_runs", { provider, limit }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async searchOsmPlaces(query: string, limit: number | null) : Promise<Result<OSMPlaceResult[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("search_osm_places", { query, limit }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getEnvironmentMapSetting(environmentId: number) : Promise<Result<EnvironmentMapSetting | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_environment_map_setting", { environmentId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async upsertEnvironmentMapSetting(environmentId: number, input: UpsertEnvironmentMapSetting) : Promise<Result<EnvironmentMapSetting, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("upsert_environment_map_setting", { environmentId, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createIntegrationWebhookToken(provider: string, name: string) : Promise<Result<IntegrationWebhookToken, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_integration_webhook_token", { provider, name }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listIntegrationWebhookTokens(provider: string | null) : Promise<Result<IntegrationWebhookToken[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_integration_webhook_tokens", { provider }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async processIntegrationCallback(provider: string, token: string, payloadJson: string) : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("process_integration_callback", { provider, token, payloadJson }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listAutomationEvents(provider: string | null, limit: number | null) : Promise<Result<AutomationEvent[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_automation_events", { provider, limit }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createBackupJob(input: NewBackupJob) : Promise<Result<BackupJob, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_backup_job", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listBackupJobs() : Promise<Result<BackupJob[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_backup_jobs") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateBackupJob(id: number, input: UpdateBackupJob) : Promise<Result<BackupJob | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_backup_job", { id, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listBackupRuns(backupJobId: number | null, limit: number | null) : Promise<Result<BackupRun[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_backup_runs", { backupJobId, limit }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async exportConfiguration(format: BackupFormat, includeSecrets: boolean, encryptionPassword: string | null) : Promise<Result<ExportPayload, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("export_configuration", { format, includeSecrets, encryptionPassword }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async runBackupJob(backupJobId: number, encryptionPassword: string | null) : Promise<Result<ExportPayload, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("run_backup_job", { backupJobId, encryptionPassword }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async importConfiguration(payload: ImportPayload, encryptionPassword: string | null) : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("import_configuration", { payload, encryptionPassword }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listSpeciesForIntegration(limit: number | null) : Promise<Result<Species[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_species_for_integration", { limit }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async listPlants(environmentId: number, limit: number | null, offset: number | null) : Promise<Result<Plant[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("list_plants", { environmentId, limit, offset }) };
@@ -603,6 +763,10 @@ async deleteMedia(id: number) : Promise<Result<boolean, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Returns the file (or its thumbnail) as a base64-encoded string with the MIME type,
+ * so the frontend can render it as a data: URI without needing asset:// protocol.
+ */
 async readMediaBase64(id: number, thumbnail: boolean) : Promise<Result<MediaBase64, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("read_media_base64", { id, thumbnail }) };
@@ -691,6 +855,9 @@ async getScheduleSuggestions(plantId: number) : Promise<Result<ScheduleSuggestio
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Retrieve weather for the given environment, using cache when valid.
+ */
 async getWeather(environmentId: number) : Promise<Result<WeatherData | null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_weather", { environmentId }) };
@@ -699,6 +866,10 @@ async getWeather(environmentId: number) : Promise<Result<WeatherData | null, str
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Force a fresh fetch from OpenWeather, bypassing the cache.
+ * Also evaluates weather-based alerts after a successful fetch.
+ */
 async refreshWeather(environmentId: number) : Promise<Result<WeatherData | null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("refresh_weather", { environmentId }) };
@@ -707,6 +878,9 @@ async refreshWeather(environmentId: number) : Promise<Result<WeatherData | null,
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Return the stored OpenWeather API key, or None if not set.
+ */
 async getWeatherApiKey() : Promise<Result<string | null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_weather_api_key") };
@@ -715,6 +889,9 @@ async getWeatherApiKey() : Promise<Result<string | null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Persist the OpenWeather API key in app_settings.
+ */
 async setWeatherApiKey(apiKey: string) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("set_weather_api_key", { apiKey }) };
@@ -723,7 +900,7 @@ async setWeatherApiKey(apiKey: string) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async listSensors(environmentId: number, limit?: number | null, offset?: number | null) : Promise<Result<Sensor[], string>> {
+async listSensors(environmentId: number, limit: number | null, offset: number | null) : Promise<Result<Sensor[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("list_sensors", { environmentId, limit, offset }) };
 } catch (e) {
@@ -779,7 +956,7 @@ async stopSensor(id: number) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async listSensorReadings(sensorId: number, limit?: number | null, offset?: number | null) : Promise<Result<SensorReading[], string>> {
+async listSensorReadings(sensorId: number, limit: number | null, offset: number | null) : Promise<Result<SensorReading[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("list_sensor_readings", { sensorId, limit, offset }) };
 } catch (e) {
@@ -795,7 +972,10 @@ async getLatestReading(sensorId: number) : Promise<Result<SensorReading | null, 
     else return { status: "error", error: e  as any };
 }
 },
-async recordManualReading(sensorId: number, value: number, unit?: string | null) : Promise<Result<SensorReading, string>> {
+/**
+ * Record a manual reading (used when connection_type == Manual).
+ */
+async recordManualReading(sensorId: number, value: number, unit: string | null) : Promise<Result<SensorReading, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("record_manual_reading", { sensorId, value, unit }) };
 } catch (e) {
@@ -856,18 +1036,32 @@ async deleteSoilTest(id: number) : Promise<Result<boolean, string>> {
 /** user-defined types **/
 
 export type Additive = { id: number; name: string; additive_type: AdditiveType; npk_n: number | null; npk_p: number | null; npk_k: number | null; application_rate: number | null; application_unit: string | null; notes: string | null }
-export type AdditiveType = "fertilizer" | "amendment" | "pesticide" | "fungicide" | "other"
+export type AdditiveType = "Fertilizer" | "Amendment" | "Pesticide" | "Fungicide" | "Other"
+export type AutomationEvent = { id: number; provider: string; event_type: string; direction: string; payload_json: string | null; status: string; error_message: string | null; created_at: string; processed_at: string | null }
+export type BackupFormat = "json" | "yaml" | "archive"
+export type BackupJob = { id: number; name: string; schedule_cron: string | null; format: BackupFormat; include_secrets: boolean; is_active: boolean; last_run_status: string | null; last_run_at: string | null; last_error: string | null; created_at: string; updated_at: string }
+export type BackupRun = { id: number; backup_job_id: number | null; status: string; format: BackupFormat; output_ref: string | null; bytes_written: number | null; error_message: string | null; started_at: string; finished_at: string | null }
 export type CalendarEvent = { id: string; event_type: CalendarEventType; date: string; title: string; color: string | null; plant_id: number | null; schedule_id: number | null; issue_id: number | null }
 export type CalendarEventType = "Schedule" | "PlantingDate" | "HarvestDate" | "IssueCreated"
+export type CurrentWeather = { temperature_c: number; feels_like_c: number; humidity: number; pressure_hpa: number; wind_speed_ms: number; wind_direction_deg: number; cloud_cover_pct: number; description: string; icon: string; sunrise: number | null; sunset: number | null; dt: number }
 export type CustomField = { id: number; entity_type: CustomFieldEntityType; entity_id: number; field_name: string; field_value: string | null; field_type: CustomFieldType; created_at: string }
 export type CustomFieldEntityType = "Species" | "Plant" | "Location" | "SoilTest"
 export type CustomFieldType = "Text" | "Number" | "Date" | "Boolean"
+export type DailyForecast = { date: string; temp_min_c: number; temp_max_c: number; description: string; icon: string; precipitation_mm: number | null; precipitation_prob: number | null }
 export type Environment = { id: number; name: string; latitude: number | null; longitude: number | null; elevation_m: number | null; timezone: string | null; climate_zone: string | null; created_at: string; updated_at: string }
+export type EnvironmentMapSetting = { id: number; environment_id: number; latitude: number | null; longitude: number | null; zoom_level: number | null; geocode_json: string | null; weather_overlay: boolean; soil_overlay: boolean; boundaries_geojson: string | null; privacy_level: MapPrivacyLevel; allow_sharing: boolean; updated_at: string }
+export type ExportPayload = { format: BackupFormat; filename: string; content: string; is_base64: boolean }
+export type ForecastItem = { dt: number; temperature_c: number; feels_like_c: number; humidity: number; wind_speed_ms: number; cloud_cover_pct: number; precipitation_mm: number | null; precipitation_prob: number | null; description: string; icon: string }
 /**
  * Temporary smoke-test command to verify IPC and specta type export.
  * This command will be removed after Phase 0 verification.
  */
 export type GreetResponse = { message: string }
+export type ImportPayload = { format: BackupFormat; content: string; is_base64: boolean }
+export type IntegrationConfig = { id: number; provider: IntegrationProvider; enabled: boolean; auth_json: string | null; settings_json: string | null; sync_interval_minutes: number | null; cache_ttl_minutes: number | null; rate_limit_per_minute: number | null; last_synced_at: string | null; last_error: string | null; updated_at: string }
+export type IntegrationProvider = "inaturalist" | "wikipedia" | "osm" | "home_assistant" | "n_8n"
+export type IntegrationSyncRun = { id: number; provider: string; operation: string; status: string; records_fetched: number | null; records_upserted: number | null; error_message: string | null; started_at: string; finished_at: string | null }
+export type IntegrationWebhookToken = { id: number; provider: string; name: string; token: string; is_active: boolean; created_at: string }
 export type Issue = { id: number; environment_id: number | null; plant_id: number | null; location_id: number | null; title: string; description: string | null; status: IssueStatus; priority: IssuePriority; created_at: string; updated_at: string; closed_at: string | null }
 export type IssueComment = { id: number; issue_id: number; body: string; created_at: string }
 export type IssueLabel = { id: number; name: string; color: string | null; icon: string | null }
@@ -876,54 +1070,59 @@ export type IssueStatus = "new" | "open" | "in_progress" | "closed"
 export type JournalEntry = { id: number; environment_id: number | null; plant_id: number | null; location_id: number | null; title: string; body: string | null; conditions_json: string | null; created_at: string; updated_at: string }
 export type Location = { id: number; environment_id: number; parent_id: number | null; location_type: LocationType; name: string; label: string | null; position_x: number | null; position_y: number | null; width: number | null; height: number | null; canvas_data_json: string | null; notes: string | null; created_at: string; updated_at: string }
 export type LocationType = "Plot" | "Space" | "Tent" | "Tray" | "Pot" | "Shed"
+export type MapPrivacyLevel = "private" | "obfuscated" | "shared"
 export type Media = { id: number; entity_type: string; entity_id: number; file_path: string; file_name: string; mime_type: string | null; thumbnail_path: string | null; caption: string | null; created_at: string }
 export type MediaBase64 = { id: number; mime_type: string; data: string; is_thumbnail: boolean }
+export type NewBackupJob = { name: string; schedule_cron: string | null; format: BackupFormat; include_secrets: boolean; is_active: boolean }
 export type NewCustomField = { entity_type: CustomFieldEntityType; entity_id: number; field_name: string; field_value: string | null; field_type: CustomFieldType }
 export type NewEnvironment = { name: string; latitude: number | null; longitude: number | null; elevation_m: number | null; timezone: string | null; climate_zone: string | null }
 export type NewIssue = { environment_id: number | null; plant_id: number | null; location_id: number | null; title: string; description: string | null; status: IssueStatus | null; priority: IssuePriority | null }
 export type NewIssueLabel = { name: string; color: string | null; icon: string | null }
 export type NewJournalEntry = { environment_id: number | null; plant_id: number | null; location_id: number | null; title: string; body: string | null; conditions_json: string | null }
 export type NewLocation = { environment_id: number; parent_id: number | null; location_type: LocationType; name: string; label: string | null; position_x: number | null; position_y: number | null; width: number | null; height: number | null; canvas_data_json: string | null; notes: string | null }
-export type NewSchedule = { environment_id: number | null; plant_id: number | null; location_id: number | null; schedule_type: ScheduleType; title: string; cron_expression: string | null; next_run_at: string | null; is_active: boolean | null; additive_id: number | null; notes: string | null }
 export type NewPlant = { species_id: number | null; location_id: number | null; environment_id: number; status: PlantStatus | null; name: string; label: string | null; planted_date: string | null; notes: string | null }
 export type NewPlantGroup = { environment_id: number; name: string; description: string | null; group_type: string | null; color: string | null }
+export type NewSchedule = { environment_id: number | null; plant_id: number | null; location_id: number | null; schedule_type: ScheduleType; title: string; cron_expression: string | null; next_run_at: string | null; is_active: boolean | null; additive_id: number | null; notes: string | null }
 export type NewSeedlingObservation = { plant_id: number; observed_at: string | null; height_cm: number | null; stem_thickness_mm: number | null; leaf_node_count: number | null; leaf_node_spacing_mm: number | null; notes: string | null }
+export type NewSensor = { environment_id: number | null; location_id: number | null; plant_id: number | null; name: string; sensor_type: SensorType; connection_type: SensorConnectionType; connection_config_json: string | null; poll_interval_seconds: number | null; is_active: boolean | null }
+export type NewSoilTest = { location_id: number; test_date: string; ph: number | null; nitrogen_ppm: number | null; phosphorus_ppm: number | null; potassium_ppm: number | null; moisture_pct: number | null; organic_matter_pct: number | null; notes: string | null }
 export type NewSpecies = { common_name: string; scientific_name: string | null; family: string | null; genus: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; description: string | null; image_url: string | null; is_user_added: boolean | null }
+export type OSMPlaceResult = { display_name: string; latitude: number; longitude: number; osm_type: string | null; osm_id: number | null }
 export type Plant = { id: number; species_id: number | null; location_id: number | null; environment_id: number; status: PlantStatus; name: string; label: string | null; planted_date: string | null; germinated_date: string | null; transplanted_date: string | null; removed_date: string | null; parent_plant_id: number | null; seed_lot_id: number | null; purchase_source: string | null; purchase_date: string | null; purchase_price: number | null; notes: string | null; created_at: string; updated_at: string }
 export type PlantGroup = { id: number; environment_id: number; name: string; description: string | null; group_type: string | null; filter_criteria_json: string | null; color: string | null; created_at: string; updated_at: string }
 export type PlantStatus = "planned" | "seedling" | "active" | "harvested" | "removed" | "dead"
-export type SeedlingObservation = { id: number; plant_id: number; observed_at: string; height_cm: number | null; stem_thickness_mm: number | null; leaf_node_count: number | null; leaf_node_spacing_mm: number | null; notes: string | null; created_at: string }
 export type Schedule = { id: number; environment_id: number | null; plant_id: number | null; location_id: number | null; schedule_type: ScheduleType; title: string; cron_expression: string | null; next_run_at: string | null; is_active: boolean; additive_id: number | null; notes: string | null; created_at: string; updated_at: string }
 export type ScheduleRun = { id: number; schedule_id: number; issue_id: number | null; ran_at: string; status: ScheduleRunStatus }
 export type ScheduleRunStatus = "completed" | "skipped" | "missed"
 export type ScheduleSuggestion = { schedule_type: ScheduleType; title: string; cron_expression: string; cron_label: string; notes: string | null }
 export type ScheduleType = "water" | "feed" | "maintenance" | "treatment" | "sample" | "custom"
+export type SeedlingObservation = { id: number; plant_id: number; observed_at: string; height_cm: number | null; stem_thickness_mm: number | null; leaf_node_count: number | null; leaf_node_spacing_mm: number | null; notes: string | null; created_at: string }
+export type Sensor = { id: number; environment_id: number | null; location_id: number | null; plant_id: number | null; name: string; sensor_type: SensorType; connection_type: SensorConnectionType; connection_config_json: string | null; poll_interval_seconds: number | null; is_active: boolean; created_at: string; updated_at: string }
+export type SensorConnectionType = "serial" | "usb" | "mqtt" | "http" | "manual"
+export type SensorLimit = { id: number; sensor_id: number; min_value: number | null; max_value: number | null; unit: string | null; alert_enabled: boolean }
+export type SensorReading = { id: number; sensor_id: number; value: number; unit: string | null; recorded_at: string }
+export type SensorType = "moisture" | "light" | "temperature" | "humidity" | "ph" | "ec" | "co2" | "air_quality" | "custom"
+export type SoilTest = { id: number; location_id: number; test_date: string; ph: number | null; nitrogen_ppm: number | null; phosphorus_ppm: number | null; potassium_ppm: number | null; moisture_pct: number | null; organic_matter_pct: number | null; notes: string | null; created_at: string }
 export type Species = { id: number; common_name: string; scientific_name: string | null; family: string | null; genus: string | null; inaturalist_id: number | null; wikipedia_slug: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; description: string | null; image_url: string | null; cached_inaturalist_json: string | null; cached_wikipedia_json: string | null; is_user_added: boolean; created_at: string; updated_at: string }
+export type SpeciesExternalSource = { id: number; species_id: number; provider: IntegrationProvider; external_id: string | null; source_url: string | null; attribution: string | null; revision_id: string | null; native_range_json: string | null; metadata_json: string | null; retrieved_at: string; last_synced_at: string }
+export type SyncSpeciesResult = { species: Species | null; synced_providers: string[]; skipped_providers: string[]; errors: string[] }
 export type TaxonResult = { id: number; name: string; preferred_common_name: string | null; rank: string | null; default_photo_url: string | null; wikipedia_url: string | null; matched_term: string | null }
+export type UpdateBackupJob = { name: string | null; schedule_cron: string | null; format: BackupFormat | null; include_secrets: boolean | null; is_active: boolean | null }
 export type UpdateCustomField = { field_name: string | null; field_value: string | null; field_type: CustomFieldType | null }
 export type UpdateEnvironment = { name: string | null; latitude: number | null; longitude: number | null; elevation_m: number | null; timezone: string | null; climate_zone: string | null }
 export type UpdateIssue = { title: string | null; description: string | null; status: IssueStatus | null; priority: IssuePriority | null; plant_id: number | null; location_id: number | null }
 export type UpdateIssueLabel = { name: string | null; color: string | null; icon: string | null }
 export type UpdateJournalEntry = { title: string | null; body: string | null; conditions_json: string | null }
-export type UpdateSchedule = { schedule_type: ScheduleType | null; title: string | null; cron_expression: string | null; is_active: boolean | null; plant_id: number | null; location_id: number | null; additive_id: number | null; notes: string | null }
 export type UpdateLocation = { parent_id: number | null; location_type: LocationType | null; name: string | null; label: string | null; position_x: number | null; position_y: number | null; width: number | null; height: number | null; canvas_data_json: string | null; notes: string | null }
 export type UpdatePlant = { species_id: number | null; location_id: number | null; status: PlantStatus | null; name: string | null; label: string | null; planted_date: string | null; germinated_date: string | null; transplanted_date: string | null; removed_date: string | null; parent_plant_id: number | null; seed_lot_id: number | null; purchase_source: string | null; purchase_date: string | null; purchase_price: number | null; notes: string | null }
 export type UpdatePlantGroup = { name: string | null; description: string | null; group_type: string | null; color: string | null }
-export type UpdateSpecies = { common_name: string | null; scientific_name: string | null; family: string | null; genus: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; description: string | null; image_url: string | null }
-export type WikiSummary = { title: string; slug: string; extract: string | null; thumbnail_url: string | null; page_url: string | null; raw_json: string }
-export type CurrentWeather = { temperature_c: number; feels_like_c: number; humidity: number; pressure_hpa: number; wind_speed_ms: number; wind_direction_deg: number; cloud_cover_pct: number; description: string; icon: string; sunrise: number | null; sunset: number | null; dt: number }
-export type ForecastItem = { dt: number; temperature_c: number; feels_like_c: number; humidity: number; wind_speed_ms: number; cloud_cover_pct: number; precipitation_mm: number | null; precipitation_prob: number | null; description: string; icon: string }
-export type DailyForecast = { date: string; temp_min_c: number; temp_max_c: number; description: string; icon: string; precipitation_mm: number | null; precipitation_prob: number | null }
-export type WeatherData = { current: CurrentWeather; hourly: ForecastItem[]; daily: DailyForecast[]; from_cache: boolean; fetched_at: string }
-export type Sensor = { id: number; environment_id: number | null; location_id: number | null; plant_id: number | null; name: string; sensor_type: SensorType; connection_type: SensorConnectionType; connection_config_json: string | null; poll_interval_seconds: number | null; is_active: boolean; created_at: string; updated_at: string }
-export type SensorType = "moisture" | "light" | "temperature" | "humidity" | "ph" | "ec" | "co2" | "air_quality" | "custom"
-export type SensorConnectionType = "serial" | "usb" | "mqtt" | "http" | "manual"
-export type NewSensor = { environment_id: number | null; location_id: number | null; plant_id: number | null; name: string; sensor_type: SensorType; connection_type: SensorConnectionType; connection_config_json: string | null; poll_interval_seconds: number | null; is_active: boolean | null }
+export type UpdateSchedule = { schedule_type: ScheduleType | null; title: string | null; cron_expression: string | null; is_active: boolean | null; plant_id: number | null; location_id: number | null; additive_id: number | null; notes: string | null }
 export type UpdateSensor = { name: string | null; sensor_type: SensorType | null; connection_type: SensorConnectionType | null; connection_config_json: string | null; poll_interval_seconds: number | null; location_id: number | null; plant_id: number | null; is_active: boolean | null }
-export type SensorReading = { id: number; sensor_id: number; value: number; unit: string | null; recorded_at: string }
-export type SensorLimit = { id: number; sensor_id: number; min_value: number | null; max_value: number | null; unit: string | null; alert_enabled: boolean }
-export type SoilTest = { id: number; location_id: number; test_date: string; ph: number | null; nitrogen_ppm: number | null; phosphorus_ppm: number | null; potassium_ppm: number | null; moisture_pct: number | null; organic_matter_pct: number | null; notes: string | null; created_at: string }
-export type NewSoilTest = { location_id: number; test_date: string; ph: number | null; nitrogen_ppm: number | null; phosphorus_ppm: number | null; potassium_ppm: number | null; moisture_pct: number | null; organic_matter_pct: number | null; notes: string | null }
+export type UpdateSpecies = { common_name: string | null; scientific_name: string | null; family: string | null; genus: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; description: string | null; image_url: string | null }
+export type UpsertEnvironmentMapSetting = { latitude: number | null; longitude: number | null; zoom_level: number | null; geocode_json: string | null; weather_overlay: boolean; soil_overlay: boolean; boundaries_geojson: string | null; privacy_level: MapPrivacyLevel; allow_sharing: boolean }
+export type UpsertIntegrationConfig = { enabled: boolean; auth_json: string | null; settings_json: string | null; sync_interval_minutes: number | null; cache_ttl_minutes: number | null; rate_limit_per_minute: number | null }
+export type WeatherData = { current: CurrentWeather; hourly: ForecastItem[]; daily: DailyForecast[]; from_cache: boolean; fetched_at: string }
+export type WikiSummary = { title: string; slug: string; extract: string | null; thumbnail_url: string | null; page_url: string | null; raw_json: string }
 
 /** tauri-specta globals **/
 

@@ -20,6 +20,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { commands } from "../lib/bindings";
+import {
+  BackupManagerPanel,
+  IntegrationExtensionsPanel,
+} from "../features/integrations/IntegrationExtensionsPanel";
 import { LabelManager } from "../features/issues/LabelManager";
 import { useAppStore } from "../stores/appStore";
 import { useEnvironmentStore, type Environment } from "../stores/environmentStore";
@@ -291,6 +295,12 @@ function SettingsPage() {
 
       {/* ---- Weather API Key section ---- */}
       <WeatherApiKeyCard />
+
+      {/* ---- Integrations & Extensions ---- */}
+      <IntegrationExtensionsPanel activeEnvironmentId={activeId} />
+
+      {/* ---- Backups / Import Export ---- */}
+      <BackupManagerPanel />
     </Stack>
   );
 }

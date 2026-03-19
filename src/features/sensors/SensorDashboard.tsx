@@ -195,7 +195,7 @@ export function SensorDashboard() {
     queryKey: ["sensors", activeEnvId],
     queryFn: async () => {
       if (!activeEnvId) return [];
-      const res = await commands.listSensors(activeEnvId);
+      const res = await commands.listSensors(activeEnvId, null, null);
       if (res.status === "error") throw new Error(res.error);
       return res.data;
     },

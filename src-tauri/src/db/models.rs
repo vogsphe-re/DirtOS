@@ -80,6 +80,7 @@ pub enum IssuePriority {
 
 #[derive(Debug, Clone, PartialEq, sqlx::Type, Serialize, Deserialize, Type)]
 #[sqlx(type_name = "TEXT", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum ScheduleType {
     Water,
     Feed,
@@ -91,6 +92,7 @@ pub enum ScheduleType {
 
 #[derive(Debug, Clone, PartialEq, sqlx::Type, Serialize, Deserialize, Type)]
 #[sqlx(type_name = "TEXT", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum ScheduleRunStatus {
     Completed,
     Skipped,
@@ -99,6 +101,7 @@ pub enum ScheduleRunStatus {
 
 #[derive(Debug, Clone, PartialEq, sqlx::Type, Serialize, Deserialize, Type)]
 #[sqlx(type_name = "TEXT", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum SensorType {
     Moisture,
     Light,
@@ -106,6 +109,8 @@ pub enum SensorType {
     Humidity,
     Ph,
     Ec,
+    #[serde(rename = "co2")]
+    #[sqlx(rename = "co2")]
     Co2,
     AirQuality,
     Custom,
@@ -113,12 +118,44 @@ pub enum SensorType {
 
 #[derive(Debug, Clone, PartialEq, sqlx::Type, Serialize, Deserialize, Type)]
 #[sqlx(type_name = "TEXT", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum SensorConnectionType {
     Serial,
     Usb,
     Mqtt,
     Http,
     Manual,
+}
+
+#[derive(Debug, Clone, PartialEq, sqlx::Type, Serialize, Deserialize, Type)]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+pub enum IntegrationProvider {
+    Inaturalist,
+    Wikipedia,
+    Osm,
+    HomeAssistant,
+    #[serde(rename = "n8n")]
+    #[sqlx(rename = "n8n")]
+    N8n,
+}
+
+#[derive(Debug, Clone, PartialEq, sqlx::Type, Serialize, Deserialize, Type)]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+pub enum MapPrivacyLevel {
+    Private,
+    Obfuscated,
+    Shared,
+}
+
+#[derive(Debug, Clone, PartialEq, sqlx::Type, Serialize, Deserialize, Type)]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+pub enum BackupFormat {
+    Json,
+    Yaml,
+    Archive,
 }
 
 #[derive(Debug, Clone, PartialEq, sqlx::Type, Serialize, Deserialize, Type)]
@@ -760,6 +797,203 @@ pub struct SensorLimit {
     pub max_value: Option<f64>,
     pub unit: Option<String>,
     pub alert_enabled: bool,
+}
+
+// ---------------------------------------------------------------------------
+// Integrations & extensions (Phase 10a)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
+pub struct IntegrationConfig {
+    pub id: i64,
+    pub provider: IntegrationProvider,
+    pub enabled: bool,
+    pub auth_json: Option<String>,
+    pub settings_json: Option<String>,
+    pub sync_interval_minutes: Option<i64>,
+    pub cache_ttl_minutes: Option<i64>,
+    pub rate_limit_per_minute: Option<i64>,
+    pub last_synced_at: Option<NaiveDateTime>,
+    pub last_error: Option<String>,
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct UpsertIntegrationConfig {
+    pub enabled: bool,
+    pub auth_json: Option<String>,
+    pub settings_json: Option<String>,
+    pub sync_interval_minutes: Option<i64>,
+    pub cache_ttl_minutes: Option<i64>,
+    pub rate_limit_per_minute: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
+pub struct SpeciesExternalSource {
+    pub id: i64,
+    pub species_id: i64,
+    pub provider: IntegrationProvider,
+    pub external_id: Option<String>,
+    pub source_url: Option<String>,
+    pub attribution: Option<String>,
+    pub revision_id: Option<String>,
+    pub native_range_json: Option<String>,
+    pub metadata_json: Option<String>,
+    pub retrieved_at: NaiveDateTime,
+    pub last_synced_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
+pub struct IntegrationSyncRun {
+    pub id: i64,
+    pub provider: String,
+    pub operation: String,
+    pub status: String,
+    pub records_fetched: Option<i64>,
+    pub records_upserted: Option<i64>,
+    pub error_message: Option<String>,
+    pub started_at: NaiveDateTime,
+    pub finished_at: Option<NaiveDateTime>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
+pub struct EnvironmentMapSetting {
+    pub id: i64,
+    pub environment_id: i64,
+    pub latitude: Option<f64>,
+    pub longitude: Option<f64>,
+    pub zoom_level: Option<i64>,
+    pub geocode_json: Option<String>,
+    pub weather_overlay: bool,
+    pub soil_overlay: bool,
+    pub boundaries_geojson: Option<String>,
+    pub privacy_level: MapPrivacyLevel,
+    pub allow_sharing: bool,
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct UpsertEnvironmentMapSetting {
+    pub latitude: Option<f64>,
+    pub longitude: Option<f64>,
+    pub zoom_level: Option<i64>,
+    pub geocode_json: Option<String>,
+    pub weather_overlay: bool,
+    pub soil_overlay: bool,
+    pub boundaries_geojson: Option<String>,
+    pub privacy_level: MapPrivacyLevel,
+    pub allow_sharing: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
+pub struct IntegrationWebhookToken {
+    pub id: i64,
+    pub provider: String,
+    pub name: String,
+    pub token: String,
+    pub is_active: bool,
+    pub created_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
+pub struct AutomationEvent {
+    pub id: i64,
+    pub provider: String,
+    pub event_type: String,
+    pub direction: String,
+    pub payload_json: Option<String>,
+    pub status: String,
+    pub error_message: Option<String>,
+    pub created_at: NaiveDateTime,
+    pub processed_at: Option<NaiveDateTime>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
+pub struct BackupJob {
+    pub id: i64,
+    pub name: String,
+    pub schedule_cron: Option<String>,
+    pub format: BackupFormat,
+    pub include_secrets: bool,
+    pub is_active: bool,
+    pub last_run_status: Option<String>,
+    pub last_run_at: Option<NaiveDateTime>,
+    pub last_error: Option<String>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct NewBackupJob {
+    pub name: String,
+    pub schedule_cron: Option<String>,
+    pub format: BackupFormat,
+    pub include_secrets: bool,
+    pub is_active: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct UpdateBackupJob {
+    pub name: Option<String>,
+    pub schedule_cron: Option<String>,
+    pub format: Option<BackupFormat>,
+    pub include_secrets: Option<bool>,
+    pub is_active: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
+pub struct BackupRun {
+    pub id: i64,
+    pub backup_job_id: Option<i64>,
+    pub status: String,
+    pub format: BackupFormat,
+    pub output_ref: Option<String>,
+    pub bytes_written: Option<i64>,
+    pub error_message: Option<String>,
+    pub started_at: NaiveDateTime,
+    pub finished_at: Option<NaiveDateTime>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct BackupExportData {
+    pub version: String,
+    pub exported_at: String,
+    pub app_settings: Vec<(String, Option<String>)>,
+    pub integration_configs: Vec<IntegrationConfig>,
+    pub map_settings: Vec<EnvironmentMapSetting>,
+    pub backup_jobs: Vec<BackupJob>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ExportPayload {
+    pub format: BackupFormat,
+    pub filename: String,
+    pub content: String,
+    pub is_base64: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ImportPayload {
+    pub format: BackupFormat,
+    pub content: String,
+    pub is_base64: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct SyncSpeciesResult {
+    pub species: Option<Species>,
+    pub synced_providers: Vec<String>,
+    pub skipped_providers: Vec<String>,
+    pub errors: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct OSMPlaceResult {
+    pub display_name: String,
+    pub latitude: f64,
+    pub longitude: f64,
+    pub osm_type: Option<String>,
+    pub osm_id: Option<i64>,
 }
 
 // ---------------------------------------------------------------------------

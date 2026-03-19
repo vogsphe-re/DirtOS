@@ -1,8 +1,4 @@
-# DirtOS
-
-> DirtOS is a unified application for home gardening that facilitates planning, lifecycles, monitoring, and management of gardens of all shapes/sizes.
-
-## Features
+## Original specs
 
 ### Drawing and Design Tools
 
@@ -42,6 +38,19 @@
 - Sensors for light, soil moisture, soil composition, weather, air quality, and more can be integrated and assigned to garden plots and/or specific individual plant spaces for advanced realtime monitoring. Sensor values and limits can be defined, and incidents where the sensor readings are under/over the limits trigger a new issue in the garden issue tracker.
 - Alerts for upcoming scheduled events, as well as severe weather warnings, and detected variance from recommended conditions will generate new garden issue tickets to alert the user of potential problems.
 
-## Documentation
+### Typical Workflow
 
-- [Phase 10a: Integrations & Extensions](docs/phase-10a-integrations.md)
+1. Define environment, longitude/latitude, soil composition, date/time planted
+2. Draw 2D visual layouts and representations of the garden plot(s).
+3. Assign spaces to each garden plot, sized according to the types of plants intended for each space. These spaces can be further rearranged and optimized if/when necessary.
+4. Add individual plants to each assigned space. Plants are assigned ID numbers, and can be marked as "active" (planted in the ground), "seedling" (germinating/growing indoors), or "planned" (not yet germinated or planted).
+5. Define individual plant and soil parameters to match the real-world state of the garden and plants.
+6. Generate feeding/watering schedules, soil/plant sampling and testing routines.
+7. Simulate sunlight exposure and average weather for each garden plot, generate any relevant warnings and feedback if plants may be at risk of over- or under-exposure.
+8. Allow quick/easy logging of plants' size and health to track progress.
+9. Flags for various potential issues/disease/insect or fungal infestation/etc. can be used to highlight plants that require extra care, and to track the onset/spread of problems.
+10. Alerts generated for scheduled activities, weather, and potential problems can be viewed and either acknowledged or used to open a new service ticket.
+11. Records of harvests and yields are entered if/when the plants begin producing. At the end of the season, totals can be calculated for each plant.
+12. Records of seeds harvested can be assigned lot ID numbers and tracked as offspring during subsequent seasons, allowing for historical geneological data to compare/optimize future seasons' growth.
+13. Reports and graphs can be generated with current and/or historical records of plants, soil, conditions, weather, growth metrics, and yields.
+14. Collected data can be used to automatically generate recommendations for the next season.

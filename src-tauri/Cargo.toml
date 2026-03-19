@@ -39,3 +39,10 @@ cron = "0.12"
 async-trait = "0.1"
 serialport = "4"
 rumqttc = { version = "0.24", default-features = false, features = ["use-rustls"] }
+serde_yaml = "0.9"
+csv = "1"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+aes-gcm-siv = "0.11"
+pbkdf2 = "0.12"
+sha2 = "0.10"
+rand = "0.8"
