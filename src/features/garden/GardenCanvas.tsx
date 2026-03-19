@@ -535,8 +535,6 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
   // ---- Mouse move ----
   const handleMouseMove = useCallback((e: KonvaEventObject<MouseEvent>) => {
     const stage = stageRef.current!;
-    const ptr = stage.getPointerPosition();
-    void ptr; // used only to keep type safety
 
     // Update cursor coords
     const rel = getRelativePos(stage);

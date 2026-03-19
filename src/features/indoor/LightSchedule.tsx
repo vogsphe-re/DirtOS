@@ -77,6 +77,7 @@ export function LightSchedule({ environment, environmentId, locationId, latestLu
       await upsertLocationReminder({
         environmentId,
         locationId,
+        reminderKey: "indoor-light-cycle-check",
         scheduleType: "custom",
         title: `Light cycle check (${value})`,
         cronExpression: "0 6 * * *",

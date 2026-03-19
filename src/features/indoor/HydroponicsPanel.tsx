@@ -93,6 +93,7 @@ export function HydroponicsPanel({ indoorEnvId, environmentId, locationId }: Pro
       return upsertLocationReminder({
         environmentId,
         locationId,
+        reminderKey: "indoor-hydro-water-change",
         scheduleType: "maintenance",
         title: "Hydro Reservoir Water Change",
         cronExpression: cron,
