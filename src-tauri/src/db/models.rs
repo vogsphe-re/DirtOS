@@ -751,6 +751,60 @@ pub struct WeatherCache {
 }
 
 // ---------------------------------------------------------------------------
+// Weather data (parsed from OpenWeather API; cached as JSON)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct CurrentWeather {
+    pub temperature_c: f64,
+    pub feels_like_c: f64,
+    pub humidity: i64,
+    pub pressure_hpa: f64,
+    pub wind_speed_ms: f64,
+    pub wind_direction_deg: f64,
+    pub cloud_cover_pct: i64,
+    pub description: String,
+    pub icon: String,
+    pub sunrise: Option<i64>,
+    pub sunset: Option<i64>,
+    pub dt: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ForecastItem {
+    pub dt: i64,
+    pub temperature_c: f64,
+    pub feels_like_c: f64,
+    pub humidity: i64,
+    pub wind_speed_ms: f64,
+    pub cloud_cover_pct: i64,
+    pub precipitation_mm: Option<f64>,
+    pub precipitation_prob: Option<f64>,
+    pub description: String,
+    pub icon: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct DailyForecast {
+    pub date: String,
+    pub temp_min_c: f64,
+    pub temp_max_c: f64,
+    pub description: String,
+    pub icon: String,
+    pub precipitation_mm: Option<f64>,
+    pub precipitation_prob: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct WeatherData {
+    pub current: CurrentWeather,
+    pub hourly: Vec<ForecastItem>,
+    pub daily: Vec<DailyForecast>,
+    pub from_cache: bool,
+    pub fetched_at: String,
+}
+
+// ---------------------------------------------------------------------------
 // Harvests
 // ---------------------------------------------------------------------------
 

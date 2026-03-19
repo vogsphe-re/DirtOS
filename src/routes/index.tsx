@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { commands } from "../lib/bindings";
 import { useAppStore } from "../stores/appStore";
+import { WeatherMiniWidget } from "../features/weather/WeatherMiniWidget";
 
 export const Route = createFileRoute("/")({
   component: Dashboard,
@@ -130,6 +131,11 @@ function Dashboard() {
             ))}
           </SimpleGrid>
         </>
+      )}
+
+      {/* Weather mini-widget */}
+      {activeEnvId != null && (
+        <WeatherMiniWidget />
       )}
 
       {/* Health summary */}

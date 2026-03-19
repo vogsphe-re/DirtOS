@@ -8,6 +8,7 @@ import {
   Group,
   NativeSelect,
   NumberInput,
+  PasswordInput,
   Stack,
   Text,
   TextInput,
@@ -287,7 +288,82 @@ function SettingsPage() {
       <Card withBorder>
         <LabelManager />
       </Card>
+
+      {/* ---- Weather API Key section ---- */}
+      <WeatherApiKeyCard />
     </Stack>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Weather API key card
+// ---------------------------------------------------------------------------
+
+function WeatherApiKeyCard() {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [key, setKey] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const { data: currentKey } = useQuery<string | null>({
+    queryKey: ["weather-api-key"],
+    queryFn: async () => {
+      const res = await commands.getWeatherApiKey();
+      if (res.status === "error") return null;
+      return res.data ?? null;
+    },
+  });
+
+  const save = async () => {
+    if (!key.trim()) return;
+    setSaving(true);
+    try {
+      const res = await commands.setWeatherApiKey(key.trim());
+      if (res.status === "error") throw new Error(res.error);
+      notifications.show({ message: "API key saved", color: "green" });
+      qc.invalidateQueries({ queryKey: ["weather-api-key"] });
+      setEditing(false);
+      setKey("");
+    } catch (e) {
+      notifications.show({ message: String(e), color: "red", title: "Error" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card withBorder>
+      <Group justify="space-between" mb="sm">
+        <Title order={4}>Weather</Title>
+        <Button size="xs" variant="subtle" onClick={() => setEditing((v) => !v)}>
+          {editing ? "Cancel" : currentKey ? "Change key" : "Add key"}
+        </Button>
+      </Group>
+      <Text size="sm" c="dimmed">
+        OpenWeather API key:{" "}
+        {currentKey ? (
+          <Text component="span" c="green" size="sm">Configured ✓</Text>
+        ) : (
+          <Text component="span" c="orange" size="sm">Not set</Text>
+        )}
+      </Text>
+      {editing && (
+        <Stack gap="sm" mt="sm">
+          <PasswordInput
+            label="OpenWeather API key"
+            description="Free tier key from openweathermap.org"
+            placeholder="Paste your API key here…"
+            value={key}
+            onChange={(e) => setKey(e.currentTarget.value)}
+          />
+          <Group justify="flex-end">
+            <Button onClick={save} loading={saving} disabled={!key.trim()}>
+              Save
+            </Button>
+          </Group>
+        </Stack>
+      )}
+    </Card>
   );
 }
 

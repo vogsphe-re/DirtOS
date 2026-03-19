@@ -106,6 +106,11 @@ fn specta_builder() -> Builder<tauri::Wry> {
         commands::get_calendar_events,
         commands::list_additives,
         commands::get_schedule_suggestions,
+        // Weather
+        commands::get_weather,
+        commands::refresh_weather,
+        commands::get_weather_api_key,
+        commands::set_weather_api_key,
     ])
 }
 

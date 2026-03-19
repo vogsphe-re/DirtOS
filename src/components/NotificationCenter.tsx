@@ -24,6 +24,12 @@ interface ScheduleFiredPayload {
   issue_title: string;
 }
 
+interface WeatherAlertPayload {
+  issue_id: number;
+  title: string;
+  body: string;
+}
+
 export function NotificationCenter() {
   const navigate = useNavigate();
   const { notifications, addNotification, markRead, markAllRead, dismiss } =
@@ -40,6 +46,23 @@ export function NotificationCenter() {
         body: `Issue created: ${issue_title}`,
         issue_id,
         schedule_id,
+      });
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []); // eslint-disable-line
+
+  // Listen for weather:alert events from the Rust backend
+  useEffect(() => {
+    const unlisten = listen<WeatherAlertPayload>("weather:alert", (event) => {
+      const { issue_id, title, body } = event.payload;
+      addNotification({
+        title: `⚠️ ${title}`,
+        body,
+        issue_id,
+        schedule_id: undefined,
       });
     });
 

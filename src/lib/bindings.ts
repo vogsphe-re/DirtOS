@@ -690,6 +690,38 @@ async getScheduleSuggestions(plantId: number) : Promise<Result<ScheduleSuggestio
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async getWeather(environmentId: number) : Promise<Result<WeatherData | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_weather", { environmentId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async refreshWeather(environmentId: number) : Promise<Result<WeatherData | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("refresh_weather", { environmentId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getWeatherApiKey() : Promise<Result<string | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_weather_api_key") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async setWeatherApiKey(apiKey: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_weather_api_key", { apiKey }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -759,6 +791,10 @@ export type UpdatePlant = { species_id: number | null; location_id: number | nul
 export type UpdatePlantGroup = { name: string | null; description: string | null; group_type: string | null; color: string | null }
 export type UpdateSpecies = { common_name: string | null; scientific_name: string | null; family: string | null; genus: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; description: string | null; image_url: string | null }
 export type WikiSummary = { title: string; slug: string; extract: string | null; thumbnail_url: string | null; page_url: string | null; raw_json: string }
+export type CurrentWeather = { temperature_c: number; feels_like_c: number; humidity: number; pressure_hpa: number; wind_speed_ms: number; wind_direction_deg: number; cloud_cover_pct: number; description: string; icon: string; sunrise: number | null; sunset: number | null; dt: number }
+export type ForecastItem = { dt: number; temperature_c: number; feels_like_c: number; humidity: number; wind_speed_ms: number; cloud_cover_pct: number; precipitation_mm: number | null; precipitation_prob: number | null; description: string; icon: string }
+export type DailyForecast = { date: string; temp_min_c: number; temp_max_c: number; description: string; icon: string; precipitation_mm: number | null; precipitation_prob: number | null }
+export type WeatherData = { current: CurrentWeather; hourly: ForecastItem[]; daily: DailyForecast[]; from_cache: boolean; fetched_at: string }
 
 /** tauri-specta globals **/
 

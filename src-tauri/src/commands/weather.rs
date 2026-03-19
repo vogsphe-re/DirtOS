@@ -1,0 +1,56 @@
+use sqlx::SqlitePool;
+use tauri::{AppHandle, State};
+
+use crate::db::{self, models::WeatherData};
+use crate::services::{weather, weather_alerts};
+
+/// Retrieve weather for the given environment, using cache when valid.
+#[tauri::command]
+#[specta::specta]
+pub async fn get_weather(
+    pool: State<'_, SqlitePool>,
+    environment_id: i64,
+) -> Result<Option<WeatherData>, String> {
+    weather::get_weather(&pool, environment_id, false).await
+}
+
+/// Force a fresh fetch from OpenWeather, bypassing the cache.
+/// Also evaluates weather-based alerts after a successful fetch.
+#[tauri::command]
+#[specta::specta]
+pub async fn refresh_weather(
+    pool: State<'_, SqlitePool>,
+    app: AppHandle,
+    environment_id: i64,
+) -> Result<Option<WeatherData>, String> {
+    let data = weather::get_weather(&pool, environment_id, true).await?;
+
+    if let Some(ref d) = data {
+        weather_alerts::check_and_emit_alerts(&app, &pool, environment_id, d).await;
+    }
+
+    Ok(data)
+}
+
+/// Return the stored OpenWeather API key, or None if not set.
+#[tauri::command]
+#[specta::specta]
+pub async fn get_weather_api_key(
+    pool: State<'_, SqlitePool>,
+) -> Result<Option<String>, String> {
+    db::weather::get_setting(&pool, "openweather_api_key")
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Persist the OpenWeather API key in app_settings.
+#[tauri::command]
+#[specta::specta]
+pub async fn set_weather_api_key(
+    pool: State<'_, SqlitePool>,
+    api_key: String,
+) -> Result<(), String> {
+    db::weather::set_setting(&pool, "openweather_api_key", &api_key)
+        .await
+        .map_err(|e| e.to_string())
+}

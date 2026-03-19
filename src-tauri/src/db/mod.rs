@@ -19,6 +19,7 @@ pub mod seed;
 pub mod seedling_observations;
 pub mod sensors;
 pub mod species;
+pub mod weather;
 
 /// Initialise the SQLite connection pool and run any pending migrations.
 /// The database file is created at `{app_data_dir}/dirtos.db`.
