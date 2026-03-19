@@ -27,6 +27,7 @@ export type ObjectType =
   | 'irrigation'
   | 'tree'
   | 'structure'
+  | 'imported-model'
   | 'custom'
   | 'text';
 
@@ -98,6 +99,12 @@ export interface CanvasObject {
   canopyRadius?: number;
   /** For spaces: the id of the parent plot CanvasObject */
   parentId?: string | null;
+  /** For imported models */
+  modelPath?: string | null;
+  modelScale?: number;
+  modelRotationY?: number;
+  modelRotationX?: number;
+  modelRotationZ?: number;
 }
 
 export const OBJECT_DEFAULTS: Record<
@@ -113,6 +120,7 @@ export const OBJECT_DEFAULTS: Record<
   irrigation: { fill: 'transparent', stroke: '#1565c0', strokeWidth: 2, layer: 'irrigation' },
   tree: { fill: 'rgba(34,139,34,0.6)', stroke: '#1a5e1a', strokeWidth: 2, layer: 'plants' },
   structure: { fill: 'rgba(128,128,128,0.3)', stroke: '#555555', strokeWidth: 2, layer: 'structures' },
+  'imported-model': { fill: 'rgba(125,125,200,0.25)', stroke: '#6b6bb3', strokeWidth: 2, layer: 'structures' },
   custom: { fill: 'rgba(255,165,0,0.2)', stroke: '#cc8800', strokeWidth: 2, layer: 'structures' },
   text: { fill: '#333333', stroke: 'transparent', strokeWidth: 0, layer: 'labels' },
 };

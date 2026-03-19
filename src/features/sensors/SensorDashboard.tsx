@@ -8,6 +8,7 @@ import {
   Group,
   Loader,
   Stack,
+  Tabs,
   Text,
   Title,
   Tooltip,
@@ -19,7 +20,6 @@ import {
   IconPlayerPause,
   IconPlayerPlay,
   IconPlus,
-  IconSettings,
 } from "@tabler/icons-react";
 import { listen } from "@tauri-apps/api/event";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -30,6 +30,8 @@ import type { Sensor, SensorLimit, SensorReading } from "../../lib/bindings";
 import { useAppStore } from "../../stores/appStore";
 import { SensorForm } from "./SensorForm";
 import { SensorDetail } from "./SensorDetail";
+import { SensorList } from "./SensorList";
+import { SoilTests } from "./SoilTests";
 
 const SENSOR_TYPE_LABELS: Record<string, string> = {
   moisture: "Moisture",
@@ -242,37 +244,49 @@ export function SensorDashboard() {
   }
 
   return (
-    <Stack p="md">
-      <Group justify="space-between">
+    <Tabs defaultValue="dashboard" p="md">
+      <Group justify="space-between" mb="md">
         <Title order={2}>Sensors</Title>
         <Group>
-          <Button leftSection={<IconSettings size={16} />} variant="light" component="a" href="/sensors/soil">
-            Soil Tests
-          </Button>
+          <Tabs.List>
+            <Tabs.Tab value="dashboard">Dashboard</Tabs.Tab>
+            <Tabs.Tab value="list">Sensor List</Tabs.Tab>
+            <Tabs.Tab value="soil">Soil Tests</Tabs.Tab>
+          </Tabs.List>
           <Button leftSection={<IconPlus size={16} />} onClick={() => setAddOpen(true)}>
             Add Sensor
           </Button>
         </Group>
       </Group>
 
-      {isLoading ? (
-        <Loader />
-      ) : sensors.length === 0 ? (
-        <Text c="dimmed">No sensors configured. Add a sensor to get started.</Text>
-      ) : (
-        <Grid>
-          {sensors.map((sensor) => (
-            <Grid.Col key={sensor.id} span={{ base: 12, sm: 6, lg: 4 }}>
-              <SensorCard
-                sensor={sensor}
-                liveValue={liveValues[sensor.id] ?? null}
-                onSelect={setSelectedId}
-                onToggle={(id, active) => toggleMutation.mutate({ id, active })}
-              />
-            </Grid.Col>
-          ))}
-        </Grid>
-      )}
+      <Tabs.Panel value="dashboard">
+        {isLoading ? (
+          <Loader />
+        ) : sensors.length === 0 ? (
+          <Text c="dimmed">No sensors configured. Add a sensor to get started.</Text>
+        ) : (
+          <Grid>
+            {sensors.map((sensor) => (
+              <Grid.Col key={sensor.id} span={{ base: 12, sm: 6, lg: 4 }}>
+                <SensorCard
+                  sensor={sensor}
+                  liveValue={liveValues[sensor.id] ?? null}
+                  onSelect={setSelectedId}
+                  onToggle={(id, active) => toggleMutation.mutate({ id, active })}
+                />
+              </Grid.Col>
+            ))}
+          </Grid>
+        )}
+      </Tabs.Panel>
+
+      <Tabs.Panel value="list">
+        <SensorList />
+      </Tabs.Panel>
+
+      <Tabs.Panel value="soil">
+        <SoilTests />
+      </Tabs.Panel>
 
       <SensorForm
         opened={addOpen}
@@ -290,6 +304,6 @@ export function SensorDashboard() {
           onClose={() => setSelectedId(null)}
         />
       )}
-    </Stack>
+    </Tabs>
   );
 }

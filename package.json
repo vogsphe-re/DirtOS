@@ -15,6 +15,8 @@
     "generate-bindings": "cargo test --manifest-path src-tauri/Cargo.toml export_bindings"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
     "@mantine/core": "^8.3.18",
     "@mantine/dates": "^8.3.18",
     "@mantine/hooks": "^8.3.18",
@@ -29,6 +31,8 @@
     "react-dom": "^19.0.0",
     "react-konva": "^19.2.3",
     "recharts": "^3.8.0",
+    "suncalc": "^1.9.0",
+    "three": "^0.183.2",
     "zustand": "^5.0.12"
   },
   "devDependencies": {
@@ -41,6 +45,8 @@
     "@tauri-apps/plugin-shell": "^2.3.5",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/suncalc": "^1.9.2",
+    "@types/three": "^0.183.1",
     "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^10.0.3",
     "eslint-plugin-react-hooks": "^7.0.1",
