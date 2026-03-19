@@ -36,3 +36,6 @@ uuid = { version = "1", features = ["v4"] }
 image = "0.25"
 base64 = "0.22"
 cron = "0.12"
+async-trait = "0.1"
+serialport = "4"
+rumqttc = { version = "0.24", default-features = false, features = ["use-rustls"] }

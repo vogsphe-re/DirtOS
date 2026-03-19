@@ -431,6 +431,19 @@ pub struct SoilTest {
     pub created_at: NaiveDateTime,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct NewSoilTest {
+    pub location_id: i64,
+    pub test_date: String,
+    pub ph: Option<f64>,
+    pub nitrogen_ppm: Option<f64>,
+    pub phosphorus_ppm: Option<f64>,
+    pub potassium_ppm: Option<f64>,
+    pub moisture_pct: Option<f64>,
+    pub organic_matter_pct: Option<f64>,
+    pub notes: Option<String>,
+}
+
 // ---------------------------------------------------------------------------
 // Additives
 // ---------------------------------------------------------------------------
@@ -715,6 +728,18 @@ pub struct NewSensor {
     pub connection_type: SensorConnectionType,
     pub connection_config_json: Option<String>,
     pub poll_interval_seconds: Option<i64>,
+    pub is_active: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct UpdateSensor {
+    pub name: Option<String>,
+    pub sensor_type: Option<SensorType>,
+    pub connection_type: Option<SensorConnectionType>,
+    pub connection_config_json: Option<String>,
+    pub poll_interval_seconds: Option<i64>,
+    pub location_id: Option<i64>,
+    pub plant_id: Option<i64>,
     pub is_active: Option<bool>,
 }
 

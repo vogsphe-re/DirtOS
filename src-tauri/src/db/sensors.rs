@@ -1,6 +1,6 @@
 use sqlx::SqlitePool;
 
-use super::models::{NewSensor, Pagination, Sensor, SensorLimit, SensorReading};
+use super::models::{NewSensor, NewSoilTest, Pagination, Sensor, SensorLimit, SensorReading, SoilTest, UpdateSensor};
 
 pub async fn list_sensors(
     pool: &SqlitePool,
@@ -66,6 +66,46 @@ pub async fn set_sensor_active(
     .execute(pool)
     .await?;
     Ok(())
+}
+
+pub async fn update_sensor(
+    pool: &SqlitePool,
+    id: i64,
+    input: UpdateSensor,
+) -> Result<Option<Sensor>, sqlx::Error> {
+    sqlx::query(
+        "UPDATE sensors SET
+            name                  = COALESCE(?, name),
+            type                  = COALESCE(?, type),
+            connection_type       = COALESCE(?, connection_type),
+            connection_config_json= COALESCE(?, connection_config_json),
+            poll_interval_seconds = COALESCE(?, poll_interval_seconds),
+            location_id           = COALESCE(?, location_id),
+            plant_id              = COALESCE(?, plant_id),
+            is_active             = COALESCE(?, is_active),
+            updated_at            = datetime('now')
+         WHERE id = ?",
+    )
+    .bind(input.name)
+    .bind(input.sensor_type)
+    .bind(input.connection_type)
+    .bind(input.connection_config_json)
+    .bind(input.poll_interval_seconds)
+    .bind(input.location_id)
+    .bind(input.plant_id)
+    .bind(input.is_active)
+    .bind(id)
+    .execute(pool)
+    .await?;
+    get_sensor(pool, id).await
+}
+
+pub async fn list_all_active(pool: &SqlitePool) -> Result<Vec<Sensor>, sqlx::Error> {
+    sqlx::query_as::<_, Sensor>(
+        "SELECT * FROM sensors WHERE is_active = 1 ORDER BY name ASC",
+    )
+    .fetch_all(pool)
+    .await
 }
 
 pub async fn delete_sensor(pool: &SqlitePool, id: i64) -> Result<bool, sqlx::Error> {
@@ -190,4 +230,73 @@ pub async fn upsert_limits(
         .bind(sensor_id)
         .fetch_one(pool)
         .await
+}
+
+// ---------------------------------------------------------------------------
+// Latest reading helper
+// ---------------------------------------------------------------------------
+
+pub async fn get_latest_reading(
+    pool: &SqlitePool,
+    sensor_id: i64,
+) -> Result<Option<SensorReading>, sqlx::Error> {
+    sqlx::query_as::<_, SensorReading>(
+        "SELECT * FROM sensor_readings WHERE sensor_id = ?
+         ORDER BY recorded_at DESC LIMIT 1",
+    )
+    .bind(sensor_id)
+    .fetch_optional(pool)
+    .await
+}
+
+// ---------------------------------------------------------------------------
+// Soil tests
+// ---------------------------------------------------------------------------
+
+pub async fn create_soil_test(
+    pool: &SqlitePool,
+    input: NewSoilTest,
+) -> Result<SoilTest, sqlx::Error> {
+    let result = sqlx::query(
+        "INSERT INTO soil_tests
+            (location_id, test_date, ph, nitrogen_ppm, phosphorus_ppm, potassium_ppm,
+             moisture_pct, organic_matter_pct, notes)
+         VALUES (?,?,?,?,?,?,?,?,?)",
+    )
+    .bind(input.location_id)
+    .bind(&input.test_date)
+    .bind(input.ph)
+    .bind(input.nitrogen_ppm)
+    .bind(input.phosphorus_ppm)
+    .bind(input.potassium_ppm)
+    .bind(input.moisture_pct)
+    .bind(input.organic_matter_pct)
+    .bind(&input.notes)
+    .execute(pool)
+    .await?;
+
+    sqlx::query_as::<_, SoilTest>("SELECT * FROM soil_tests WHERE id = ?")
+        .bind(result.last_insert_rowid())
+        .fetch_one(pool)
+        .await
+}
+
+pub async fn list_soil_tests(
+    pool: &SqlitePool,
+    location_id: i64,
+) -> Result<Vec<SoilTest>, sqlx::Error> {
+    sqlx::query_as::<_, SoilTest>(
+        "SELECT * FROM soil_tests WHERE location_id = ? ORDER BY test_date DESC",
+    )
+    .bind(location_id)
+    .fetch_all(pool)
+    .await
+}
+
+pub async fn delete_soil_test(pool: &SqlitePool, id: i64) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query("DELETE FROM soil_tests WHERE id = ?")
+        .bind(id)
+        .execute(pool)
+        .await?;
+    Ok(result.rows_affected() > 0)
 }

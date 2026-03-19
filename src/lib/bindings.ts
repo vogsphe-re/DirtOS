@@ -722,6 +722,126 @@ async setWeatherApiKey(apiKey: string) : Promise<Result<null, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async listSensors(environmentId: number, limit?: number | null, offset?: number | null) : Promise<Result<Sensor[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_sensors", { environmentId, limit, offset }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getSensor(id: number) : Promise<Result<Sensor | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_sensor", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createSensor(input: NewSensor) : Promise<Result<Sensor, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_sensor", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateSensor(id: number, input: UpdateSensor) : Promise<Result<Sensor | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_sensor", { id, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteSensor(id: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_sensor", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async startSensor(id: number) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("start_sensor", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async stopSensor(id: number) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("stop_sensor", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listSensorReadings(sensorId: number, limit?: number | null, offset?: number | null) : Promise<Result<SensorReading[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_sensor_readings", { sensorId, limit, offset }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getLatestReading(sensorId: number) : Promise<Result<SensorReading | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_latest_reading", { sensorId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async recordManualReading(sensorId: number, value: number, unit?: string | null) : Promise<Result<SensorReading, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("record_manual_reading", { sensorId, value, unit }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getSensorLimits(sensorId: number) : Promise<Result<SensorLimit | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_sensor_limits", { sensorId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async setSensorLimits(sensorId: number, minValue: number | null, maxValue: number | null, unit: string | null, alertEnabled: boolean) : Promise<Result<SensorLimit, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_sensor_limits", { sensorId, minValue, maxValue, unit, alertEnabled }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createSoilTest(input: NewSoilTest) : Promise<Result<SoilTest, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_soil_test", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listSoilTests(locationId: number) : Promise<Result<SoilTest[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_soil_tests", { locationId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteSoilTest(id: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_soil_test", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -795,6 +915,15 @@ export type CurrentWeather = { temperature_c: number; feels_like_c: number; humi
 export type ForecastItem = { dt: number; temperature_c: number; feels_like_c: number; humidity: number; wind_speed_ms: number; cloud_cover_pct: number; precipitation_mm: number | null; precipitation_prob: number | null; description: string; icon: string }
 export type DailyForecast = { date: string; temp_min_c: number; temp_max_c: number; description: string; icon: string; precipitation_mm: number | null; precipitation_prob: number | null }
 export type WeatherData = { current: CurrentWeather; hourly: ForecastItem[]; daily: DailyForecast[]; from_cache: boolean; fetched_at: string }
+export type Sensor = { id: number; environment_id: number | null; location_id: number | null; plant_id: number | null; name: string; sensor_type: SensorType; connection_type: SensorConnectionType; connection_config_json: string | null; poll_interval_seconds: number | null; is_active: boolean; created_at: string; updated_at: string }
+export type SensorType = "moisture" | "light" | "temperature" | "humidity" | "ph" | "ec" | "co2" | "air_quality" | "custom"
+export type SensorConnectionType = "serial" | "usb" | "mqtt" | "http" | "manual"
+export type NewSensor = { environment_id: number | null; location_id: number | null; plant_id: number | null; name: string; sensor_type: SensorType; connection_type: SensorConnectionType; connection_config_json: string | null; poll_interval_seconds: number | null; is_active: boolean | null }
+export type UpdateSensor = { name: string | null; sensor_type: SensorType | null; connection_type: SensorConnectionType | null; connection_config_json: string | null; poll_interval_seconds: number | null; location_id: number | null; plant_id: number | null; is_active: boolean | null }
+export type SensorReading = { id: number; sensor_id: number; value: number; unit: string | null; recorded_at: string }
+export type SensorLimit = { id: number; sensor_id: number; min_value: number | null; max_value: number | null; unit: string | null; alert_enabled: boolean }
+export type SoilTest = { id: number; location_id: number; test_date: string; ph: number | null; nitrogen_ppm: number | null; phosphorus_ppm: number | null; potassium_ppm: number | null; moisture_pct: number | null; organic_matter_pct: number | null; notes: string | null; created_at: string }
+export type NewSoilTest = { location_id: number; test_date: string; ph: number | null; nitrogen_ppm: number | null; phosphorus_ppm: number | null; potassium_ppm: number | null; moisture_pct: number | null; organic_matter_pct: number | null; notes: string | null }
 
 /** tauri-specta globals **/
 

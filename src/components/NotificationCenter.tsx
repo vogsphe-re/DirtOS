@@ -30,6 +30,14 @@ interface WeatherAlertPayload {
   body: string;
 }
 
+interface SensorLimitBreachPayload {
+  sensor_id: number;
+  sensor_name: string;
+  value: number;
+  issue_id: number;
+  description: string;
+}
+
 export function NotificationCenter() {
   const navigate = useNavigate();
   const { notifications, addNotification, markRead, markAllRead, dismiss } =
@@ -61,6 +69,23 @@ export function NotificationCenter() {
       addNotification({
         title: `⚠️ ${title}`,
         body,
+        issue_id,
+        schedule_id: undefined,
+      });
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []); // eslint-disable-line
+
+  // Listen for sensor:limit_breach events
+  useEffect(() => {
+    const unlisten = listen<SensorLimitBreachPayload>("sensor:limit_breach", (event) => {
+    const { sensor_name, issue_id, description } = event.payload;
+      addNotification({
+        title: `🔴 Sensor Alert: ${sensor_name}`,
+        body: description,
         issue_id,
         schedule_id: undefined,
       });

@@ -111,6 +111,22 @@ fn specta_builder() -> Builder<tauri::Wry> {
         commands::refresh_weather,
         commands::get_weather_api_key,
         commands::set_weather_api_key,
+        // Sensors
+        commands::list_sensors,
+        commands::get_sensor,
+        commands::create_sensor,
+        commands::update_sensor,
+        commands::delete_sensor,
+        commands::start_sensor,
+        commands::stop_sensor,
+        commands::list_sensor_readings,
+        commands::get_latest_reading,
+        commands::record_manual_reading,
+        commands::get_sensor_limits,
+        commands::set_sensor_limits,
+        commands::create_soil_test,
+        commands::list_soil_tests,
+        commands::delete_soil_test,
     ])
 }
 
@@ -169,6 +185,12 @@ pub fn run() {
                         let sched_app = app_handle.clone();
                         tauri::async_runtime::spawn(async move {
                             services::scheduler::start(sched_app, sched_pool).await;
+                        });
+                        // Start the sensor polling service
+                        let sensor_pool = pool.clone();
+                        let sensor_app = app_handle.clone();
+                        tauri::async_runtime::spawn(async move {
+                            services::sensors::poller::start(sensor_app, sensor_pool).await;
                         });
                         app_handle.manage(pool);
                     }
