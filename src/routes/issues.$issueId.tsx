@@ -1,16 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Text, Title, Stack } from "@mantine/core";
+import { IssueDetail } from "../features/issues/IssueDetail";
 
-export const Route = createFileRoute("/issues/$issueId")({
-  component: IssueDetail,
+export const Route = createFileRoute("/issues/$issueId")({  
+  component: IssueDetailRoute,
 });
 
-function IssueDetail() {
+function IssueDetailRoute() {
   const { issueId } = Route.useParams();
-  return (
-    <Stack p="md">
-      <Title order={2}>Issue #{issueId}</Title>
-      <Text c="dimmed">Issue detail — Phase 6</Text>
-    </Stack>
-  );
+  return <IssueDetail issueId={Number(issueId)} />;
 }

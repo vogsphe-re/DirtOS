@@ -1,15 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Text, Title, Stack } from "@mantine/core";
+import { IssueList } from "../features/issues/IssueList";
 
-export const Route = createFileRoute("/issues/")({
-  component: IssuesIndex,
+export const Route = createFileRoute("/issues/")({  
+  component: IssueList,
 });
-
-function IssuesIndex() {
-  return (
-    <Stack p="md">
-      <Title order={2}>Issues</Title>
-      <Text c="dimmed">Issue tracker — Phase 6</Text>
-    </Stack>
-  );
-}

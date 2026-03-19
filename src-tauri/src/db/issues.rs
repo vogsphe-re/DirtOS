@@ -1,7 +1,8 @@
 use sqlx::SqlitePool;
 
 use super::models::{
-    Issue, IssueComment, IssueLabel, IssueStatus, NewIssue, Pagination, UpdateIssue,
+    Issue, IssueComment, IssueLabel, IssueStatus, NewIssue, NewIssueLabel, Pagination,
+    UpdateIssue, UpdateIssueLabel,
 };
 
 pub async fn list_issues(
@@ -220,6 +221,65 @@ pub async fn add_comment(
 
 pub async fn delete_comment(pool: &SqlitePool, id: i64) -> Result<bool, sqlx::Error> {
     let result = sqlx::query("DELETE FROM issue_comments WHERE id = ?")
+        .bind(id)
+        .execute(pool)
+        .await?;
+    Ok(result.rows_affected() > 0)
+}
+
+// ---------------------------------------------------------------------------
+// Label CRUD
+// ---------------------------------------------------------------------------
+
+pub async fn get_label(pool: &SqlitePool, id: i64) -> Result<Option<IssueLabel>, sqlx::Error> {
+    sqlx::query_as::<_, IssueLabel>("SELECT * FROM issue_labels WHERE id = ?")
+        .bind(id)
+        .fetch_optional(pool)
+        .await
+}
+
+pub async fn create_label(
+    pool: &SqlitePool,
+    input: NewIssueLabel,
+) -> Result<IssueLabel, sqlx::Error> {
+    let result = sqlx::query(
+        "INSERT INTO issue_labels (name, color, icon) VALUES (?, ?, ?)",
+    )
+    .bind(&input.name)
+    .bind(&input.color)
+    .bind(&input.icon)
+    .execute(pool)
+    .await?;
+
+    get_label(pool, result.last_insert_rowid())
+        .await?
+        .ok_or(sqlx::Error::RowNotFound)
+}
+
+pub async fn update_label(
+    pool: &SqlitePool,
+    id: i64,
+    input: UpdateIssueLabel,
+) -> Result<Option<IssueLabel>, sqlx::Error> {
+    sqlx::query(
+        "UPDATE issue_labels SET
+            name  = COALESCE(?, name),
+            color = COALESCE(?, color),
+            icon  = COALESCE(?, icon)
+         WHERE id = ?",
+    )
+    .bind(input.name)
+    .bind(input.color)
+    .bind(input.icon)
+    .bind(id)
+    .execute(pool)
+    .await?;
+
+    get_label(pool, id).await
+}
+
+pub async fn delete_label(pool: &SqlitePool, id: i64) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query("DELETE FROM issue_labels WHERE id = ?")
         .bind(id)
         .execute(pool)
         .await?;

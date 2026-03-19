@@ -5,6 +5,7 @@ pub mod plants;
 pub mod plant_groups;
 pub mod custom_fields;
 pub mod canvas;
+pub mod issues;
 // Re-export everything so macro-generated symbols (__cmd__*, __specta__fn__*)
 // are visible at the `commands::` path used by collect_commands! and invoke_handler.
 pub use greet::*;
@@ -14,3 +15,4 @@ pub use plants::*;
 pub use plant_groups::*;
 pub use custom_fields::*;
 pub use canvas::*;
+pub use issues::*;

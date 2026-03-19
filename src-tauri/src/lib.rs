@@ -65,6 +65,25 @@ fn specta_builder() -> Builder<tauri::Wry> {
         commands::update_location,
         commands::delete_location,
         commands::list_child_locations,
+        // Issues
+        commands::list_issues,
+        commands::get_issue,
+        commands::create_issue,
+        commands::update_issue,
+        commands::delete_issue,
+        commands::transition_issue_status,
+        // Labels
+        commands::list_labels,
+        commands::create_label,
+        commands::update_label,
+        commands::delete_label,
+        commands::list_issue_labels,
+        commands::assign_issue_label,
+        commands::remove_issue_label,
+        // Comments
+        commands::list_issue_comments,
+        commands::add_issue_comment,
+        commands::delete_issue_comment,
     ])
 }
 

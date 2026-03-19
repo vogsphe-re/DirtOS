@@ -60,6 +60,7 @@ pub enum AdditiveType {
 
 #[derive(Debug, Clone, PartialEq, sqlx::Type, Serialize, Deserialize, Type)]
 #[sqlx(type_name = "TEXT", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum IssueStatus {
     New,
     Open,
@@ -69,6 +70,7 @@ pub enum IssueStatus {
 
 #[derive(Debug, Clone, PartialEq, sqlx::Type, Serialize, Deserialize, Type)]
 #[sqlx(type_name = "TEXT", rename_all = "snake_case")]
+#[serde(rename_all = "lowercase")]
 pub enum IssuePriority {
     Low,
     Medium,
@@ -513,6 +515,20 @@ pub struct IssueComment {
     pub issue_id: i64,
     pub body: String,
     pub created_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct NewIssueLabel {
+    pub name: String,
+    pub color: Option<String>,
+    pub icon: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct UpdateIssueLabel {
+    pub name: Option<String>,
+    pub color: Option<String>,
+    pub icon: Option<String>,
 }
 
 // ---------------------------------------------------------------------------

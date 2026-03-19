@@ -410,6 +410,134 @@ async listChildLocations(parentId: number) : Promise<Result<Location[], string>>
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async listIssues(environmentId: number, limit: number | null, offset: number | null) : Promise<Result<Issue[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_issues", { environmentId, limit, offset }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getIssue(id: number) : Promise<Result<Issue | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_issue", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createIssue(input: NewIssue) : Promise<Result<Issue, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_issue", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateIssue(id: number, input: UpdateIssue) : Promise<Result<Issue | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_issue", { id, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteIssue(id: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_issue", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async transitionIssueStatus(id: number, newStatus: IssueStatus) : Promise<Result<Issue | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("transition_issue_status", { id, newStatus }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listLabels() : Promise<Result<IssueLabel[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_labels") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createLabel(input: NewIssueLabel) : Promise<Result<IssueLabel, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_label", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateLabel(id: number, input: UpdateIssueLabel) : Promise<Result<IssueLabel | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_label", { id, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteLabel(id: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_label", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listIssueLabels(issueId: number) : Promise<Result<IssueLabel[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_issue_labels", { issueId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async assignIssueLabel(issueId: number, labelId: number) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("assign_issue_label", { issueId, labelId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async removeIssueLabel(issueId: number, labelId: number) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("remove_issue_label", { issueId, labelId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listIssueComments(issueId: number) : Promise<Result<IssueComment[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_issue_comments", { issueId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async addIssueComment(issueId: number, body: string) : Promise<Result<IssueComment, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("add_issue_comment", { issueId, body }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteIssueComment(id: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_issue_comment", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -432,10 +560,17 @@ export type Environment = { id: number; name: string; latitude: number | null; l
  * This command will be removed after Phase 0 verification.
  */
 export type GreetResponse = { message: string }
+export type Issue = { id: number; environment_id: number | null; plant_id: number | null; location_id: number | null; title: string; description: string | null; status: IssueStatus; priority: IssuePriority; created_at: string; updated_at: string; closed_at: string | null }
+export type IssueComment = { id: number; issue_id: number; body: string; created_at: string }
+export type IssueLabel = { id: number; name: string; color: string | null; icon: string | null }
+export type IssuePriority = "low" | "medium" | "high" | "critical"
+export type IssueStatus = "new" | "open" | "in_progress" | "closed"
 export type Location = { id: number; environment_id: number; parent_id: number | null; location_type: LocationType; name: string; label: string | null; position_x: number | null; position_y: number | null; width: number | null; height: number | null; canvas_data_json: string | null; notes: string | null; created_at: string; updated_at: string }
 export type LocationType = "Plot" | "Space" | "Tent" | "Tray" | "Pot" | "Shed"
 export type NewCustomField = { entity_type: CustomFieldEntityType; entity_id: number; field_name: string; field_value: string | null; field_type: CustomFieldType }
 export type NewEnvironment = { name: string; latitude: number | null; longitude: number | null; elevation_m: number | null; timezone: string | null; climate_zone: string | null }
+export type NewIssue = { environment_id: number | null; plant_id: number | null; location_id: number | null; title: string; description: string | null; status: IssueStatus | null; priority: IssuePriority | null }
+export type NewIssueLabel = { name: string; color: string | null; icon: string | null }
 export type NewLocation = { environment_id: number; parent_id: number | null; location_type: LocationType; name: string; label: string | null; position_x: number | null; position_y: number | null; width: number | null; height: number | null; canvas_data_json: string | null; notes: string | null }
 export type NewPlant = { species_id: number | null; location_id: number | null; environment_id: number; status: PlantStatus | null; name: string; label: string | null; planted_date: string | null; notes: string | null }
 export type NewPlantGroup = { environment_id: number; name: string; description: string | null; group_type: string | null; color: string | null }
@@ -449,6 +584,8 @@ export type Species = { id: number; common_name: string; scientific_name: string
 export type TaxonResult = { id: number; name: string; preferred_common_name: string | null; rank: string | null; default_photo_url: string | null; wikipedia_url: string | null; matched_term: string | null }
 export type UpdateCustomField = { field_name: string | null; field_value: string | null; field_type: CustomFieldType | null }
 export type UpdateEnvironment = { name: string | null; latitude: number | null; longitude: number | null; elevation_m: number | null; timezone: string | null; climate_zone: string | null }
+export type UpdateIssue = { title: string | null; description: string | null; status: IssueStatus | null; priority: IssuePriority | null; plant_id: number | null; location_id: number | null }
+export type UpdateIssueLabel = { name: string | null; color: string | null; icon: string | null }
 export type UpdateLocation = { parent_id: number | null; location_type: LocationType | null; name: string | null; label: string | null; position_x: number | null; position_y: number | null; width: number | null; height: number | null; canvas_data_json: string | null; notes: string | null }
 export type UpdatePlant = { species_id: number | null; location_id: number | null; status: PlantStatus | null; name: string | null; label: string | null; planted_date: string | null; germinated_date: string | null; transplanted_date: string | null; removed_date: string | null; parent_plant_id: number | null; seed_lot_id: number | null; purchase_source: string | null; purchase_date: string | null; purchase_price: number | null; notes: string | null }
 export type UpdatePlantGroup = { name: string | null; description: string | null; group_type: string | null; color: string | null }
