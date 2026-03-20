@@ -1,7 +1,7 @@
 import Konva from 'konva';
 import { KonvaEventObject } from 'konva/lib/Node';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
   Circle,
   Group,
@@ -13,48 +13,10 @@ import {
   Transformer,
 } from 'react-konva';
 import { Box, Text as MText } from '@mantine/core';
-import { useQuery } from '@tanstack/react-query';
-import { commands } from '../../lib/bindings';
 import { useCanvasStore } from './canvasStore';
 import { useCanvasHistory } from './hooks/useCanvasHistory';
 import { useCanvasPersistence } from './hooks/useCanvasPersistence';
-import { PlantAssignmentModal } from './PlantAssignmentModal';
 import { CanvasObject, GridConfig, LAYER_ORDER, OBJECT_DEFAULTS, ObjectType } from './types';
-
-// ---------------------------------------------------------------------------
-// Plant-status colour helpers for space objects
-// ---------------------------------------------------------------------------
-
-type PlantStatus = 'planned' | 'seedling' | 'active' | 'harvested' | 'removed' | 'dead';
-
-function spaceFill(status: PlantStatus | null): string {
-  switch (status) {
-    case 'planned':   return 'rgba(100,149,237,0.15)';
-    case 'seedling':  return 'rgba(154,205,50,0.25)';
-    case 'active':    return 'rgba(60,179,113,0.30)';
-    case 'harvested': return 'rgba(255,165,0,0.25)';
-    case 'removed':
-    case 'dead':      return 'rgba(160,82,45,0.15)';
-    default:          return 'rgba(200,200,200,0.10)';
-  }
-}
-
-function spaceStroke(status: PlantStatus | null): string {
-  switch (status) {
-    case 'planned':   return '#6495ed';
-    case 'seedling':  return '#9acd32';
-    case 'active':    return '#3cb371';
-    case 'harvested': return '#ffa500';
-    case 'removed':
-    case 'dead':      return '#a0522d';
-    default:          return '#4a9ebe';
-  }
-}
-
-function spaceDash(status: PlantStatus | null): number[] | undefined {
-  if (status === 'planned') return [6, 4];
-  return undefined;
-}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -77,12 +39,7 @@ function snapToGrid(
   return { x: Math.round(pos.x / s) * s, y: Math.round(pos.y / s) * s };
 }
 
-function makeObject(
-  type: ObjectType,
-  x: number,
-  y: number,
-  id: string,
-): CanvasObject {
+function makeObject(type: ObjectType, x: number, y: number, id: string): CanvasObject {
   const def = OBJECT_DEFAULTS[type];
   return {
     id,
@@ -102,8 +59,8 @@ function makeObject(
   };
 }
 
-const POLYLINE_TOOLS = new Set(['path', 'fence', 'irrigation']);
-const CIRCLE_TOOLS = new Set(['potted-plant', 'tree']);
+const POLYLINE_TOOLS = new Set<string>(['path', 'fence', 'irrigation']);
+const CIRCLE_TOOLS = new Set<string>(['potted-plant', 'tree']);
 
 // ---------------------------------------------------------------------------
 // Grid
@@ -123,52 +80,38 @@ const GridLayer = memo(function GridLayer({
   for (let i = -count; i <= count; i++) {
     const p = i * spacing;
     lines.push(
-      <Line
-        key={`v${i}`}
-        points={[p, -extent, p, extent]}
-        stroke="rgba(150,150,150,0.35)"
-        strokeWidth={0.5}
-        listening={false}
-      />,
+      <Line key={`v${i}`} points={[p, -extent, p, extent]}
+        stroke="rgba(150,150,150,0.35)" strokeWidth={0.5} listening={false} />,
     );
     lines.push(
-      <Line
-        key={`h${i}`}
-        points={[-extent, p, extent, p]}
-        stroke="rgba(150,150,150,0.35)"
-        strokeWidth={0.5}
-        listening={false}
-      />,
+      <Line key={`h${i}`} points={[-extent, p, extent, p]}
+        stroke="rgba(150,150,150,0.35)" strokeWidth={0.5} listening={false} />,
     );
   }
   return <Layer listening={false}>{lines}</Layer>;
 });
 
 // ---------------------------------------------------------------------------
-// CanvasShape — renders a single CanvasObject
+// CanvasShape
 // ---------------------------------------------------------------------------
 
 interface CanvasShapeProps {
   obj: CanvasObject;
   isSelected?: boolean;
   onSelect: () => void;
+  onDblClick?: () => void;
   onDragEnd: (updates: Partial<CanvasObject>) => void;
   onTransformEnd: (updates: Partial<CanvasObject>) => void;
   draggable: boolean;
-  /** Plant status for space objects — drives fill/stroke colour */
-  spaceStatus?: PlantStatus | null;
-  onDoubleClick?: () => void;
 }
 
 const CanvasShape = memo(function CanvasShape({
   obj,
-  isSelected: _isSelected,
   onSelect,
+  onDblClick,
   onDragEnd,
   onTransformEnd,
   draggable,
-  spaceStatus,
-  onDoubleClick,
 }: CanvasShapeProps) {
   const isPolyline = POLYLINE_TOOLS.has(obj.type);
   const isCircle = CIRCLE_TOOLS.has(obj.type);
@@ -179,8 +122,8 @@ const CanvasShape = memo(function CanvasShape({
     rotation: obj.rotation,
     onClick: onSelect,
     onTap: onSelect,
-    onDblClick: onDoubleClick,
-    onDblTap: onDoubleClick,
+    onDblClick: onDblClick,
+    onDblTap: onDblClick,
     draggable,
   };
 
@@ -209,30 +152,22 @@ const CanvasShape = memo(function CanvasShape({
       <>
         {obj.type === 'tree' && obj.canopyRadius != null && (
           <Circle
-            x={obj.x}
-            y={obj.y}
+            x={obj.x} y={obj.y}
             radius={obj.canopyRadius}
-            stroke={obj.stroke}
-            strokeWidth={1}
-            dash={[5, 5]}
-            opacity={0.4}
-            listening={false}
+            stroke={obj.stroke} strokeWidth={1}
+            dash={[5, 5]} opacity={0.4} listening={false}
           />
         )}
         <Circle
           {...commonProps}
-          x={obj.x}
-          y={obj.y}
+          x={obj.x} y={obj.y}
           radius={obj.radius ?? 20}
-          fill={obj.fill}
-          stroke={obj.stroke}
-          strokeWidth={obj.strokeWidth}
+          fill={obj.fill} stroke={obj.stroke} strokeWidth={obj.strokeWidth}
           onDragEnd={(e) => onDragEnd({ x: e.target.x(), y: e.target.y() })}
           onTransformEnd={(e) => {
             const node = e.target as Konva.Circle;
             const scaleX = node.scaleX();
-            node.scaleX(1);
-            node.scaleY(1);
+            node.scaleX(1); node.scaleY(1);
             onTransformEnd({ x: node.x(), y: node.y(), radius: node.radius() * scaleX });
           }}
         />
@@ -244,44 +179,29 @@ const CanvasShape = memo(function CanvasShape({
     return (
       <Text
         {...commonProps}
-        x={obj.x}
-        y={obj.y}
-        text={obj.label || 'Text'}
-        fontSize={14}
+        x={obj.x} y={obj.y}
+        text={obj.label || 'Text'} fontSize={14}
         fill={obj.fill || '#333'}
         onDragEnd={(e) => onDragEnd({ x: e.target.x(), y: e.target.y() })}
       />
     );
   }
 
-  // Default: Rect — with plant-status colour override for 'space' objects
-  const isSpace = obj.type === 'space';
-  const effectiveFill = isSpace ? spaceFill(spaceStatus ?? null) : obj.fill;
-  const effectiveStroke = isSpace ? spaceStroke(spaceStatus ?? null) : obj.stroke;
-  const effectiveDash = isSpace ? spaceDash(spaceStatus ?? null) : undefined;
-
   return (
     <Rect
       {...commonProps}
-      x={obj.x}
-      y={obj.y}
-      width={obj.width ?? 100}
-      height={obj.height ?? 60}
-      fill={effectiveFill}
-      stroke={effectiveStroke}
-      strokeWidth={obj.strokeWidth}
+      x={obj.x} y={obj.y}
+      width={obj.width ?? 100} height={obj.height ?? 60}
+      fill={obj.fill} stroke={obj.stroke} strokeWidth={obj.strokeWidth}
       cornerRadius={obj.type === 'raised-bed' ? 4 : 0}
-      dash={effectiveDash}
+      dash={obj.type === 'space' ? [6, 3] : undefined}
       onDragEnd={(e) => onDragEnd({ x: e.target.x(), y: e.target.y() })}
       onTransformEnd={(e) => {
         const node = e.target as Konva.Rect;
-        const scaleX = node.scaleX();
-        const scaleY = node.scaleY();
-        node.scaleX(1);
-        node.scaleY(1);
+        const scaleX = node.scaleX(); const scaleY = node.scaleY();
+        node.scaleX(1); node.scaleY(1);
         onTransformEnd({
-          x: node.x(),
-          y: node.y(),
+          x: node.x(), y: node.y(),
           width: Math.max(5, node.width() * scaleX),
           height: Math.max(5, node.height() * scaleY),
           rotation: node.rotation(),
@@ -292,7 +212,7 @@ const CanvasShape = memo(function CanvasShape({
 });
 
 // ---------------------------------------------------------------------------
-// ObjectLabel overlay
+// ObjectLabel
 // ---------------------------------------------------------------------------
 
 function ObjectLabel({ obj }: { obj: CanvasObject }) {
@@ -301,19 +221,12 @@ function ObjectLabel({ obj }: { obj: CanvasObject }) {
   const x = isPolyline ? (obj.points?.[0] ?? obj.x) : obj.x + 4;
   const y = isPolyline ? (obj.points?.[1] ?? obj.y) - 16 : obj.y + 4;
   return (
-    <Text
-      x={x}
-      y={y}
-      text={obj.label}
-      fontSize={11}
-      fill="#333"
-      listening={false}
-    />
+    <Text x={x} y={y} text={obj.label} fontSize={11} fill="#333" listening={false} />
   );
 }
 
 // ---------------------------------------------------------------------------
-// Drawing-state drawing preview helpers
+// Drawing state
 // ---------------------------------------------------------------------------
 
 interface DrawState {
@@ -347,28 +260,6 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
   const [previewObj, setPreviewObj] = useState<CanvasObject | null>(null);
   const [isPanMode, setIsPanMode] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0, stageX: 0, stageY: 0 });
-
-  // Plant assignment modal state (5.1)
-  const [assignModal, setAssignModal] = useState<{
-    open: boolean;
-    spaceId: string;
-    spaceLabel?: string;
-    currentPlantId?: number | null;
-  } | null>(null);
-
-  // Load all plants to derive status colours for spaces (5.2)
-  const { data: allPlants = [] } = useQuery({
-    queryKey: ['plants-all'],
-    queryFn: async () => {
-      const res = await commands.listAllPlants(500, 0);
-      if (res.status === 'error') throw new Error(res.error);
-      return res.data;
-    },
-    enabled: environmentId != null,
-    staleTime: 30_000,
-  });
-  const plantById = new Map(allPlants.map((p) => [p.id, p]));
-
 
   const objects = useCanvasStore((s) => s.objects);
   const activeTool = useCanvasStore((s) => s.activeTool);
@@ -404,10 +295,9 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
 
   // Load canvas when environment changes
   useEffect(() => {
-    if (environmentId != null) {
-      loadCanvas(environmentId);
-    }
-  }, [environmentId]); // eslint-disable-line
+    if (environmentId != null) loadCanvas(environmentId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [environmentId]);
 
   // Attach transformer to selected node
   useEffect(() => {
@@ -416,11 +306,8 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
     if (!tr || !stage) return;
     if (selectedId && activeTool === 'select') {
       const node = stage.findOne('#' + selectedId) as Konva.Shape | undefined;
-      if (node) {
-        tr.nodes([node]);
-      } else {
-        tr.nodes([]);
-      }
+      if (node) tr.nodes([node]);
+      else tr.nodes([]);
     } else {
       tr.nodes([]);
     }
@@ -432,9 +319,16 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).tagName === 'INPUT') return;
       if (e.code === 'Space') setIsPanMode(true);
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); }
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (environmentId != null) saveCanvas(environmentId); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault(); undo();
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault(); redo();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (environmentId != null) saveCanvas(environmentId);
+      }
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
         pushSnapshot(objects);
         removeObject(selectedId);
@@ -442,8 +336,7 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
       }
       if (e.key === 'Escape') {
         if (drawState.isPolyline) {
-          setDrawState(INIT_DRAW);
-          setPreviewObj(null);
+          setDrawState(INIT_DRAW); setPreviewObj(null);
         } else {
           setSelectedId(null);
         }
@@ -458,9 +351,10 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [selectedId, drawState, objects, environmentId]); // eslint-disable-line
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, drawState, objects, environmentId]);
 
-  // Zoom on scroll
+  // Wheel zoom
   const handleWheel = useCallback((e: KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
     const stage = stageRef.current!;
@@ -477,44 +371,36 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
       pointer.y - mousePointTo.y * newScale,
       newScale,
     );
-  }, [stageX, stageY, stageScale, setStageTransform]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stageX, stageY, stageScale]);
 
-  const getRelativePointerPos = () => getRelativePos(stageRef.current!);
-
-  // ---- Mouse down ----
+  // Mouse down
   const handleMouseDown = useCallback((e: KonvaEventObject<MouseEvent>) => {
     const evt = e.evt;
-    // Middle button OR space held → pan
     if (evt.button === 1 || (evt.button === 0 && isPanMode)) {
       setPanStart({ x: evt.clientX, y: evt.clientY, stageX, stageY });
       e.evt.preventDefault();
       return;
     }
     if (evt.button !== 0) return;
-
     const stage = stageRef.current;
     if (!stage) return;
-    const pos = snapToGrid(getRelativePointerPos(), gridConfig);
+    const pos = snapToGrid(getRelativePos(stage), gridConfig);
 
     if (activeTool === 'select') {
-      // Click on background → deselect
       if (e.target === stage) setSelectedId(null);
       return;
     }
     if (activeTool === 'eraser') return;
 
-    const isPolyline = POLYLINE_TOOLS.has(activeTool);
-
-    if (isPolyline) {
+    if (POLYLINE_TOOLS.has(activeTool)) {
       if (!drawState.isPolyline) {
-        // Start new polyline
         const id = crypto.randomUUID();
         const obj = makeObject(activeTool as ObjectType, 0, 0, id);
         const pts = [pos.x, pos.y, pos.x + 1, pos.y + 1];
         setPreviewObj({ ...obj, points: pts });
         setDrawState({ isDrawing: true, startX: pos.x, startY: pos.y, isPolyline: true, polylinePoints: [pos.x, pos.y] });
       } else {
-        // Add another point
         setDrawState((prev) => ({
           ...prev,
           polylinePoints: [...prev.polylinePoints, pos.x, pos.y],
@@ -523,20 +409,19 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
       return;
     }
 
-    // Drag-to-draw (rect, circle)
     const id = crypto.randomUUID();
-    const obj = CIRCLE_TOOLS.has(activeTool as ObjectType)
+    const obj = CIRCLE_TOOLS.has(activeTool)
       ? { ...makeObject(activeTool as ObjectType, pos.x, pos.y, id), radius: 1 }
       : { ...makeObject(activeTool as ObjectType, pos.x, pos.y, id), width: 1, height: 1 };
     setPreviewObj(obj);
     setDrawState({ isDrawing: true, startX: pos.x, startY: pos.y, isPolyline: false, polylinePoints: [] });
-  }, [activeTool, isPanMode, drawState, gridConfig, stageX, stageY]); // eslint-disable-line
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTool, isPanMode, drawState, gridConfig, stageX, stageY]);
 
-  // ---- Mouse move ----
+  // Mouse move
   const handleMouseMove = useCallback((e: KonvaEventObject<MouseEvent>) => {
     const stage = stageRef.current!;
 
-    // Update cursor coords
     const rel = getRelativePos(stage);
     setCursor({ x: rel.x, y: rel.y });
 
@@ -551,7 +436,7 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
     }
 
     if (!drawState.isDrawing) return;
-    const pos = snapToGrid({ x: rel.x, y: rel.y }, gridConfig);
+    const pos = snapToGrid(rel, gridConfig);
 
     if (drawState.isPolyline) {
       const committed = drawState.polylinePoints;
@@ -561,36 +446,31 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
       return;
     }
 
-    // Rect / circle resize
     const dx = pos.x - drawState.startX;
     const dy = pos.y - drawState.startY;
 
     if (previewObj && CIRCLE_TOOLS.has(previewObj.type)) {
       const radius = Math.max(5, Math.sqrt(dx * dx + dy * dy));
       setPreviewObj((prev) =>
-        prev
-          ? { ...prev, radius, canopyRadius: prev.type === 'tree' ? radius * 1.5 : undefined }
-          : null,
+        prev ? { ...prev, radius, canopyRadius: prev.type === 'tree' ? radius * 1.5 : undefined } : null,
       );
     } else {
       setPreviewObj((prev) =>
-        prev
-          ? {
-              ...prev,
-              x: dx < 0 ? pos.x : drawState.startX,
-              y: dy < 0 ? pos.y : drawState.startY,
-              width: Math.abs(dx),
-              height: Math.abs(dy),
-            }
-          : null,
+        prev ? {
+          ...prev,
+          x: dx < 0 ? pos.x : drawState.startX,
+          y: dy < 0 ? pos.y : drawState.startY,
+          width: Math.abs(dx),
+          height: Math.abs(dy),
+        } : null,
       );
     }
-  }, [drawState, isPanMode, panStart, stageScale, gridConfig, previewObj, setStageTransform]); // eslint-disable-line
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawState, isPanMode, panStart, stageScale, gridConfig, previewObj]);
 
-  // ---- Mouse up ----
-  const handleMouseUp = useCallback((e: KonvaEventObject<MouseEvent>) => {
-    void e;
-    if (drawState.isPolyline) return; // finished on dblclick
+  // Mouse up
+  const handleMouseUp = useCallback((_e: KonvaEventObject<MouseEvent>) => {
+    if (drawState.isPolyline) return;
     if (!drawState.isDrawing || !previewObj) return;
 
     const isCircle = CIRCLE_TOOLS.has(previewObj.type);
@@ -605,23 +485,30 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
     }
     setDrawState(INIT_DRAW);
     setPreviewObj(null);
-  }, [drawState, previewObj, objects]); // eslint-disable-line
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawState, previewObj, objects]);
 
-  // ---- Double click (finish polyline) ----
+  // Double click — finish polyline or enter plot space-editing mode
   const handleDblClick = useCallback((e: KonvaEventObject<MouseEvent>) => {
-    void e;
-    if (!drawState.isPolyline || !previewObj) return;
-    const pts = previewObj.points ?? [];
-    if (pts.length >= 4) {
-      pushSnapshot(objects);
-      addObject({ ...previewObj, points: pts.slice(0, -2) }); // remove trailing cursor pt
-      setDirty(true);
+    // Finish active polyline
+    if (drawState.isPolyline && previewObj) {
+      const pts = previewObj.points ?? [];
+      if (pts.length >= 4) {
+        pushSnapshot(objects);
+        addObject({ ...previewObj, points: pts.slice(0, -2) });
+        setDirty(true);
+      }
+      setDrawState(INIT_DRAW);
+      setPreviewObj(null);
+      return;
     }
-    setDrawState(INIT_DRAW);
-    setPreviewObj(null);
-  }, [drawState, previewObj, objects]); // eslint-disable-line
+    // Exit space editing if clicking outside shapes in edit mode
+    if (editingPlotId && e.target === stageRef.current) {
+      useCanvasStore.getState().setEditingPlotId(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawState, previewObj, objects, editingPlotId]);
 
-  // ---- Eraser click on shape ----
   const handleShapeClick = useCallback((obj: CanvasObject) => {
     if (activeTool === 'eraser') {
       pushSnapshot(objects);
@@ -630,32 +517,27 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
       return;
     }
     setSelectedId(obj.id);
-  }, [activeTool, objects]); // eslint-disable-line
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTool, objects]);
 
-  // Open assignment modal on double-click on a space in select mode (5.1)
-  const handleSpaceDoubleClick = useCallback((obj: CanvasObject) => {
-    if (activeTool !== 'select' || obj.type !== 'space') return;
-    setAssignModal({
-      open: true,
-      spaceId: obj.id,
-      spaceLabel: obj.label || undefined,
-      currentPlantId: obj.assignedPlantId ?? null,
-    });
-  }, [activeTool]); // eslint-disable-line
-
+  const handleShapeDblClick = useCallback((obj: CanvasObject) => {
+    if (activeTool !== 'select') return;
+    if (obj.type === 'plot') {
+      useCanvasStore.getState().setEditingPlotId(obj.id);
+    } else if (obj.type === 'space' && obj.parentId) {
+      useCanvasStore.getState().setEditingPlotId(obj.parentId);
+    }
+  }, [activeTool]);
 
   const cursorStyle =
     activeTool === 'select' ? 'default'
     : isPanMode ? 'grab'
-    : activeTool === 'eraser' ? 'crosshair'
     : 'crosshair';
 
-  // Determine which objects to show (space editing filters to plot + its spaces)
   const visibleObjects = editingPlotId
     ? objects.filter((o) => o.id === editingPlotId || o.parentId === editingPlotId)
     : objects;
 
-  // Render objects per logical layer
   const byLayer = Object.fromEntries(
     LAYER_ORDER.map((l) => [l, visibleObjects.filter((o) => o.layer === l)]),
   ) as Record<string, CanvasObject[]>;
@@ -681,10 +563,8 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
         onMouseUp={handleMouseUp}
         onDblClick={handleDblClick}
       >
-        {/* Grid */}
         <GridLayer spacing={gridConfig.spacingPx} visible={gridConfig.showGrid} />
 
-        {/* Content layer: all shapes */}
         <Layer>
           {LAYER_ORDER.map((layerName) => (
             <Group
@@ -698,13 +578,8 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
                   obj={obj}
                   isSelected={obj.id === selectedId}
                   onSelect={() => handleShapeClick(obj)}
+                  onDblClick={() => handleShapeDblClick(obj)}
                   draggable={activeTool === 'select'}
-                  spaceStatus={
-                    obj.type === 'space' && obj.assignedPlantId != null
-                      ? (plantById.get(obj.assignedPlantId)?.status as PlantStatus ?? null)
-                      : obj.type === 'space' ? null : undefined
-                  }
-                  onDoubleClick={obj.type === 'space' ? () => handleSpaceDoubleClick(obj) : undefined}
                   onDragEnd={(updates) => {
                     pushSnapshot(objects);
                     updateObject(obj.id, updates);
@@ -716,7 +591,6 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
                   }}
                 />
               ))}
-              {/* Labels for objects with label text */}
               {byLayer[layerName]
                 .filter((o) => o.label && o.type !== 'text')
                 .map((o) => (
@@ -725,7 +599,6 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
             </Group>
           ))}
 
-          {/* Preview object while drawing */}
           {previewObj && (
             <CanvasShape
               obj={previewObj}
@@ -737,7 +610,6 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
             />
           )}
 
-          {/* Transformer */}
           <Transformer
             ref={trRef}
             keepRatio={false}
@@ -751,54 +623,25 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
       {/* Coordinate display */}
       <Box
         style={{
-          position: 'absolute',
-          bottom: 8,
-          left: 8,
-          background: 'rgba(255,255,255,0.8)',
-          padding: '2px 8px',
-          borderRadius: 4,
-          fontSize: 11,
-          color: '#555',
-          pointerEvents: 'none',
-          userSelect: 'none',
+          position: 'absolute', bottom: 8, left: 8,
+          background: 'rgba(255,255,255,0.8)', padding: '2px 8px',
+          borderRadius: 4, fontSize: 11, color: '#555',
+          pointerEvents: 'none', userSelect: 'none',
         }}
       >
         {coordLabel}
       </Box>
 
-      {/* Dirty indicator */}
       {isDirty && (
         <Box
           style={{
-            position: 'absolute',
-            bottom: 8,
-            right: 8,
-            background: 'rgba(255,200,50,0.9)',
-            padding: '2px 8px',
-            borderRadius: 4,
-            fontSize: 11,
-            color: '#555',
-            pointerEvents: 'none',
+            position: 'absolute', bottom: 8, right: 8,
+            background: 'rgba(255,200,50,0.9)', padding: '2px 8px',
+            borderRadius: 4, fontSize: 11, color: '#555', pointerEvents: 'none',
           }}
         >
           <MText size="xs">Unsaved · Ctrl+S to save</MText>
         </Box>
-      )}
-
-      {/* Plant assignment modal (5.1) */}
-      {assignModal && (
-        <PlantAssignmentModal
-          opened={assignModal.open}
-          spaceId={assignModal.spaceId}
-          spaceLabel={assignModal.spaceLabel}
-          currentPlantId={assignModal.currentPlantId}
-          onClose={() => setAssignModal(null)}
-          onAssigned={(plantId) => {
-            updateObject(assignModal.spaceId, { assignedPlantId: plantId });
-            setDirty(true);
-            setAssignModal(null);
-          }}
-        />
       )}
     </Box>
   );

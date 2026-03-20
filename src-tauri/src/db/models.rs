@@ -1378,6 +1378,76 @@ pub struct NewSeedlingObservation {
 }
 
 // ---------------------------------------------------------------------------
+// Seasons
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
+pub struct Season {
+    pub id: i64,
+    pub environment_id: i64,
+    pub name: String,
+    pub start_date: String,
+    pub end_date: String,
+    pub notes: Option<String>,
+    pub created_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct NewSeason {
+    pub environment_id: i64,
+    pub name: String,
+    pub start_date: String,
+    pub end_date: String,
+    pub notes: Option<String>,
+}
+
+// ---------------------------------------------------------------------------
+// Harvest analytics
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
+pub struct HarvestSummary {
+    pub plant_id: i64,
+    pub total_quantity: f64,
+    pub harvest_count: i64,
+    pub avg_quality: Option<f64>,
+    pub first_harvest: Option<String>,
+    pub last_harvest: Option<String>,
+}
+
+/// A single data point used in aggregated report charts.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ReportDataPoint {
+    pub label: String,   // x-axis label (species name, month, etc.)
+    pub value: f64,      // primary value
+    pub secondary: Option<f64>, // optional secondary series
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ReportData {
+    pub report_type: String,
+    pub date_from: Option<String>,
+    pub date_to: Option<String>,
+    pub points: Vec<ReportDataPoint>,
+    pub unit: Option<String>,
+}
+
+// ---------------------------------------------------------------------------
+// Recommendations
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct Recommendation {
+    pub category: String,        // "yield", "watering", "placement", "soil"
+    pub title: String,
+    pub description: String,
+    pub confidence: f64,         // 0.0 – 1.0
+    pub action_suggestion: Option<String>,
+    pub plant_id: Option<i64>,
+    pub species_id: Option<i64>,
+}
+
+// ---------------------------------------------------------------------------
 // Pagination helper
 // ---------------------------------------------------------------------------
 

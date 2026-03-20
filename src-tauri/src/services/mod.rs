@@ -5,6 +5,7 @@ pub mod indoor;
 pub mod lifecycle;
 pub mod media;
 pub mod osm;
+pub mod recommendations;
 pub mod schedule_suggestions;
 pub mod scheduler;
 pub mod sensors;

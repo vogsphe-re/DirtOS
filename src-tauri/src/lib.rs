@@ -165,6 +165,21 @@ fn specta_builder() -> Builder<tauri::Wry> {
         commands::create_soil_test,
         commands::list_soil_tests,
         commands::delete_soil_test,
+        // Harvests & seed lots
+        commands::list_harvests,
+        commands::list_all_harvests,
+        commands::create_harvest,
+        commands::delete_harvest,
+        commands::get_harvest_summary,
+        commands::list_seed_lots,
+        commands::get_seed_lot,
+        commands::create_seed_lot,
+        // Reports & seasons
+        commands::list_seasons,
+        commands::create_season,
+        commands::delete_season,
+        commands::get_report_data,
+        commands::get_recommendations,
     ])
 }
 

@@ -22,6 +22,8 @@ import { useState } from "react";
 import { commands } from "../../lib/bindings";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
 import { PlantJournalTab } from "../journal/PlantJournalTab";
+import { HarvestLog } from "./HarvestLog";
+import { GenealogyView } from "./GenealogyView";
 import type { Plant, PlantStatus, Species } from "./types";
 import { PLANT_STATUS_COLORS, PLANT_STATUS_LABELS } from "./types";
 
@@ -152,6 +154,7 @@ export function PlantDetail({ plantId }: PlantDetailProps) {
           <Tabs.Tab value="journal">Journal</Tabs.Tab>
           <Tabs.Tab value="issues">Issues</Tabs.Tab>
           <Tabs.Tab value="harvest">Harvest</Tabs.Tab>
+          <Tabs.Tab value="genealogy">Genealogy</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="overview" pt="md">
@@ -220,7 +223,11 @@ export function PlantDetail({ plantId }: PlantDetailProps) {
         </Tabs.Panel>
 
         <Tabs.Panel value="harvest" pt="md">
-          <Text c="dimmed" py="md">Harvest records — Phase 6</Text>
+          <HarvestLog plantId={plantId} />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="genealogy" pt="md">
+          {plant && <GenealogyView plant={plant} />}
         </Tabs.Panel>
       </Tabs>
     </Stack>

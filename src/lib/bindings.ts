@@ -1135,6 +1135,110 @@ async deleteSoilTest(id: number) : Promise<Result<boolean, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async listHarvests(plantId: number, limit: number | null, offset: number | null) : Promise<Result<Harvest[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_harvests", { plantId, limit, offset }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listAllHarvests(environmentId: number, dateFrom: string | null, dateTo: string | null, limit: number | null, offset: number | null) : Promise<Result<Harvest[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_all_harvests", { environmentId, dateFrom, dateTo, limit, offset }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createHarvest(input: NewHarvest) : Promise<Result<Harvest, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_harvest", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteHarvest(id: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_harvest", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getHarvestSummary(plantId: number) : Promise<Result<HarvestSummary | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_harvest_summary", { plantId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listSeedLots(limit: number | null, offset: number | null) : Promise<Result<SeedLot[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_seed_lots", { limit, offset }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getSeedLot(id: number) : Promise<Result<SeedLot | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_seed_lot", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createSeedLot(parentPlantId: number | null, harvestId: number | null, lotLabel: string | null, quantity: number | null, viabilityPct: number | null, storageLocation: string | null, collectedDate: string | null, notes: string | null) : Promise<Result<SeedLot, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_seed_lot", { parentPlantId, harvestId, lotLabel, quantity, viabilityPct, storageLocation, collectedDate, notes }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listSeasons(environmentId: number) : Promise<Result<Season[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_seasons", { environmentId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createSeason(input: NewSeason) : Promise<Result<Season, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_season", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteSeason(id: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_season", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getReportData(environmentId: number, reportType: string, dateFrom: string | null, dateTo: string | null, locationId: number | null) : Promise<Result<ReportData, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_report_data", { environmentId, reportType, dateFrom, dateTo, locationId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getRecommendations(environmentId: number) : Promise<Result<Recommendation[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_recommendations", { environmentId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -1171,6 +1275,8 @@ export type ForecastItem = { dt: number; temperature_c: number; feels_like_c: nu
  */
 export type GreetResponse = { message: string }
 export type GrowMethod = "Soil" | "HydroponicDwc" | "HydroponicNft" | "HydroponicEbbFlow" | "HydroponicDrip" | "Aeroponic" | "Aquaponic"
+export type Harvest = { id: number; plant_id: number; harvest_date: string; quantity: number | null; unit: string | null; quality_rating: number | null; notes: string | null; created_at: string }
+export type HarvestSummary = { plant_id: number; total_quantity: number; harvest_count: number; avg_quality: number | null; first_harvest: string | null; last_harvest: string | null }
 export type ImportPayload = { format: BackupFormat; content: string; is_base64: boolean }
 export type IndoorDashboardSummary = { indoor_environment: IndoorEnvironment; location: Location; latest_reading: IndoorReading | null; reservoir_status: ReservoirStatus; active_plant_count: number; total_plant_count: number; upcoming_schedules: Schedule[]; recent_issues: Issue[]; air_exchange_per_hour: number | null; dli_estimate: number | null }
 export type IndoorEnvironment = { id: number; location_id: number; grow_method: GrowMethod | null; light_type: string | null; light_wattage: number | null; light_schedule_on: string | null; light_schedule_off: string | null; ventilation_type: string | null; ventilation_cfm: number | null; tent_width: number | null; tent_depth: number | null; tent_height: number | null; reservoir_capacity_liters: number | null; notes: string | null; created_at: string; updated_at: string }
@@ -1198,6 +1304,7 @@ export type MediaBase64 = { id: number; mime_type: string; data: string; is_thum
 export type NewBackupJob = { name: string; schedule_cron: string | null; format: BackupFormat; include_secrets: boolean; is_active: boolean }
 export type NewCustomField = { entity_type: CustomFieldEntityType; entity_id: number; field_name: string; field_value: string | null; field_type: CustomFieldType }
 export type NewEnvironment = { name: string; latitude: number | null; longitude: number | null; elevation_m: number | null; timezone: string | null; climate_zone: string | null }
+export type NewHarvest = { plant_id: number; harvest_date: string; quantity: number | null; unit: string | null; quality_rating: number | null; notes: string | null }
 export type NewIndoorReading = { indoor_environment_id: number; water_temp: number | null; water_ph: number | null; water_ec: number | null; water_ppm: number | null; air_temp: number | null; air_humidity: number | null; co2_ppm: number | null; vpd: number | null }
 export type NewIssue = { environment_id: number | null; plant_id: number | null; location_id: number | null; title: string; description: string | null; status: IssueStatus | null; priority: IssuePriority | null }
 export type NewIssueLabel = { name: string; color: string | null; icon: string | null }
@@ -1206,6 +1313,7 @@ export type NewLocation = { environment_id: number; parent_id: number | null; lo
 export type NewPlant = { species_id: number | null; location_id: number | null; environment_id: number; status: PlantStatus | null; name: string; label: string | null; planted_date: string | null; notes: string | null }
 export type NewPlantGroup = { environment_id: number; name: string; description: string | null; group_type: string | null; color: string | null }
 export type NewSchedule = { environment_id: number | null; plant_id: number | null; location_id: number | null; schedule_type: ScheduleType; title: string; cron_expression: string | null; next_run_at: string | null; is_active: boolean | null; additive_id: number | null; notes: string | null }
+export type NewSeason = { environment_id: number; name: string; start_date: string; end_date: string; notes: string | null }
 export type NewSeedlingObservation = { plant_id: number; observed_at: string | null; height_cm: number | null; stem_thickness_mm: number | null; leaf_node_count: number | null; leaf_node_spacing_mm: number | null; notes: string | null }
 export type NewSensor = { environment_id: number | null; location_id: number | null; plant_id: number | null; name: string; sensor_type: SensorType; connection_type: SensorConnectionType; connection_config_json: string | null; poll_interval_seconds: number | null; is_active: boolean | null }
 export type NewSoilTest = { location_id: number; test_date: string; ph: number | null; nitrogen_ppm: number | null; phosphorus_ppm: number | null; potassium_ppm: number | null; moisture_pct: number | null; organic_matter_pct: number | null; notes: string | null }
@@ -1214,12 +1322,20 @@ export type OSMPlaceResult = { display_name: string; latitude: number; longitude
 export type Plant = { id: number; species_id: number | null; location_id: number | null; environment_id: number; status: PlantStatus; name: string; label: string | null; planted_date: string | null; germinated_date: string | null; transplanted_date: string | null; removed_date: string | null; parent_plant_id: number | null; seed_lot_id: number | null; purchase_source: string | null; purchase_date: string | null; purchase_price: number | null; notes: string | null; created_at: string; updated_at: string }
 export type PlantGroup = { id: number; environment_id: number; name: string; description: string | null; group_type: string | null; filter_criteria_json: string | null; color: string | null; created_at: string; updated_at: string }
 export type PlantStatus = "planned" | "seedling" | "active" | "harvested" | "removed" | "dead"
+export type Recommendation = { category: string; title: string; description: string; confidence: number; action_suggestion: string | null; plant_id: number | null; species_id: number | null }
+export type ReportData = { report_type: string; date_from: string | null; date_to: string | null; points: ReportDataPoint[]; unit: string | null }
+/**
+ * A single data point used in aggregated report charts.
+ */
+export type ReportDataPoint = { label: string; value: number; secondary: number | null }
 export type ReservoirStatus = { indoor_environment_id: number; current_volume_liters: number | null; last_water_change_at: string | null; days_since_water_change: number | null; target: IndoorReservoirTarget | null; current_ph: number | null; current_ec: number | null; current_ppm: number | null; nutrient_total_since_change: number; status: string }
 export type Schedule = { id: number; environment_id: number | null; plant_id: number | null; location_id: number | null; schedule_type: ScheduleType; title: string; cron_expression: string | null; next_run_at: string | null; is_active: boolean; additive_id: number | null; notes: string | null; created_at: string; updated_at: string }
 export type ScheduleRun = { id: number; schedule_id: number; issue_id: number | null; ran_at: string; status: ScheduleRunStatus }
 export type ScheduleRunStatus = "completed" | "skipped" | "missed"
 export type ScheduleSuggestion = { schedule_type: ScheduleType; title: string; cron_expression: string; cron_label: string; notes: string | null }
 export type ScheduleType = "water" | "feed" | "maintenance" | "treatment" | "sample" | "custom"
+export type Season = { id: number; environment_id: number; name: string; start_date: string; end_date: string; notes: string | null; created_at: string }
+export type SeedLot = { id: number; parent_plant_id: number | null; harvest_id: number | null; lot_label: string | null; quantity: number | null; viability_pct: number | null; storage_location: string | null; collected_date: string | null; notes: string | null; created_at: string }
 export type SeedlingObservation = { id: number; plant_id: number; observed_at: string; height_cm: number | null; stem_thickness_mm: number | null; leaf_node_count: number | null; leaf_node_spacing_mm: number | null; notes: string | null; created_at: string }
 export type Sensor = { id: number; environment_id: number | null; location_id: number | null; plant_id: number | null; name: string; sensor_type: SensorType; connection_type: SensorConnectionType; connection_config_json: string | null; poll_interval_seconds: number | null; is_active: boolean; created_at: string; updated_at: string }
 export type SensorConnectionType = "serial" | "usb" | "mqtt" | "http" | "manual"
