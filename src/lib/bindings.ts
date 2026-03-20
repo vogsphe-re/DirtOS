@@ -1239,6 +1239,46 @@ async getRecommendations(environmentId: number) : Promise<Result<Recommendation[
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async listDashboards(environmentId: number) : Promise<Result<Dashboard[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_dashboards", { environmentId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getDashboard(id: number) : Promise<Result<Dashboard | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_dashboard", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createDashboard(input: NewDashboard) : Promise<Result<Dashboard, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_dashboard", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateDashboard(id: number, input: UpdateDashboard) : Promise<Result<Dashboard, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_dashboard", { id, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteDashboard(id: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_dashboard", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -1265,6 +1305,11 @@ export type CustomField = { id: number; entity_type: CustomFieldEntityType; enti
 export type CustomFieldEntityType = "Species" | "Plant" | "Location" | "SoilTest"
 export type CustomFieldType = "Text" | "Number" | "Date" | "Boolean"
 export type DailyForecast = { date: string; temp_min_c: number; temp_max_c: number; description: string; icon: string; precipitation_mm: number | null; precipitation_prob: number | null }
+export type Dashboard = { id: number; environment_id: number | null; name: string; description: string | null; template_key: string | null; 
+/**
+ * JSON-serialised Vec<WidgetConfig>
+ */
+layout_json: string; is_default: boolean; created_at: string; updated_at: string }
 export type Environment = { id: number; name: string; latitude: number | null; longitude: number | null; elevation_m: number | null; timezone: string | null; climate_zone: string | null; created_at: string; updated_at: string }
 export type EnvironmentMapSetting = { id: number; environment_id: number; latitude: number | null; longitude: number | null; zoom_level: number | null; geocode_json: string | null; weather_overlay: boolean; soil_overlay: boolean; boundaries_geojson: string | null; privacy_level: MapPrivacyLevel; allow_sharing: boolean; updated_at: string }
 export type ExportPayload = { format: BackupFormat; filename: string; content: string; is_base64: boolean }
@@ -1303,6 +1348,7 @@ export type Media = { id: number; entity_type: string; entity_id: number; file_p
 export type MediaBase64 = { id: number; mime_type: string; data: string; is_thumbnail: boolean }
 export type NewBackupJob = { name: string; schedule_cron: string | null; format: BackupFormat; include_secrets: boolean; is_active: boolean }
 export type NewCustomField = { entity_type: CustomFieldEntityType; entity_id: number; field_name: string; field_value: string | null; field_type: CustomFieldType }
+export type NewDashboard = { environment_id: number | null; name: string; description: string | null; template_key: string | null; layout_json: string; is_default: boolean }
 export type NewEnvironment = { name: string; latitude: number | null; longitude: number | null; elevation_m: number | null; timezone: string | null; climate_zone: string | null }
 export type NewHarvest = { plant_id: number; harvest_date: string; quantity: number | null; unit: string | null; quality_rating: number | null; notes: string | null }
 export type NewIndoorReading = { indoor_environment_id: number; water_temp: number | null; water_ph: number | null; water_ec: number | null; water_ppm: number | null; air_temp: number | null; air_humidity: number | null; co2_ppm: number | null; vpd: number | null }
@@ -1349,6 +1395,7 @@ export type SyncSpeciesResult = { species: Species | null; synced_providers: str
 export type TaxonResult = { id: number; name: string; preferred_common_name: string | null; rank: string | null; default_photo_url: string | null; wikipedia_url: string | null; matched_term: string | null }
 export type UpdateBackupJob = { name: string | null; schedule_cron: string | null; format: BackupFormat | null; include_secrets: boolean | null; is_active: boolean | null }
 export type UpdateCustomField = { field_name: string | null; field_value: string | null; field_type: CustomFieldType | null }
+export type UpdateDashboard = { name: string | null; description: string | null; layout_json: string | null; is_default: boolean | null }
 export type UpdateEnvironment = { name: string | null; latitude: number | null; longitude: number | null; elevation_m: number | null; timezone: string | null; climate_zone: string | null }
 export type UpdateIndoorEnvironment = { grow_method: GrowMethod | null; light_type: string | null; light_wattage: number | null; light_schedule_on: string | null; light_schedule_off: string | null; ventilation_type: string | null; ventilation_cfm: number | null; tent_width: number | null; tent_depth: number | null; tent_height: number | null; reservoir_capacity_liters: number | null; notes: string | null }
 export type UpdateIssue = { title: string | null; description: string | null; status: IssueStatus | null; priority: IssuePriority | null; plant_id: number | null; location_id: number | null }

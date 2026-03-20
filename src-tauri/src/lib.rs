@@ -180,6 +180,12 @@ fn specta_builder() -> Builder<tauri::Wry> {
         commands::delete_season,
         commands::get_report_data,
         commands::get_recommendations,
+        // Dashboards
+        commands::list_dashboards,
+        commands::get_dashboard,
+        commands::create_dashboard,
+        commands::update_dashboard,
+        commands::delete_dashboard,
     ])
 }
 

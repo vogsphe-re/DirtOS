@@ -3,6 +3,7 @@ use std::path::Path;
 
 pub mod additives;
 pub mod canvas;
+pub mod dashboards;
 pub mod environments;
 pub mod custom_fields;
 pub mod harvests;

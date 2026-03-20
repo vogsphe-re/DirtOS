@@ -1448,6 +1448,42 @@ pub struct Recommendation {
 }
 
 // ---------------------------------------------------------------------------
+// Dashboard (Phase 14)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, sqlx::FromRow)]
+pub struct Dashboard {
+    pub id: i64,
+    pub environment_id: Option<i64>,
+    pub name: String,
+    pub description: Option<String>,
+    pub template_key: Option<String>,
+    /// JSON-serialised Vec<WidgetConfig>
+    pub layout_json: String,
+    pub is_default: bool,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct NewDashboard {
+    pub environment_id: Option<i64>,
+    pub name: String,
+    pub description: Option<String>,
+    pub template_key: Option<String>,
+    pub layout_json: String,
+    pub is_default: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct UpdateDashboard {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub layout_json: Option<String>,
+    pub is_default: Option<bool>,
+}
+
+// ---------------------------------------------------------------------------
 // Pagination helper
 // ---------------------------------------------------------------------------
 
