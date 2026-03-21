@@ -63,6 +63,7 @@ function ThemedApp() {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function markAppReady(isReady: boolean) {
   document.body.dataset.ready = isReady ? "true" : "false";
 }

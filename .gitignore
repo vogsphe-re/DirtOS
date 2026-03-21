@@ -47,3 +47,4 @@ tsconfig.tsbuildinfo
 
 # Miscellaneous
 *.old
+docs/.dev
