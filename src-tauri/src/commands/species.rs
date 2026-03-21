@@ -232,24 +232,30 @@ pub async fn search_eol_candidates(
         .build()
         .map_err(|e| e.to_string())?;
 
-    let mut queries: Vec<String> = Vec::new();
-    if let Some(sci) = sp.scientific_name.filter(|s| !s.is_empty()) {
-        queries.push(sci);
-    }
-    if !sp.common_name.is_empty() {
-        queries.push(sp.common_name);
-    }
+    let sci_query: Option<String> = sp.scientific_name.filter(|s| !s.is_empty());
+    let common_query: Option<String> = if sp.common_name.is_empty() { None } else { Some(sp.common_name) };
+
+    // Run both searches concurrently; ignore individual failures.
+    let (sci_results, common_results) = tokio::join!(
+        async {
+            match sci_query.as_deref() {
+                Some(name) => eol::search(&client, name, 5).await.unwrap_or_default(),
+                None => Vec::new(),
+            }
+        },
+        async {
+            match common_query.as_deref() {
+                Some(name) => eol::search(&client, name, 5).await.unwrap_or_default(),
+                None => Vec::new(),
+            }
+        }
+    );
 
     let mut seen = std::collections::HashSet::new();
     let mut results: Vec<eol::EolSearchResult> = Vec::new();
-
-    for query in queries {
-        if let Ok(candidates) = eol::search(&client, &query, 6).await {
-            for c in candidates {
-                if seen.insert(c.id) {
-                    results.push(c);
-                }
-            }
+    for c in sci_results.into_iter().chain(common_results) {
+        if seen.insert(c.id) {
+            results.push(c);
         }
     }
 
@@ -269,7 +275,12 @@ pub async fn enrich_species_eol_by_id(
         .build()
         .map_err(|e| e.to_string())?;
 
-    let detail = eol::get_page(&client, eol_page_id).await?;
+    // Fetch page details and TraitBank traits concurrently.
+    let (page_result, traits) = tokio::join!(
+        eol::get_page(&client, eol_page_id),
+        eol::get_traits(&client, eol_page_id)
+    );
+    let detail = page_result?;
 
     species::update_species_eol(
         &pool,
@@ -277,6 +288,11 @@ pub async fn enrich_species_eol_by_id(
         detail.page_id,
         detail.description,
         detail.image_url,
+        traits.growth_type,
+        traits.sun_requirement,
+        traits.water_requirement,
+        traits.hardiness_zone_min,
+        traits.hardiness_zone_max,
         detail.raw_json,
     )
     .await

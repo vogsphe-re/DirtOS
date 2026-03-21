@@ -255,20 +255,35 @@ pub async fn update_species_eol(
     eol_page_id: i64,
     description: Option<String>,
     image_url: Option<String>,
+    growth_type: Option<String>,
+    sun_requirement: Option<String>,
+    water_requirement: Option<String>,
+    hardiness_zone_min: Option<String>,
+    hardiness_zone_max: Option<String>,
     cached_json: String,
 ) -> Result<Option<Species>, sqlx::Error> {
     sqlx::query(
         "UPDATE species SET
-            eol_page_id      = ?,
-            description      = COALESCE(?, description),
-            image_url        = COALESCE(?, image_url),
-            cached_eol_json  = ?,
-            updated_at       = datetime('now')
+            eol_page_id        = ?,
+            description        = COALESCE(?, description),
+            image_url          = COALESCE(?, image_url),
+            growth_type        = COALESCE(?, growth_type),
+            sun_requirement    = COALESCE(?, sun_requirement),
+            water_requirement  = COALESCE(?, water_requirement),
+            hardiness_zone_min = COALESCE(?, hardiness_zone_min),
+            hardiness_zone_max = COALESCE(?, hardiness_zone_max),
+            cached_eol_json    = ?,
+            updated_at         = datetime('now')
          WHERE id = ?",
     )
     .bind(eol_page_id)
     .bind(description)
     .bind(image_url)
+    .bind(growth_type)
+    .bind(sun_requirement)
+    .bind(water_requirement)
+    .bind(hardiness_zone_min)
+    .bind(hardiness_zone_max)
     .bind(cached_json)
     .bind(id)
     .execute(pool)

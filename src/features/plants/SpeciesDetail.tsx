@@ -431,7 +431,7 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
                 <Button
                   size="xs"
                   variant="light"
-                  loading={enrichWikiBySlug.isPending}
+                  loading={enrichWikiBySlug.isPending && enrichWikiBySlug.variables === c.slug}
                   onClick={() => enrichWikiBySlug.mutate(c.slug)}
                 >
                   Use this
@@ -474,7 +474,7 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
                   size="xs"
                   variant="light"
                   color="teal"
-                  loading={enrichEolById.isPending}
+                  loading={enrichEolById.isPending && enrichEolById.variables === c.id}
                   onClick={() => enrichEolById.mutate(c.id)}
                 >
                   Use this
