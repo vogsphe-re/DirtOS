@@ -1,4 +1,5 @@
-use sqlx::SqlitePool;
+use chrono::NaiveDateTime;
+use sqlx::{QueryBuilder, Sqlite, SqlitePool};
 
 use super::models::{NewSensor, NewSoilTest, Pagination, Sensor, SensorLimit, SensorReading, SoilTest, UpdateSensor};
 
@@ -140,6 +141,29 @@ pub async fn record_reading(
         .bind(result.last_insert_rowid())
         .fetch_one(pool)
         .await
+}
+
+pub async fn record_readings_batch(
+    pool: &SqlitePool,
+    sensor_id: i64,
+    readings: &[(f64, Option<String>, NaiveDateTime)],
+) -> Result<(), sqlx::Error> {
+    if readings.is_empty() {
+        return Ok(());
+    }
+
+    let mut builder = QueryBuilder::<Sqlite>::new(
+        "INSERT INTO sensor_readings (sensor_id, value, unit, recorded_at) ",
+    );
+    builder.push_values(readings.iter(), |mut row, (value, unit, recorded_at)| {
+        row.push_bind(sensor_id)
+            .push_bind(*value)
+            .push_bind(unit)
+            .push_bind(*recorded_at);
+    });
+
+    builder.build().execute(pool).await?;
+    Ok(())
 }
 
 pub async fn list_readings(

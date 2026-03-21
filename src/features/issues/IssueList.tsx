@@ -1,21 +1,22 @@
 import {
   Badge,
+  Box,
   Button,
   Group,
-  Loader,
   MultiSelect,
   Select,
   Stack,
-  Table,
   Text,
   TextInput,
   Title,
 } from "@mantine/core";
 import { IconPlus, IconSearch } from "@tabler/icons-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { commands } from "../../lib/bindings";
+import { EmptyState, PageLoader } from "../../components/LoadingStates";
 import type { Issue, IssueLabel } from "../../lib/bindings";
 import { useAppStore } from "../../stores/appStore";
 import { IssueForm } from "./IssueForm";
@@ -32,6 +33,7 @@ import type { IssueStatus, IssuePriority } from "./types";
 export function IssueList() {
   const navigate = useNavigate();
   const activeEnvId = useAppStore((s) => s.activeEnvironmentId);
+  const parentRef = useRef<HTMLDivElement>(null);
   const [createOpen, setCreateOpen] = useState(false);
 
   // Filter state
@@ -102,56 +104,11 @@ export function IssueList() {
     label: l.name,
   }));
 
-  const rows = filtered.map((issue) => {
-    const issueLabels = (issueLabelMap[issue.id] ?? []).map((id) => labelById[id]).filter(Boolean);
-    return (
-      <Table.Tr
-        key={issue.id}
-        style={{ cursor: "pointer" }}
-        onClick={() =>
-          navigate({ to: "/issues/$issueId", params: { issueId: String(issue.id) } })
-        }
-      >
-        <Table.Td>
-          <Text size="xs" c="dimmed">#{issue.id}</Text>
-        </Table.Td>
-        <Table.Td>
-          <Text fw={500} lineClamp={1}>{issue.title}</Text>
-        </Table.Td>
-        <Table.Td>
-          <Badge color={ISSUE_STATUS_COLORS[issue.status]} variant="light" size="sm">
-            {ISSUE_STATUS_LABELS[issue.status]}
-          </Badge>
-        </Table.Td>
-        <Table.Td>
-          <Badge color={ISSUE_PRIORITY_COLORS[issue.priority]} variant="dot" size="sm">
-            {ISSUE_PRIORITY_LABELS[issue.priority]}
-          </Badge>
-        </Table.Td>
-        <Table.Td>
-          <Group gap={4}>
-            {issueLabels.slice(0, 3).map((l) => (
-              <Badge key={l.id} color={l.color ?? "gray"} variant="filled" size="xs">
-                {l.name}
-              </Badge>
-            ))}
-            {issueLabels.length > 3 && (
-              <Text size="xs" c="dimmed">+{issueLabels.length - 3}</Text>
-            )}
-          </Group>
-        </Table.Td>
-        <Table.Td>
-          <Text size="xs" c="dimmed">
-            {new Date(issue.created_at).toLocaleDateString()}
-          </Text>
-        </Table.Td>
-        <Table.Td>
-          <Text size="xs" c="dimmed">
-            {new Date(issue.updated_at).toLocaleDateString()}
-          </Text>
-        </Table.Td>
-      </Table.Tr>
-    );
+  const rowVirtualizer = useVirtualizer({
+    count: filtered.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 100,
+    overscan: 8,
   });
 
   return (
@@ -200,36 +157,76 @@ export function IssueList() {
       </Group>
 
       {isLoading ? (
-        <Group justify="center" p="xl">
-          <Loader />
-        </Group>
+        <PageLoader label="Loading issues…" />
       ) : (
-        <Table striped highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>ID</Table.Th>
-              <Table.Th>Title</Table.Th>
-              <Table.Th>Status</Table.Th>
-              <Table.Th>Priority</Table.Th>
-              <Table.Th>Labels</Table.Th>
-              <Table.Th>Created</Table.Th>
-              <Table.Th>Updated</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {rows.length > 0 ? (
-              rows
-            ) : (
-              <Table.Tr>
-                <Table.Td colSpan={7}>
-                  <Text c="dimmed" ta="center" py="md">
-                    {issues.length === 0 ? "No issues yet." : "No issues match the current filters."}
-                  </Text>
-                </Table.Td>
-              </Table.Tr>
-            )}
-          </Table.Tbody>
-        </Table>
+        <>
+          {filtered.length === 0 ? (
+            <EmptyState
+              title={issues.length === 0 ? "No issues yet" : "No matching issues"}
+              message={issues.length === 0 ? "Use the issue tracker to capture disease, maintenance, and environment problems as they appear." : "Adjust the current filters to widen the result set."}
+              actionLabel={issues.length === 0 ? "Create issue" : undefined}
+              onAction={issues.length === 0 ? () => setCreateOpen(true) : undefined}
+            />
+          ) : (
+            <Box
+              ref={parentRef}
+              className="dirtos-scroll-panel"
+              style={{ position: "relative", border: "1px solid var(--mantine-color-default-border)", borderRadius: 12 }}
+            >
+              <Box h={rowVirtualizer.getTotalSize()} pos="relative">
+                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const issue = filtered[virtualRow.index];
+                  const issueLabels = (issueLabelMap[issue.id] ?? []).map((id) => labelById[id]).filter(Boolean);
+                  return (
+                    <Box
+                      key={issue.id}
+                      pos="absolute"
+                      top={0}
+                      left={0}
+                      right={0}
+                      style={{ transform: `translateY(${virtualRow.start}px)` }}
+                      p="sm"
+                    >
+                      <Box
+                        className="dirtos-glass"
+                        p="md"
+                        style={{ cursor: "pointer" }}
+                        onClick={() => navigate({ to: "/issues/$issueId", params: { issueId: String(issue.id) } })}
+                      >
+                        <Group justify="space-between" align="flex-start" wrap="wrap">
+                          <Stack gap={6}>
+                            <Group gap="xs">
+                              <Text size="xs" c="dimmed">#{issue.id}</Text>
+                              <Text fw={600}>{issue.title}</Text>
+                            </Group>
+                            <Group gap="xs">
+                              <Badge color={ISSUE_STATUS_COLORS[issue.status]} variant="light" size="sm">
+                                {ISSUE_STATUS_LABELS[issue.status]}
+                              </Badge>
+                              <Badge color={ISSUE_PRIORITY_COLORS[issue.priority]} variant="dot" size="sm">
+                                {ISSUE_PRIORITY_LABELS[issue.priority]}
+                              </Badge>
+                              {issueLabels.slice(0, 3).map((label) => (
+                                <Badge key={label.id} color={label.color ?? "gray"} variant="filled" size="xs">
+                                  {label.name}
+                                </Badge>
+                              ))}
+                              {issueLabels.length > 3 && <Text size="xs" c="dimmed">+{issueLabels.length - 3}</Text>}
+                            </Group>
+                          </Stack>
+                          <Stack gap={2} align="flex-end">
+                            <Text size="xs" c="dimmed">Created {new Date(issue.created_at).toLocaleDateString()}</Text>
+                            <Text size="xs" c="dimmed">Updated {new Date(issue.updated_at).toLocaleDateString()}</Text>
+                          </Stack>
+                        </Group>
+                      </Box>
+                    </Box>
+                  );
+                })}
+              </Box>
+            </Box>
+          )}
+        </>
       )}
 
       {!activeEnvId && (

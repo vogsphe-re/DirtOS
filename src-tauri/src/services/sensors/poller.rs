@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
+use chrono::Utc;
 use sqlx::SqlitePool;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::Mutex;
@@ -21,6 +22,8 @@ pub struct PollEntry {
 }
 
 pub type PollerState = Arc<Mutex<HashMap<i64, PollEntry>>>;
+
+type BufferedReading = (f64, Option<String>, chrono::NaiveDateTime);
 
 // ---------------------------------------------------------------------------
 // Public entry-point: called once on app startup
@@ -87,12 +90,19 @@ fn spawn_sensor_task(
         let debounce = Duration::from_secs(3_600); // 1 h between repeated alerts
         let mut backoff = base_interval;
         let mut last_alert_at: Option<Instant> = None;
+        let mut buffered_readings: Vec<BufferedReading> = Vec::new();
 
         loop {
             // Exit gracefully if the sensor was deactivated or removed
             match db::sensors::get_sensor(&pool, sensor_id).await {
-                Ok(Some(s)) if !s.is_active => break,
-                Ok(None) => break,
+                Ok(Some(s)) if !s.is_active => {
+                    let _ = flush_buffer(&pool, sensor_id, &mut buffered_readings).await;
+                    break;
+                }
+                Ok(None) => {
+                    let _ = flush_buffer(&pool, sensor_id, &mut buffered_readings).await;
+                    break;
+                }
                 Err(e) => {
                     tracing::warn!("Sensor {}: DB error checking status: {:?}", sensor_id, e);
                 }
@@ -100,7 +110,13 @@ fn spawn_sensor_task(
             }
 
             match poll_once(&app, &pool, sensor_id, &mut last_alert_at, debounce).await {
-                Ok(_) => {
+                Ok(reading) => {
+                    buffered_readings.push(reading);
+                    if buffered_readings.len() >= 10 {
+                        if let Err(error) = flush_buffer(&pool, sensor_id, &mut buffered_readings).await {
+                            tracing::warn!("Sensor {}: batch flush error: {}", sensor_id, error);
+                        }
+                    }
                     backoff = base_interval;
                 }
                 Err(e) => {
@@ -124,7 +140,7 @@ async fn poll_once(
     sensor_id: i64,
     last_alert_at: &mut Option<Instant>,
     debounce: Duration,
-) -> Result<(), String> {
+) -> Result<BufferedReading, String> {
     let sensor = db::sensors::get_sensor(pool, sensor_id)
         .await
         .map_err(|e| e.to_string())?
@@ -132,7 +148,7 @@ async fn poll_once(
 
     // Manual sensors are skipped — users enter values via UI
     if sensor.connection_type == SensorConnectionType::Manual {
-        return Ok(());
+        return Err("Manual sensors are not polled automatically".to_string());
     }
 
     let driver = build_driver(&sensor);
@@ -146,18 +162,16 @@ async fn poll_once(
     let unit = reading
         .unit
         .or_else(|| limits_opt.as_ref().and_then(|l| l.unit.clone()));
-
-    let stored = db::sensors::record_reading(pool, sensor_id, reading.value, unit)
-        .await
-        .map_err(|e| e.to_string())?;
+    let recorded_at = Utc::now().naive_utc();
 
     let _ = app.emit(
         "sensor:reading",
         serde_json::json!({
+            "sensorId": sensor_id,
             "sensor_id": sensor_id,
-            "value": stored.value,
-            "unit": stored.unit,
-            "timestamp": stored.recorded_at.to_string(),
+            "value": reading.value,
+            "unit": unit,
+            "timestamp": recorded_at.to_string(),
         }),
     );
 
@@ -179,6 +193,22 @@ async fn poll_once(
         }
     }
 
+    Ok((reading.value, unit, recorded_at))
+}
+
+async fn flush_buffer(
+    pool: &SqlitePool,
+    sensor_id: i64,
+    buffered_readings: &mut Vec<BufferedReading>,
+) -> Result<(), String> {
+    if buffered_readings.is_empty() {
+        return Ok(());
+    }
+
+    db::sensors::record_readings_batch(pool, sensor_id, buffered_readings)
+        .await
+        .map_err(|e| e.to_string())?;
+    buffered_readings.clear();
     Ok(())
 }
 

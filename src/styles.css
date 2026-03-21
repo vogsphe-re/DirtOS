@@ -1,0 +1,96 @@
+/* ==================================================================
+   DirtOS — Global styles & Gruvbox palette tokens
+   ================================================================== */
+
+:root {
+  color-scheme: light dark;
+  --dirtos-shadow: 0 18px 40px rgba(0, 0, 0, 0.12);
+}
+
+html,
+body,
+#root {
+  min-height: 100vh;
+  margin: 0;
+}
+
+body {
+  font-family: Inter, "Segoe UI", sans-serif;
+  background: var(--mantine-color-body);
+  color: var(--mantine-color-text);
+}
+
+body[data-ready="false"] {
+  overflow: hidden;
+}
+
+/* ===================================================================
+   Simplified palette — dark & light
+   Mantine v8 sets data-mantine-color-scheme on <html>, so we use a
+   bare attribute selector to cascade custom-properties to all children.
+   =================================================================== */
+
+/* ---------- DARK MODE ---------- */
+[data-mantine-color-scheme="dark"] {
+  --dirtos-bg: #1d2021;
+  --dirtos-bg-alt: #282828;
+  --dirtos-fg: #ebdbb2;
+  --dirtos-fg-muted: #a89984;
+  --dirtos-contrast: #3c3836;
+  --dirtos-accent: #8ec07c;
+
+  --app-shell-panel: #1d2021;
+  --app-shell-border: rgba(168, 153, 132, 0.18);
+
+  /* Mantine internal overrides */
+  --mantine-color-body: #1d2021;
+  --mantine-color-default-border: #3c3836;
+  --mantine-color-text: #ebdbb2;
+  --mantine-color-dimmed: #a89984;
+  --mantine-color-default: #282828;
+  --mantine-color-default-hover: #32302f;
+  --mantine-color-default-color: #ebdbb2;
+}
+
+/* ---------- LIGHT MODE ---------- */
+[data-mantine-color-scheme="light"] {
+  --dirtos-bg: #fbf1c7;
+  --dirtos-bg-alt: #f9f5d7;
+  --dirtos-fg: #3c3836;
+  --dirtos-fg-muted: #665c54;
+  --dirtos-contrast: #ebdbb2;
+  --dirtos-accent: #458588;
+
+  --app-shell-panel: #f9f5d7;
+  --app-shell-border: rgba(124, 111, 100, 0.18);
+
+  --mantine-color-body: #fbf1c7;
+  --mantine-color-default-border: #ebdbb2;
+  --mantine-color-text: #3c3836;
+  --mantine-color-dimmed: #665c54;
+  --mantine-color-default: #fbf1c7;
+  --mantine-color-default-hover: #f2e5bc;
+  --mantine-color-default-color: #3c3836;
+}
+
+/* ---------- Utility classes ---------- */
+
+.dirtos-shell {
+  background: var(--app-shell-panel);
+  border-color: var(--app-shell-border);
+}
+
+.dirtos-glass {
+  background: var(--app-shell-panel);
+  border: 1px solid var(--app-shell-border);
+  box-shadow: var(--dirtos-shadow);
+}
+
+.dirtos-mono {
+  font-family: "Roboto Mono", "SFMono-Regular", monospace;
+}
+
+.dirtos-scroll-panel {
+  max-height: min(64vh, 720px);
+  overflow: auto;
+}

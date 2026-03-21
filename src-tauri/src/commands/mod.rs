@@ -1,3 +1,4 @@
+pub mod app;
 pub mod greet;
 pub mod dashboards;
 pub mod environment;
@@ -18,6 +19,7 @@ pub mod sensors;
 pub mod weather;
 // Re-export everything so macro-generated symbols (__cmd__*, __specta__fn__*)
 // are visible at the `commands::` path used by collect_commands! and invoke_handler.
+pub use app::*;
 pub use greet::*;
 pub use dashboards::*;
 pub use environment::*;

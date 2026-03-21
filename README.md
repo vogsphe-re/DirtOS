@@ -45,3 +45,7 @@
 ## Documentation
 
 - [Phase 10a: Integrations & Extensions](docs/phase-10a-integrations.md)
+- [User Guide](docs/USER_GUIDE.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Developer Guide](DEVELOPER.md)
+- [Contributing](CONTRIBUTING.md)

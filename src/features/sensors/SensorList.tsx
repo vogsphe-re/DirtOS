@@ -1,10 +1,9 @@
 import {
   Badge,
+  Box,
   Button,
   Group,
-  Loader,
   Stack,
-  Table,
   Text,
   Title,
 } from "@mantine/core";
@@ -14,11 +13,13 @@ import {
   IconPlus,
   IconTrash,
 } from "@tabler/icons-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { commands } from "../../lib/bindings";
 import type { Sensor } from "../../lib/bindings";
 import { useAppStore } from "../../stores/appStore";
+import { EmptyState, PageLoader } from "../../components/LoadingStates";
 import { SensorForm } from "./SensorForm";
 import { SensorDetail } from "./SensorDetail";
 
@@ -45,6 +46,7 @@ const CONNECTION_TYPE_LABELS: Record<string, string> = {
 export function SensorList() {
   const activeEnvId = useAppStore((s) => s.activeEnvironmentId);
   const queryClient = useQueryClient();
+  const parentRef = useRef<HTMLDivElement>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
@@ -79,6 +81,13 @@ export function SensorList() {
       queryClient.invalidateQueries({ queryKey: ["sensors", activeEnvId] }),
   });
 
+  const rowVirtualizer = useVirtualizer({
+    count: sensors.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 92,
+    overscan: 8,
+  });
+
   if (!activeEnvId) {
     return (
       <Stack p="md" align="center" mt="xl">
@@ -100,105 +109,91 @@ export function SensorList() {
       </Group>
 
       {isLoading ? (
-        <Loader />
+        <PageLoader label="Loading sensors…" />
       ) : sensors.length === 0 ? (
-        <Text c="dimmed">No sensors configured.</Text>
+        <EmptyState
+          title="No sensors configured"
+          message="Add a sensor to start collecting environmental readings and alerts."
+          actionLabel="Add sensor"
+          onAction={() => setAddOpen(true)}
+        />
       ) : (
-        <Table striped highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Name</Table.Th>
-              <Table.Th>Type</Table.Th>
-              <Table.Th>Connection</Table.Th>
-              <Table.Th>Status</Table.Th>
-              <Table.Th>Interval</Table.Th>
-              <Table.Th>Actions</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {sensors.map((sensor) => (
-              <Table.Tr
-                key={sensor.id}
-                style={{ cursor: "pointer" }}
-                onClick={() => setSelectedId(sensor.id)}
-              >
-                <Table.Td>
-                  <Text fw={500}>{sensor.name}</Text>
-                </Table.Td>
-                <Table.Td>
-                  <Badge size="sm" variant="light">
-                    {SENSOR_TYPE_LABELS[sensor.sensor_type] ?? sensor.sensor_type}
-                  </Badge>
-                </Table.Td>
-                <Table.Td>
-                  <Text size="sm" c="dimmed">
-                    {CONNECTION_TYPE_LABELS[sensor.connection_type] ??
-                      sensor.connection_type}
-                  </Text>
-                </Table.Td>
-                <Table.Td>
-                  {sensor.is_active ? (
-                    <Badge color="green" size="sm">
-                      Active
-                    </Badge>
-                  ) : (
-                    <Badge color="gray" size="sm">
-                      Paused
-                    </Badge>
-                  )}
-                </Table.Td>
-                <Table.Td>
-                  <Text size="sm" c="dimmed">
-                    {sensor.poll_interval_seconds != null
-                      ? `${sensor.poll_interval_seconds}s`
-                      : "—"}
-                  </Text>
-                </Table.Td>
-                <Table.Td onClick={(e) => e.stopPropagation()}>
-                  <Group gap="xs">
-                    <Button
-                      size="xs"
-                      variant="light"
-                      color={sensor.is_active ? "orange" : "green"}
-                      leftSection={
-                        sensor.is_active ? (
-                          <IconPlayerPause size={12} />
-                        ) : (
-                          <IconPlayerPlay size={12} />
-                        )
-                      }
-                      onClick={() =>
-                        toggleMutation.mutate({
-                          id: sensor.id,
-                          active: !sensor.is_active,
-                        })
-                      }
-                    >
-                      {sensor.is_active ? "Pause" : "Start"}
-                    </Button>
-                    <Button
-                      size="xs"
-                      color="red"
-                      variant="light"
-                      leftSection={<IconTrash size={12} />}
-                      onClick={() => {
-                        if (
-                          confirm(
-                            `Delete sensor "${sensor.name}"? This also deletes all readings.`
-                          )
-                        ) {
-                          deleteMutation.mutate(sensor.id);
-                        }
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </Group>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+        <Box
+          ref={parentRef}
+          className="dirtos-scroll-panel"
+          style={{ position: "relative", border: "1px solid var(--mantine-color-default-border)", borderRadius: 12 }}
+        >
+          <Box h={rowVirtualizer.getTotalSize()} pos="relative">
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const sensor = sensors[virtualRow.index];
+              return (
+                <Box
+                  key={sensor.id}
+                  pos="absolute"
+                  top={0}
+                  left={0}
+                  right={0}
+                  style={{ transform: `translateY(${virtualRow.start}px)` }}
+                  p="sm"
+                >
+                  <Box
+                    className="dirtos-glass"
+                    p="md"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => setSelectedId(sensor.id)}
+                  >
+                    <Group justify="space-between" align="flex-start" wrap="wrap">
+                      <Stack gap={6}>
+                        <Group gap="xs">
+                          <Text fw={600}>{sensor.name}</Text>
+                          <Badge size="sm" variant="light">
+                            {SENSOR_TYPE_LABELS[sensor.sensor_type] ?? sensor.sensor_type}
+                          </Badge>
+                          <Badge color={sensor.is_active ? "green" : "gray"} size="sm">
+                            {sensor.is_active ? "Active" : "Paused"}
+                          </Badge>
+                        </Group>
+                        <Text size="sm" c="dimmed">
+                          {CONNECTION_TYPE_LABELS[sensor.connection_type] ?? sensor.connection_type}
+                          {sensor.poll_interval_seconds != null ? ` · ${sensor.poll_interval_seconds}s poll interval` : ""}
+                        </Text>
+                      </Stack>
+                      <Group gap="xs" onClick={(event) => event.stopPropagation()}>
+                        <Button
+                          size="xs"
+                          variant="light"
+                          color={sensor.is_active ? "orange" : "green"}
+                          leftSection={sensor.is_active ? <IconPlayerPause size={12} /> : <IconPlayerPlay size={12} />}
+                          onClick={() =>
+                            toggleMutation.mutate({
+                              id: sensor.id,
+                              active: !sensor.is_active,
+                            })
+                          }
+                        >
+                          {sensor.is_active ? "Pause" : "Start"}
+                        </Button>
+                        <Button
+                          size="xs"
+                          color="red"
+                          variant="light"
+                          leftSection={<IconTrash size={12} />}
+                          onClick={() => {
+                            if (confirm(`Delete sensor "${sensor.name}"? This also deletes all readings.`)) {
+                              deleteMutation.mutate(sensor.id);
+                            }
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </Group>
+                    </Group>
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        </Box>
       )}
 
       <SensorForm

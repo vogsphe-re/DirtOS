@@ -1,3 +1,5 @@
+pub mod backup;
+pub mod export;
 pub mod export_import;
 pub mod inaturalist;
 pub mod issue_generator;

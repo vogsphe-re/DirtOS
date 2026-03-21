@@ -28,12 +28,12 @@ import type { Location, NewSoilTest, SoilTest } from "../../lib/bindings";
 import { useAppStore } from "../../stores/appStore";
 
 const METRIC_KEYS: { key: keyof SoilTest; label: string; color: string }[] = [
-  { key: "ph", label: "pH", color: "#6366f1" },
-  { key: "moisture_pct", label: "Moisture %", color: "#0ea5e9" },
-  { key: "organic_matter_pct", label: "Organic Matter %", color: "#22c55e" },
-  { key: "nitrogen_ppm", label: "Nitrogen (ppm)", color: "#f59e0b" },
-  { key: "phosphorus_ppm", label: "Phosphorus (ppm)", color: "#ef4444" },
-  { key: "potassium_ppm", label: "Potassium (ppm)", color: "#8b5cf6" },
+  { key: "ph", label: "pH", color: "#d3869b" },
+  { key: "moisture_pct", label: "Moisture %", color: "#83a598" },
+  { key: "organic_matter_pct", label: "Organic Matter %", color: "#b8bb26" },
+  { key: "nitrogen_ppm", label: "Nitrogen (ppm)", color: "#fabd2f" },
+  { key: "phosphorus_ppm", label: "Phosphorus (ppm)", color: "#fb4934" },
+  { key: "potassium_ppm", label: "Potassium (ppm)", color: "#fe8019" },
 ];
 
 export function SoilTests() {

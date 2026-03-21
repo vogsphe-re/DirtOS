@@ -325,7 +325,7 @@ export function GardenScene({ environmentId }: GardenSceneProps) {
           left: 10,
           width: 290,
           backdropFilter: 'blur(6px)',
-          background: 'rgba(255,255,255,0.88)',
+          background: 'var(--app-shell-panel)',
         }}
       >
         <Stack gap={8}>

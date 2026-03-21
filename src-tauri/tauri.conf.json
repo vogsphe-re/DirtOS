@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "DirtOS",
-  "version": "0.1.0",
-  "identifier": "com.dirtos.app",
+  "version": "0.1.1",
+  "identifier": "com.dirtos.desktop",
   "build": {
     "beforeDevCommand": "pnpm vite:dev",
     "devUrl": "http://localhost:1420",
@@ -15,8 +15,8 @@
         "title": "DirtOS",
         "width": 1400,
         "height": 900,
-        "minWidth": 1024,
-        "minHeight": 600,
+        "minWidth": 1100,
+        "minHeight": 680,
         "resizable": true,
         "fullscreen": false
       }
@@ -28,10 +28,19 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "resources": [
+      "../assets/logo-dark.png",
+      "../assets/logo-light.png",
+      "../assets/theme-dark.png",
+      "../assets/theme-light.png"
+    ],
     "icon": [
       "icons/32x32.png",
+      "icons/64x64.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
+      "icons/256x256.png",
+      "icons/512x512.png",
       "icons/icon.icns",
       "icons/icon.ico"
     ]

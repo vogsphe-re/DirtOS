@@ -1,3 +1,4 @@
+import type Konva from 'konva';
 import { create } from 'zustand';
 import { CanvasObject, GridConfig, LayerName, LAYER_ORDER, ToolType } from './types';
 
@@ -24,6 +25,7 @@ interface CanvasStore {
   stageX: number;
   stageY: number;
   stageScale: number;
+  stageNode: Konva.Stage | null;
   isDirty: boolean;
 
   setObjects: (objects: CanvasObject[]) => void;
@@ -36,6 +38,7 @@ interface CanvasStore {
   updateGridConfig: (config: Partial<GridConfig>) => void;
   setEditingPlotId: (id: string | null) => void;
   setStageTransform: (x: number, y: number, scale: number) => void;
+  setStageNode: (stageNode: Konva.Stage | null) => void;
   setDirty: (dirty: boolean) => void;
 }
 
@@ -49,6 +52,7 @@ export const useCanvasStore = create<CanvasStore>()((set) => ({
   stageX: 0,
   stageY: 0,
   stageScale: 1,
+  stageNode: null,
   isDirty: false,
 
   setObjects: (objects) => set({ objects }),
@@ -72,5 +76,6 @@ export const useCanvasStore = create<CanvasStore>()((set) => ({
     set((s) => ({ gridConfig: { ...s.gridConfig, ...config } })),
   setEditingPlotId: (editingPlotId) => set({ editingPlotId }),
   setStageTransform: (stageX, stageY, stageScale) => set({ stageX, stageY, stageScale }),
+  setStageNode: (stageNode) => set({ stageNode }),
   setDirty: (isDirty) => set({ isDirty }),
 }));

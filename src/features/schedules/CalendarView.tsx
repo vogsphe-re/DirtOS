@@ -24,10 +24,10 @@ const TYPE_CONFIG: Record<
   CalendarEventType,
   { label: string; color: string; defaultVisible: boolean }
 > = {
-  Schedule: { label: "Schedules", color: "#228be6", defaultVisible: true },
-  PlantingDate: { label: "Planted", color: "#2d6a4f", defaultVisible: true },
-  HarvestDate: { label: "Harvested", color: "#e76f51", defaultVisible: true },
-  IssueCreated: { label: "Issues", color: "#e63946", defaultVisible: false },
+  Schedule: { label: "Schedules", color: "#83a598", defaultVisible: true },
+  PlantingDate: { label: "Planted", color: "#b8bb26", defaultVisible: true },
+  HarvestDate: { label: "Harvested", color: "#fe8019", defaultVisible: true },
+  IssueCreated: { label: "Issues", color: "#fb4934", defaultVisible: false },
 };
 
 const ALL_EVENT_TYPES = Object.keys(TYPE_CONFIG) as CalendarEventType[];
@@ -290,7 +290,7 @@ export function CalendarView() {
                               py={1}
                               style={{
                                 borderRadius: 3,
-                                background: e.color ?? "#adb5bd",
+                                background: e.color ?? "#928374",
                                 overflow: "hidden",
                               }}
                             >

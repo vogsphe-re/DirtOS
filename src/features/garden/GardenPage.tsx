@@ -1,10 +1,14 @@
 import { ActionIcon, Box, Group, Text, Tooltip } from '@mantine/core';
-import { IconDeviceFloppy, IconLayoutSidebar, IconZoomIn, IconZoomOut, IconZoomReset } from '@tabler/icons-react';
+import { save } from '@tauri-apps/plugin-dialog';
+import { writeFile, writeTextFile } from '@tauri-apps/plugin-fs';
+import { IconCode, IconDeviceFloppy, IconLayoutSidebar, IconPhoto, IconZoomIn, IconZoomOut, IconZoomReset } from '@tabler/icons-react';
 import { useCallback, useEffect, useState } from 'react';
+import { notifications } from '@mantine/notifications';
 import { useAppStore } from '../../stores/appStore';
 import { GardenScene } from '../garden3d/GardenScene';
 import { ViewToggle, type GardenViewMode } from '../garden3d/ViewToggle';
 import { GardenCanvas } from './GardenCanvas';
+import { exportCanvasPng, exportCanvasSvg } from './exportCanvas';
 import { GridSettings } from './GridSettings';
 import { LayerPanel } from './LayerPanel';
 import { PlotManager } from './PlotManager';
@@ -34,6 +38,8 @@ export function GardenPage({ locationId: _locationId }: GardenPageProps) {
   const stageScale = useCanvasStore((s) => s.stageScale);
   const stageX = useCanvasStore((s) => s.stageX);
   const stageY = useCanvasStore((s) => s.stageY);
+  const stageNode = useCanvasStore((s) => s.stageNode);
+  const objects = useCanvasStore((s) => s.objects);
   const setStageTransform = useCanvasStore((s) => s.setStageTransform);
   const isDirty = useCanvasStore((s) => s.isDirty);
   const { saveCanvas, loadCanvas } = useCanvasPersistence();
@@ -65,6 +71,30 @@ export function GardenPage({ locationId: _locationId }: GardenPageProps) {
   const zoomOut = () => setStageTransform(stageX, stageY, Math.max(0.05, stageScale / 1.2));
   const zoomReset = () => setStageTransform(0, 0, 1);
 
+  const exportPng = useCallback(async () => {
+    if (!stageNode) {
+      notifications.show({ color: 'red', title: 'Canvas export', message: 'The 2D canvas is not available for PNG export right now.' });
+      return;
+    }
+
+    const target = await save({ defaultPath: 'dirtos-garden.png', filters: [{ name: 'PNG', extensions: ['png'] }] });
+    if (typeof target !== 'string') return;
+
+    const dataUrl = exportCanvasPng(stageNode);
+    const response = await fetch(dataUrl);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    await writeFile(target, bytes);
+    notifications.show({ color: 'green', message: 'Canvas exported as PNG.' });
+  }, [stageNode]);
+
+  const exportSvg = useCallback(async () => {
+    const target = await save({ defaultPath: 'dirtos-garden.svg', filters: [{ name: 'SVG', extensions: ['svg'] }] });
+    if (typeof target !== 'string') return;
+
+    await writeTextFile(target, exportCanvasSvg(objects));
+    notifications.show({ color: 'green', message: 'Canvas exported as SVG.' });
+  }, [objects]);
+
   return (
     <Box style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {/* Top bar */}
@@ -87,6 +117,16 @@ export function GardenPage({ locationId: _locationId }: GardenPageProps) {
         <Box style={{ flex: 1 }} />
         {viewMode === '2d' && (
           <>
+            <Tooltip label="Export canvas as PNG">
+              <ActionIcon size="sm" variant="subtle" onClick={() => void exportPng()}>
+                <IconPhoto size={15} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="Export canvas as SVG">
+              <ActionIcon size="sm" variant="subtle" onClick={() => void exportSvg()}>
+                <IconCode size={15} />
+              </ActionIcon>
+            </Tooltip>
             <Group gap={4}>
               <Tooltip label="Zoom in">
                 <ActionIcon size="sm" variant="subtle" onClick={zoomIn}>

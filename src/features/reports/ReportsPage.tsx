@@ -50,8 +50,8 @@ import type {
 import { useEnvironmentStore } from "../../stores/environmentStore";
 
 const PIE_COLORS = [
-  "#4caf50", "#2196f3", "#ff9800", "#e91e63",
-  "#9c27b0", "#00bcd4", "#8bc34a", "#ff5722",
+  "#b8bb26", "#83a598", "#fe8019", "#d3869b",
+  "#fabd2f", "#8ec07c", "#fb4934", "#458588",
 ];
 
 export function ReportsPage() {
@@ -251,7 +251,7 @@ function ChartView({ data }: { data: ReportData }) {
             <YAxis domain={[4, 9]} tick={{ fontSize: 12 }} />
             <Tooltip />
             <Legend />
-            <Line type="monotone" dataKey="value" name="pH" stroke="#4caf50" dot />
+            <Line type="monotone" dataKey="value" name="pH" stroke="#b8bb26" dot />
           </LineChart>
         </ResponsiveContainer>
       </Stack>
@@ -275,7 +275,7 @@ function ChartView({ data }: { data: ReportData }) {
           <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-30} textAnchor="end" />
           <YAxis tick={{ fontSize: 12 }} />
           <Tooltip />
-          <Bar dataKey="value" name={data.unit ?? "quantity"} fill="#4caf50" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="value" name={data.unit ?? "quantity"} fill="#b8bb26" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </Stack>

@@ -4,6 +4,7 @@ import {
   Box,
   Burger,
   Button,
+  Card,
   Group,
   Modal,
   Select,
@@ -14,13 +15,22 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { IconChevronLeft, IconChevronRight, IconMoon, IconSun } from "@tabler/icons-react";
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconDeviceDesktop,
+  IconInfoCircle,
+  IconMoon,
+  IconSun,
+} from "@tabler/icons-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Outlet } from "@tanstack/react-router";
+import { Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { markAppReady } from "../App";
 import { commands } from "../lib/bindings";
 import { useAppStore } from "../stores/appStore";
 import { useEnvironmentStore, type Environment } from "../stores/environmentStore";
+import { AppSplash, ErrorState } from "./LoadingStates";
 import { Sidebar } from "./Sidebar";
 import { NotificationCenter } from "./NotificationCenter";
 
@@ -97,22 +107,56 @@ async function fetchEnvironments(): Promise<Environment[]> {
   return result.data as Environment[];
 }
 
+type StartupStatus = {
+  ready: boolean;
+  recovering: boolean;
+  recovered_from_backup: boolean;
+  message: string | null;
+};
+
 export function AppLayout() {
   const [mobileOpened, { toggle: toggleMobile }] = useDisclosure();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
   const setSidebarCollapsed = useAppStore((s) => s.setSidebarCollapsed);
   const colorScheme = useAppStore((s) => s.colorScheme);
   const toggleColorScheme = useAppStore((s) => s.toggleColorScheme);
+  const setColorScheme = useAppStore((s) => s.setColorScheme);
   const activeEnvironmentId = useAppStore((s) => s.activeEnvironmentId);
   const setActiveEnvironmentId = useAppStore((s) => s.setActiveEnvironmentId);
   const setEnvironment = useEnvironmentStore((s) => s.setEnvironment);
+
+  const resolvedColorScheme =
+    colorScheme === "system"
+      ? window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light"
+      : colorScheme;
+
+  const {
+    data: startupStatus,
+    isLoading: startupLoading,
+    refetch: refetchStartupStatus,
+  } = useQuery<StartupStatus>({
+    queryKey: ["app-startup-status"],
+    queryFn: async () => {
+      const result = await (commands as typeof commands & {
+        getAppStartupStatus: () => Promise<{ status: "ok"; data: StartupStatus } | { status: "error"; error: string }>;
+      }).getAppStartupStatus();
+      if (result.status !== "ok") throw new Error(result.error);
+      return result.data;
+    },
+    refetchInterval: (query) => (query.state.data?.ready ? false : 800),
+    retry: false,
+  });
 
   const { data: environments = [], isFetched } = useQuery({
     queryKey: ["environments"],
     queryFn: fetchEnvironments,
     staleTime: Infinity,
+    enabled: startupStatus?.ready === true,
   });
 
   const showWizard = isFetched && environments.length === 0;
@@ -142,6 +186,30 @@ export function AppLayout() {
     value: String(e.id),
     label: e.name,
   }));
+
+  useEffect(() => {
+    markAppReady(startupStatus?.ready === true);
+  }, [startupStatus?.ready]);
+
+  if (startupLoading || !startupStatus) {
+    return <AppSplash title="Starting DirtOS" message="Initializing the local database and desktop services." />;
+  }
+
+  if (!startupStatus.ready) {
+    if (startupStatus.recovering) {
+      return <AppSplash title="Recovering workspace" message={startupStatus.message ?? "Attempting to restore the last healthy backup."} />;
+    }
+
+    return (
+      <Box p="md">
+        <ErrorState
+          title="Startup blocked"
+          message={startupStatus.message ?? "DirtOS could not initialize its local workspace."}
+          onRetry={() => refetchStartupStatus()}
+        />
+      </Box>
+    );
+  }
 
   return (
     <>
@@ -189,6 +257,11 @@ export function AppLayout() {
               <Title order={5} visibleFrom="sm" style={{ letterSpacing: "-0.02em" }}>
                 DirtOS
               </Title>
+              {startupStatus.recovered_from_backup && (
+                <Card p="4px 10px" radius="xl" withBorder style={{ background: "transparent" }}>
+                  <Text size="xs">Recovered from backup</Text>
+                </Card>
+              )}
             </Group>
 
             <Group gap="xs">
@@ -204,11 +277,28 @@ export function AppLayout() {
               />
               <ActionIcon
                 variant="subtle"
-                onClick={toggleColorScheme}
+                onClick={() => toggleColorScheme(resolvedColorScheme)}
                 size="md"
                 aria-label="Toggle color scheme"
               >
-                {colorScheme === "dark" ? <IconSun size={18} /> : <IconMoon size={18} />}
+                {resolvedColorScheme === "dark" ? <IconSun size={18} /> : <IconMoon size={18} />}
+              </ActionIcon>
+              <ActionIcon
+                variant="subtle"
+                size="md"
+                aria-label="Use system color scheme"
+                color={colorScheme === "system" ? "green" : undefined}
+                onClick={() => setColorScheme("system")}
+              >
+                <IconDeviceDesktop size={18} />
+              </ActionIcon>
+              <ActionIcon
+                variant="subtle"
+                size="md"
+                aria-label="About DirtOS"
+                onClick={() => navigate({ to: "/about" })}
+              >
+                <IconInfoCircle size={18} />
               </ActionIcon>
               <NotificationCenter />
             </Group>

@@ -65,6 +65,11 @@ export function WeatherMiniWidget() {
               <Text size="xs" c="dimmed" style={{ textTransform: "capitalize" }}>
                 {weather.current.description}
               </Text>
+              {weather.from_cache && (
+                <Text size="xs" c="orange">
+                  Offline fallback
+                </Text>
+              )}
             </Stack>
           </Group>
           {weather.daily[0] && (

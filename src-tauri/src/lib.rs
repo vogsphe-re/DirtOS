@@ -1,3 +1,5 @@
+use std::sync::RwLock;
+
 use tauri::Manager;
 use tauri_specta::{collect_commands, Builder};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
@@ -7,8 +9,50 @@ pub mod db;
 pub mod events;
 pub mod services;
 
+use commands::app::AppStartupStatus;
+
+pub struct AppStartupState {
+    status: RwLock<AppStartupStatus>,
+}
+
+impl Default for AppStartupState {
+    fn default() -> Self {
+        Self {
+            status: RwLock::new(AppStartupStatus {
+                ready: false,
+                recovering: false,
+                recovered_from_backup: false,
+                message: Some("Initializing local database".to_string()),
+            }),
+        }
+    }
+}
+
+impl AppStartupState {
+    pub fn get_status(&self) -> AppStartupStatus {
+        self.status
+            .read()
+            .map(|status| status.clone())
+            .unwrap_or(AppStartupStatus {
+                ready: false,
+                recovering: false,
+                recovered_from_backup: false,
+                message: Some("Startup state unavailable".to_string()),
+            })
+    }
+
+    pub fn set_status(&self, status: AppStartupStatus) {
+        if let Ok(mut current) = self.status.write() {
+            *current = status;
+        }
+    }
+}
+
 fn specta_builder() -> Builder<tauri::Wry> {
     Builder::<tauri::Wry>::new().commands(collect_commands![
+        commands::get_app_startup_status,
+        commands::export_full_garden_data,
+        commands::import_full_garden_data,
         commands::greet,
         // Environment
         commands::list_environments,
@@ -226,6 +270,8 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
+            app.manage(AppStartupState::default());
+
             let app_data_dir = app
                 .path()
                 .app_data_dir()
@@ -236,27 +282,93 @@ pub fn run() {
             // Database initialisation runs async; spawn onto the tokio runtime.
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                match db::init_db(&app_data_dir).await {
-                    Ok(pool) => {
-                        tracing::info!("Database initialised successfully");
-                        // Start the cron scheduler before managing the pool
-                        let sched_pool = pool.clone();
-                        let sched_app = app_handle.clone();
-                        tauri::async_runtime::spawn(async move {
-                            services::scheduler::start(sched_app, sched_pool).await;
+                let startup = app_handle.state::<AppStartupState>();
+
+                let mut recovered_from_backup = false;
+                let pool = match db::init_db(&app_data_dir).await {
+                    Ok(pool) => pool,
+                    Err(error) => {
+                        tracing::error!("Failed to initialise database: {:?}", error);
+                        startup.set_status(AppStartupStatus {
+                            ready: false,
+                            recovering: true,
+                            recovered_from_backup: false,
+                            message: Some("Database startup failed. Attempting backup recovery.".to_string()),
                         });
-                        // Start the sensor polling service
-                        let sensor_pool = pool.clone();
-                        let sensor_app = app_handle.clone();
-                        tauri::async_runtime::spawn(async move {
-                            services::sensors::poller::start(sensor_app, sensor_pool).await;
-                        });
-                        app_handle.manage(pool);
+
+                        match services::backup::restore_latest_backup(&app_data_dir) {
+                            Ok(Some(path)) => {
+                                tracing::warn!("Restored database from backup {:?}", path);
+                                recovered_from_backup = true;
+                                match db::init_db(&app_data_dir).await {
+                                    Ok(pool) => pool,
+                                    Err(recovery_error) => {
+                                        tracing::error!("Backup recovery failed: {:?}", recovery_error);
+                                        startup.set_status(AppStartupStatus {
+                                            ready: false,
+                                            recovering: false,
+                                            recovered_from_backup: false,
+                                            message: Some(format!(
+                                                "Database recovery failed: {}",
+                                                recovery_error
+                                            )),
+                                        });
+                                        return;
+                                    }
+                                }
+                            }
+                            Ok(None) => {
+                                startup.set_status(AppStartupStatus {
+                                    ready: false,
+                                    recovering: false,
+                                    recovered_from_backup: false,
+                                    message: Some(format!("Database initialization failed: {}", error)),
+                                });
+                                return;
+                            }
+                            Err(recovery_error) => {
+                                startup.set_status(AppStartupStatus {
+                                    ready: false,
+                                    recovering: false,
+                                    recovered_from_backup: false,
+                                    message: Some(format!(
+                                        "Database recovery failed: {}",
+                                        recovery_error
+                                    )),
+                                });
+                                return;
+                            }
+                        }
                     }
-                    Err(e) => {
-                        tracing::error!("Failed to initialise database: {:?}", e);
-                    }
-                }
+                };
+
+                tracing::info!("Database initialised successfully");
+                services::backup::start_periodic_backups(app_data_dir.clone(), pool.clone());
+
+                // Start the cron scheduler before managing the pool
+                let sched_pool = pool.clone();
+                let sched_app = app_handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    services::scheduler::start(sched_app, sched_pool).await;
+                });
+                // Start the sensor polling service
+                let sensor_pool = pool.clone();
+                let sensor_app = app_handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    services::sensors::poller::start(sensor_app, sensor_pool).await;
+                });
+                app_handle.manage(pool);
+
+                startup.set_status(AppStartupStatus {
+                    ready: true,
+                    recovering: false,
+                    recovered_from_backup,
+                    message: if recovered_from_backup {
+                        Some("Recovered from the latest healthy backup.".to_string())
+                    } else {
+                        Some("Ready".to_string())
+                    },
+                });
             });
 
             Ok(())

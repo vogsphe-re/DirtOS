@@ -7,6 +7,30 @@
 
 
 export const commands = {
+async getAppStartupStatus() : Promise<Result<AppStartupStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_app_startup_status") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async exportFullGardenData() : Promise<Result<ExportPayload, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("export_full_garden_data") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async importFullGardenData(content: string) : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("import_full_garden_data", { content }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async greet(name: string) : Promise<GreetResponse> {
     return await TAURI_INVOKE("greet", { name });
 },
@@ -1294,6 +1318,7 @@ async deleteDashboard(id: number) : Promise<Result<boolean, string>> {
 
 export type Additive = { id: number; name: string; additive_type: AdditiveType; npk_n: number | null; npk_p: number | null; npk_k: number | null; application_rate: number | null; application_unit: string | null; notes: string | null }
 export type AdditiveType = "Fertilizer" | "Amendment" | "Pesticide" | "Fungicide" | "Other"
+export type AppStartupStatus = { ready: boolean; recovering: boolean; recovered_from_backup: boolean; message: string | null }
 export type AutomationEvent = { id: number; provider: string; event_type: string; direction: string; payload_json: string | null; status: string; error_message: string | null; created_at: string; processed_at: string | null }
 export type BackupFormat = "json" | "yaml" | "archive"
 export type BackupJob = { id: number; name: string; schedule_cron: string | null; format: BackupFormat; include_secrets: boolean; is_active: boolean; last_run_status: string | null; last_run_at: string | null; last_error: string | null; created_at: string; updated_at: string }

@@ -1,7 +1,7 @@
 import Konva from 'konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 import type { ReactElement } from 'react';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Circle,
   Group,
@@ -12,7 +12,7 @@ import {
   Text,
   Transformer,
 } from 'react-konva';
-import { Box, Text as MText } from '@mantine/core';
+import { Box, Text as MText, useComputedColorScheme } from '@mantine/core';
 import { useCanvasStore } from './canvasStore';
 import { useCanvasHistory } from './hooks/useCanvasHistory';
 import { useCanvasPersistence } from './hooks/useCanvasPersistence';
@@ -57,6 +57,27 @@ function makeObject(type: ObjectType, x: number, y: number, id: string): CanvasO
     label: '',
     notes: '',
   };
+}
+
+function isObjectVisible(
+  obj: CanvasObject,
+  bounds: { left: number; right: number; top: number; bottom: number },
+) {
+  const points = obj.points ?? [];
+  const x1 = points.length > 0
+    ? Math.min(...points.filter((_, index) => index % 2 === 0))
+    : obj.x;
+  const x2 = points.length > 0
+    ? Math.max(...points.filter((_, index) => index % 2 === 0))
+    : obj.x + (obj.width ?? (obj.radius ?? 20) * 2);
+  const y1 = points.length > 0
+    ? Math.min(...points.filter((_, index) => index % 2 === 1))
+    : obj.y;
+  const y2 = points.length > 0
+    ? Math.max(...points.filter((_, index) => index % 2 === 1))
+    : obj.y + (obj.height ?? (obj.radius ?? 20) * 2);
+
+  return x2 >= bounds.left && x1 <= bounds.right && y2 >= bounds.top && y1 <= bounds.bottom;
 }
 
 const POLYLINE_TOOLS = new Set<string>(['path', 'fence', 'irrigation']);
@@ -215,13 +236,13 @@ const CanvasShape = memo(function CanvasShape({
 // ObjectLabel
 // ---------------------------------------------------------------------------
 
-function ObjectLabel({ obj }: { obj: CanvasObject }) {
+function ObjectLabel({ obj, fill }: { obj: CanvasObject; fill: string }) {
   if (!obj.label) return null;
   const isPolyline = POLYLINE_TOOLS.has(obj.type);
   const x = isPolyline ? (obj.points?.[0] ?? obj.x) : obj.x + 4;
   const y = isPolyline ? (obj.points?.[1] ?? obj.y) - 16 : obj.y + 4;
   return (
-    <Text x={x} y={y} text={obj.label} fontSize={11} fill="#333" listening={false} />
+    <Text x={x} y={y} text={obj.label} fontSize={11} fill={fill} listening={false} />
   );
 }
 
@@ -253,6 +274,8 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const trRef = useRef<Konva.Transformer>(null);
+  const colorScheme = useComputedColorScheme("dark");
+  const labelFill = colorScheme === "dark" ? "#ebdbb2" : "#3c3836";
 
   const [size, setSize] = useState({ width: 800, height: 600 });
   const [cursor, setCursor] = useState({ x: 0, y: 0 });
@@ -274,7 +297,7 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
 
   const {
     addObject, updateObject, removeObject,
-    setSelectedId, setStageTransform, setDirty,
+    setSelectedId, setStageNode, setStageTransform, setDirty,
   } = useCanvasStore();
 
   const { pushSnapshot, undo, redo } = useCanvasHistory();
@@ -301,6 +324,8 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
 
   // Attach transformer to selected node
   useEffect(() => {
+    setStageNode(stageRef.current);
+
     const tr = trRef.current;
     const stage = stageRef.current;
     if (!tr || !stage) return;
@@ -348,6 +373,7 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     return () => {
+      setStageNode(null);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
@@ -534,20 +560,39 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
     : isPanMode ? 'grab'
     : 'crosshair';
 
-  const visibleObjects = editingPlotId
-    ? objects.filter((o) => o.id === editingPlotId || o.parentId === editingPlotId)
-    : objects;
+  const viewportBounds = useMemo(() => {
+    const padding = 240 / stageScale;
+    return {
+      left: (-stageX) / stageScale - padding,
+      right: (-stageX + size.width) / stageScale + padding,
+      top: (-stageY) / stageScale - padding,
+      bottom: (-stageY + size.height) / stageScale + padding,
+    };
+  }, [size.height, size.width, stageScale, stageX, stageY]);
 
-  const byLayer = Object.fromEntries(
-    LAYER_ORDER.map((l) => [l, visibleObjects.filter((o) => o.layer === l)]),
-  ) as Record<string, CanvasObject[]>;
+  const visibleObjects = useMemo(() => {
+    const baseObjects = editingPlotId
+      ? objects.filter((o) => o.id === editingPlotId || o.parentId === editingPlotId)
+      : objects;
+
+    return baseObjects.filter((obj) => obj.id === selectedId || isObjectVisible(obj, viewportBounds));
+  }, [editingPlotId, objects, selectedId, viewportBounds]);
+
+  const byLayer = useMemo(
+    () => Object.fromEntries(
+      LAYER_ORDER.map((layerName) => [layerName, visibleObjects.filter((obj) => obj.layer === layerName)]),
+    ) as Record<string, CanvasObject[]>,
+    [visibleObjects],
+  );
 
   const coordLabel = `${(cursor.x / gridConfig.pixelsPerUnit).toFixed(1)} ${gridConfig.unit}, ${(cursor.y / gridConfig.pixelsPerUnit).toFixed(1)} ${gridConfig.unit}`;
 
   return (
     <Box
       ref={containerRef}
-      style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#faf9f6', cursor: cursorStyle }}
+      role='application'
+      aria-label='Garden canvas editor. Use mouse or trackpad to pan and zoom, and keyboard shortcuts for save, undo, redo, and delete.'
+      style={{ flex: 1, position: 'relative', overflow: 'hidden', background: 'var(--dirtos-bg)', cursor: cursorStyle }}
     >
       <Stage
         ref={stageRef}
@@ -594,7 +639,7 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
               {byLayer[layerName]
                 .filter((o) => o.label && o.type !== 'text')
                 .map((o) => (
-                  <ObjectLabel key={`lbl-${o.id}`} obj={o} />
+                  <ObjectLabel key={`lbl-${o.id}`} obj={o} fill={labelFill} />
                 ))}
             </Group>
           ))}
@@ -624,8 +669,8 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
       <Box
         style={{
           position: 'absolute', bottom: 8, left: 8,
-          background: 'rgba(255,255,255,0.8)', padding: '2px 8px',
-          borderRadius: 4, fontSize: 11, color: '#555',
+          background: 'var(--app-shell-panel)', padding: '2px 8px',
+          borderRadius: 4, fontSize: 11, color: 'var(--dirtos-fg-muted)',
           pointerEvents: 'none', userSelect: 'none',
         }}
       >
@@ -636,8 +681,8 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
         <Box
           style={{
             position: 'absolute', bottom: 8, right: 8,
-            background: 'rgba(255,200,50,0.9)', padding: '2px 8px',
-            borderRadius: 4, fontSize: 11, color: '#555', pointerEvents: 'none',
+            background: 'var(--dirtos-accent)', padding: '2px 8px',
+            borderRadius: 4, fontSize: 11, color: 'var(--dirtos-bg)', pointerEvents: 'none',
           }}
         >
           <MText size="xs">Unsaved · Ctrl+S to save</MText>

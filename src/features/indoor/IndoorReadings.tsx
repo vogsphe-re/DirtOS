@@ -147,10 +147,10 @@ export function IndoorReadings({ indoorEnvId }: Props) {
               <YAxis yAxisId="vpd" domain={[0, 2.4]} width={36} />
               <YAxis yAxisId="temp" orientation="right" width={36} hide />
               <RechartsTooltip />
-              <Line yAxisId="vpd" type="monotone" dataKey="vpd" stroke="#2a9d8f" strokeWidth={2} dot={false} name="VPD (kPa)" />
-              <Line yAxisId="temp" type="monotone" dataKey="airTemp" stroke="#e76f51" strokeWidth={1.8} dot={false} name="Air Temp (C)" />
-              <Line yAxisId="temp" type="monotone" dataKey="waterPh" stroke="#3a86ff" strokeWidth={1.6} dot={false} name="Water pH" />
-              <Line yAxisId="temp" type="monotone" dataKey="waterEc" stroke="#8338ec" strokeWidth={1.6} dot={false} name="Water EC" />
+              <Line yAxisId="vpd" type="monotone" dataKey="vpd" stroke="#8ec07c" strokeWidth={2} dot={false} name="VPD (kPa)" />
+              <Line yAxisId="temp" type="monotone" dataKey="airTemp" stroke="#fb4934" strokeWidth={1.8} dot={false} name="Air Temp (C)" />
+              <Line yAxisId="temp" type="monotone" dataKey="waterPh" stroke="#83a598" strokeWidth={1.6} dot={false} name="Water pH" />
+              <Line yAxisId="temp" type="monotone" dataKey="waterEc" stroke="#d3869b" strokeWidth={1.6} dot={false} name="Water EC" />
             </LineChart>
           </ResponsiveContainer>
         </div>

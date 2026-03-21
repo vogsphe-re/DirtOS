@@ -12,6 +12,7 @@ import {
   IconWifi,
   IconBuildingFactory2,
   IconChartBar,
+  IconInfoCircle,
   IconSettings,
 } from "@tabler/icons-react";
 import { useNavigate, useLocation } from "@tanstack/react-router";
@@ -37,6 +38,12 @@ const SETTINGS_ITEM = {
   to: "/settings" as const,
 };
 
+const ABOUT_ITEM = {
+  label: "About",
+  icon: IconInfoCircle,
+  to: "/about" as const,
+};
+
 interface SidebarProps {
   collapsed: boolean;
 }
@@ -56,6 +63,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
         style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}
       >
         <SidebarItem item={SETTINGS_ITEM} collapsed={collapsed} />
+        <SidebarItem item={ABOUT_ITEM} collapsed={collapsed} />
       </Box>
     </Stack>
   );

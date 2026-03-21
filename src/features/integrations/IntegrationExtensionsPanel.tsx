@@ -21,6 +21,8 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconExternalLink, IconRefresh, IconSearch } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
+import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { useMemo, useState } from "react";
 import { commands } from "../../lib/bindings";
 
@@ -251,11 +253,12 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
           <Stack gap="md">
             <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }}>
               {PROVIDERS.map((provider) => (
-                <Card key={provider.value} withBorder>
-                  <Group justify="space-between" mb={6}>
-                    <Text fw={600}>{provider.label}</Text>
+                <Card key={provider.value} withBorder padding="sm">
+                  <Text fw={600} size="sm" mb={6}>{provider.label}</Text>
+                  <Group justify="space-between" align="center">
                     <Switch
                       size="sm"
+                      label={!!configByProvider.get(provider.value)?.enabled ? "Enabled" : "Disabled"}
                       checked={!!configByProvider.get(provider.value)?.enabled}
                       onChange={(e) =>
                         upsertConfig.mutate({
@@ -265,7 +268,7 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
                       }
                     />
                   </Group>
-                  <Text size="xs" c="dimmed">
+                  <Text size="xs" c="dimmed" mt={4}>
                     {configByProvider.get(provider.value)?.last_error || "No recent errors"}
                   </Text>
                 </Card>
@@ -274,7 +277,7 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
 
             <Divider />
 
-            <Group align="end">
+            <Group align="end" wrap="wrap">
               <Select
                 label="Species"
                 placeholder="Select species"
@@ -333,17 +336,17 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
 
         <Tabs.Panel value="maps" pt="md">
           <Stack gap="md">
-            <Group align="end">
+            <Stack gap={4}>
               <TextInput
                 label="Find place"
                 placeholder="Search city, park, address"
                 value={osmQuery}
                 onChange={(e) => setOsmQuery(e.currentTarget.value)}
                 leftSection={<IconSearch size={14} />}
-                w={360}
+                maw={360}
               />
-              <Text size="sm" c="dimmed">OSM geocoding with Nominatim</Text>
-            </Group>
+              <Text size="xs" c="dimmed">OSM geocoding with Nominatim</Text>
+            </Stack>
 
             {osmResults.length > 0 && (
               <Card withBorder>
@@ -371,7 +374,7 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
               <NumberInput label="Zoom" value={mapZoom} onChange={setMapZoom} min={1} max={20} />
             </SimpleGrid>
 
-            <Group>
+            <Group wrap="wrap" gap="md">
               <Select
                 label="Privacy"
                 value={mapPrivacy}
@@ -381,7 +384,10 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
                   { value: "obfuscated", label: "Obfuscated" },
                   { value: "shared", label: "Shared" },
                 ]}
+                w={160}
               />
+            </Group>
+            <Group wrap="wrap" gap="md">
               <Checkbox label="Weather overlay" checked={weatherOverlay} onChange={(e) => setWeatherOverlay(e.currentTarget.checked)} />
               <Checkbox label="Soil overlay" checked={soilOverlay} onChange={(e) => setSoilOverlay(e.currentTarget.checked)} />
               <Checkbox label="Allow sharing" checked={allowSharing} onChange={(e) => setAllowSharing(e.currentTarget.checked)} />
@@ -422,7 +428,8 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
 
         <Tabs.Panel value="automation" pt="md">
           <Stack gap="md">
-            <Group align="end">
+            <Text fw={600}>Create Webhook Token</Text>
+            <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <Select
                 label="Token provider"
                 data={[
@@ -431,15 +438,15 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
                 ]}
                 value={webhookProvider}
                 onChange={(v) => setWebhookProvider((v as Provider) || "n8n")}
-                w={200}
               />
               <TextInput
                 label="Token name"
                 placeholder="Garden automations"
                 value={webhookName}
                 onChange={(e) => setWebhookName(e.currentTarget.value)}
-                w={260}
               />
+            </SimpleGrid>
+            <Group>
               <Button onClick={() => createToken.mutate()} loading={createToken.isPending}>Create token</Button>
             </Group>
 
@@ -456,34 +463,33 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
 
             <Card withBorder>
               <Text fw={600} mb={8}>Test callback ingestion</Text>
-              <Group align="end">
-                <Select
-                  label="Callback provider"
-                  data={[
-                    { value: "home_assistant", label: "Home Assistant" },
-                    { value: "n8n", label: "n8n" },
-                  ]}
-                  value={callbackProvider}
-                  onChange={(v) => setCallbackProvider((v as Provider) || "n8n")}
-                  w={200}
+              <Stack gap="sm">
+                <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                  <Select
+                    label="Callback provider"
+                    data={[
+                      { value: "home_assistant", label: "Home Assistant" },
+                      { value: "n8n", label: "n8n" },
+                    ]}
+                    value={callbackProvider}
+                    onChange={(v) => setCallbackProvider((v as Provider) || "n8n")}
+                  />
+                  <TextInput
+                    label="Token"
+                    value={callbackToken}
+                    onChange={(e) => setCallbackToken(e.currentTarget.value)}
+                  />
+                </SimpleGrid>
+                <Textarea
+                  label="Payload JSON"
+                  minRows={4}
+                  value={callbackPayload}
+                  onChange={(e) => setCallbackPayload(e.currentTarget.value)}
                 />
-                <TextInput
-                  label="Token"
-                  value={callbackToken}
-                  onChange={(e) => setCallbackToken(e.currentTarget.value)}
-                  w={360}
-                />
-              </Group>
-              <Textarea
-                mt="sm"
-                label="Payload JSON"
-                minRows={4}
-                value={callbackPayload}
-                onChange={(e) => setCallbackPayload(e.currentTarget.value)}
-              />
-              <Button mt="sm" onClick={() => sendCallback.mutate()} loading={sendCallback.isPending}>
-                Send callback
-              </Button>
+                <Button onClick={() => sendCallback.mutate()} loading={sendCallback.isPending}>
+                  Send callback
+                </Button>
+              </Stack>
             </Card>
 
             <Card withBorder>
@@ -554,6 +560,7 @@ export function BackupManagerPanel() {
   const [encryptionPassword, setEncryptionPassword] = useState("");
   const [importFormat, setImportFormat] = useState("json");
   const [importContent, setImportContent] = useState("");
+  const [gardenImportContent, setGardenImportContent] = useState("");
   const [lastExport, setLastExport] = useState<string | null>(null);
 
   const { data: jobs = [] } = useQuery({
@@ -646,11 +653,91 @@ export function BackupManagerPanel() {
     onError: (e: Error) => notifications.show({ color: "red", title: "Import failed", message: e.message }),
   });
 
+  const exportGardenData = useMutation({
+    mutationFn: async () => {
+      const res = await (commands as any).exportFullGardenData();
+      if (res.status === "error") throw new Error(res.error);
+      return res.data as { filename: string; content: string };
+    },
+    onSuccess: async (data) => {
+      setLastExport(data.content);
+      const target = await saveDialog({
+        defaultPath: data.filename,
+        filters: [{ name: "JSON", extensions: ["json"] }],
+      });
+
+      if (typeof target === "string") {
+        await writeTextFile(target, data.content);
+        notifications.show({ color: "green", message: `Garden backup saved to ${target}.` });
+      } else {
+        notifications.show({ color: "blue", message: "Garden backup generated but not saved to disk." });
+      }
+    },
+    onError: (e: Error) => notifications.show({ color: "red", title: "Garden export failed", message: e.message }),
+  });
+
+  const importGardenData = useMutation({
+    mutationFn: async () => {
+      const res = await (commands as any).importFullGardenData(gardenImportContent);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data as string;
+    },
+    onSuccess: (message) => {
+      qc.invalidateQueries();
+      notifications.show({ color: "green", message });
+    },
+    onError: (e: Error) => notifications.show({ color: "red", title: "Garden import failed", message: e.message }),
+  });
+
   return (
     <Card withBorder>
       <Title order={4} mb="md">Backups & Import/Export</Title>
       <Stack gap="md">
         <SimpleGrid cols={{ base: 1, md: 2 }}>
+          <Card withBorder>
+            <Text fw={600} mb={8}>Full Garden Backup</Text>
+            <Stack gap="sm">
+              <Text size="sm" c="dimmed">
+                Export or import the full DirtOS workspace as portable JSON, including SQLite table data and stored media files.
+              </Text>
+              <Group>
+                <Button variant="light" onClick={() => exportGardenData.mutate()} loading={exportGardenData.isPending}>
+                  Export full backup
+                </Button>
+                <Button
+                  variant="subtle"
+                  onClick={async () => {
+                    const selected = await openDialog({
+                      multiple: false,
+                      filters: [{ name: "JSON", extensions: ["json"] }],
+                    });
+                    if (typeof selected !== "string") return;
+                    const content = await readTextFile(selected);
+                    setGardenImportContent(content);
+                    notifications.show({ color: "blue", message: "Backup file loaded into the import pane." });
+                  }}
+                >
+                  Load backup file
+                </Button>
+              </Group>
+              <Textarea
+                label="Full backup content"
+                minRows={8}
+                value={gardenImportContent}
+                onChange={(e) => setGardenImportContent(e.currentTarget.value)}
+                placeholder="Load a garden backup JSON file or paste one here"
+              />
+              <Button
+                color="orange"
+                onClick={() => importGardenData.mutate()}
+                loading={importGardenData.isPending}
+                disabled={!gardenImportContent.trim()}
+              >
+                Import full backup
+              </Button>
+            </Stack>
+          </Card>
+
           <Card withBorder>
             <Text fw={600} mb={8}>Scheduled Backups</Text>
             <Stack gap="sm">

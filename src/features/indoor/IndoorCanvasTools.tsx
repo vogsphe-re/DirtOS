@@ -279,7 +279,7 @@ export function IndoorCanvasTools({
                     alignItems: "center",
                     justifyContent: "center",
                     border: "1px solid var(--mantine-color-gray-5)",
-                    background: "white",
+                    background: "var(--dirtos-bg)",
                     transform: `translate(-50%, -50%) rotate(${obj.rotationDeg ?? 0}deg)`,
                     cursor: "pointer",
                     userSelect: "none",

@@ -269,7 +269,7 @@ export function WeatherDashboard() {
               </Group>
               {weather.from_cache && (
                 <Badge size="xs" color="gray" variant="outline">
-                  Cached
+                  Offline · Cached
                 </Badge>
               )}
             </Group>

@@ -9,13 +9,14 @@ import {
   NativeSelect,
   NumberInput,
   PasswordInput,
+  SegmentedControl,
   Stack,
   Text,
   TextInput,
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconDeviceDesktop, IconMoon, IconPlus, IconSun, IconTrash } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -166,6 +167,8 @@ function SettingsPage() {
   const queryClient = useQueryClient();
   const activeId = useAppStore((s) => s.activeEnvironmentId);
   const setActiveId = useAppStore((s) => s.setActiveEnvironmentId);
+  const colorScheme = useAppStore((s) => s.colorScheme);
+  const setColorScheme = useAppStore((s) => s.setColorScheme);
   const setEnvironment = useEnvironmentStore((s) => s.setEnvironment);
 
   const [creatingNew, setCreatingNew] = useState(false);
@@ -236,6 +239,50 @@ function SettingsPage() {
     <Stack p="md" maw={720}>
       <Title order={2}>Settings</Title>
 
+      <Card withBorder>
+        <Title order={4} mb="xs">Appearance</Title>
+        <Text size="sm" c="dimmed" mb="sm">
+          Default theme follows your desktop setting.
+        </Text>
+        <SegmentedControl
+          fullWidth
+          value={colorScheme}
+          onChange={(value) => setColorScheme(value as "light" | "dark" | "system")}
+          data={[
+            {
+              value: "system",
+              label: (
+                <Group gap={6} justify="center">
+                  <IconDeviceDesktop size={14} />
+                  <span>System</span>
+                </Group>
+              ),
+            },
+            {
+              value: "light",
+              label: (
+                <Group gap={6} justify="center">
+                  <IconSun size={14} />
+                  <span>Light</span>
+                </Group>
+              ),
+            },
+            {
+              value: "dark",
+              label: (
+                <Group gap={6} justify="center">
+                  <IconMoon size={14} />
+                  <span>Dark</span>
+                </Group>
+              ),
+            },
+          ]}
+        />
+        <Text size="sm" c="dimmed" mt="sm">
+          DirtOS uses Inter for interface text, IM Fell English for headings, and Roboto Mono for measurements and diagnostics.
+        </Text>
+      </Card>
+
       {/* ---- Environments section ---- */}
       <Card withBorder>
         <Group justify="space-between" mb="md">
@@ -301,6 +348,20 @@ function SettingsPage() {
 
       {/* ---- Backups / Import Export ---- */}
       <BackupManagerPanel />
+
+      <Card withBorder>
+        <Group justify="space-between" align="flex-start">
+          <Stack gap={4}>
+            <Title order={4}>About</Title>
+            <Text size="sm" c="dimmed">
+              Version, release details, and platform notes are available on the About page.
+            </Text>
+          </Stack>
+          <Button component="a" href="/about" variant="light">
+            Open About
+          </Button>
+        </Group>
+      </Card>
     </Stack>
   );
 }

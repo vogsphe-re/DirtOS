@@ -2,17 +2,19 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export type ColorScheme = "light" | "dark";
+export type ColorSchemePreference = ColorScheme | "system";
 
 interface AppState {
   activeEnvironmentId: number | null;
   activeDashboardId: number | null;
   sidebarCollapsed: boolean;
-  colorScheme: ColorScheme;
+  colorScheme: ColorSchemePreference;
 
   setActiveEnvironmentId: (id: number | null) => void;
   setActiveDashboardId: (id: number | null) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
-  toggleColorScheme: () => void;
+  setColorScheme: (colorScheme: ColorSchemePreference) => void;
+  toggleColorScheme: (resolvedColorScheme: ColorScheme) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -21,14 +23,22 @@ export const useAppStore = create<AppState>()(
       activeEnvironmentId: null,
       activeDashboardId: null,
       sidebarCollapsed: false,
-      colorScheme: "dark",
+      colorScheme: "system",
 
       setActiveEnvironmentId: (id) => set({ activeEnvironmentId: id }),
       setActiveDashboardId: (id) => set({ activeDashboardId: id }),
       setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
-      toggleColorScheme: () =>
+      setColorScheme: (colorScheme) => set({ colorScheme }),
+      toggleColorScheme: (resolvedColorScheme) =>
         set((state) => ({
-          colorScheme: state.colorScheme === "dark" ? "light" : "dark",
+          colorScheme:
+            state.colorScheme === "system"
+              ? resolvedColorScheme === "dark"
+                ? "light"
+                : "dark"
+              : state.colorScheme === "dark"
+                ? "light"
+                : "dark",
         })),
     }),
     {
