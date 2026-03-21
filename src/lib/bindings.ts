@@ -186,6 +186,28 @@ async enrichSpeciesWikipediaBySlug(speciesId: number, slug: string) : Promise<Re
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Search Encyclopedia of Life for candidate pages for a species.
+ */
+async searchEolCandidates(speciesId: number) : Promise<Result<EolSearchResult[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("search_eol_candidates", { speciesId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Enrich a species record with data from a specific EoL page chosen by the user.
+ */
+async enrichSpeciesEolById(speciesId: number, eolPageId: number) : Promise<Result<Species, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("enrich_species_eol_by_id", { speciesId, eolPageId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async listIntegrationConfigs() : Promise<Result<IntegrationConfig[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("list_integration_configs") };
@@ -1380,7 +1402,7 @@ export type IndoorReading = { id: number; indoor_environment_id: number; water_t
 export type IndoorReservoirTarget = { id: number; indoor_environment_id: number; ph_min: number | null; ph_max: number | null; ec_min: number | null; ec_max: number | null; ppm_min: number | null; ppm_max: number | null; updated_at: string }
 export type IndoorWaterChange = { id: number; indoor_environment_id: number; volume_liters: number | null; notes: string | null; created_at: string }
 export type IntegrationConfig = { id: number; provider: IntegrationProvider; enabled: boolean; auth_json: string | null; settings_json: string | null; sync_interval_minutes: number | null; cache_ttl_minutes: number | null; rate_limit_per_minute: number | null; last_synced_at: string | null; last_error: string | null; updated_at: string }
-export type IntegrationProvider = "inaturalist" | "wikipedia" | "osm" | "home_assistant" | "n8n"
+export type IntegrationProvider = "inaturalist" | "wikipedia" | "eol" | "osm" | "home_assistant" | "n8n"
 export type IntegrationSyncRun = { id: number; provider: string; operation: string; status: string; records_fetched: number | null; records_upserted: number | null; error_message: string | null; started_at: string; finished_at: string | null }
 export type IntegrationWebhookToken = { id: number; provider: string; name: string; token: string; is_active: boolean; created_at: string }
 export type Issue = { id: number; environment_id: number | null; plant_id: number | null; location_id: number | null; title: string; description: string | null; status: IssueStatus; priority: IssuePriority; created_at: string; updated_at: string; closed_at: string | null }
@@ -1437,7 +1459,7 @@ export type SensorLimit = { id: number; sensor_id: number; min_value: number | n
 export type SensorReading = { id: number; sensor_id: number; value: number; unit: string | null; recorded_at: string }
 export type SensorType = "moisture" | "light" | "temperature" | "humidity" | "ph" | "ec" | "co2" | "air_quality" | "custom"
 export type SoilTest = { id: number; location_id: number; test_date: string; ph: number | null; nitrogen_ppm: number | null; phosphorus_ppm: number | null; potassium_ppm: number | null; moisture_pct: number | null; organic_matter_pct: number | null; notes: string | null; created_at: string }
-export type Species = { id: number; common_name: string; scientific_name: string | null; family: string | null; genus: string | null; inaturalist_id: number | null; wikipedia_slug: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; description: string | null; image_url: string | null; cached_inaturalist_json: string | null; cached_wikipedia_json: string | null; is_user_added: boolean; created_at: string; updated_at: string }
+export type Species = { id: number; common_name: string; scientific_name: string | null; family: string | null; genus: string | null; inaturalist_id: number | null; wikipedia_slug: string | null; eol_page_id: number | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; description: string | null; image_url: string | null; cached_inaturalist_json: string | null; cached_wikipedia_json: string | null; cached_eol_json: string | null; is_user_added: boolean; created_at: string; updated_at: string }
 export type SpeciesExternalSource = { id: number; species_id: number; provider: IntegrationProvider; external_id: string | null; source_url: string | null; attribution: string | null; revision_id: string | null; native_range_json: string | null; metadata_json: string | null; retrieved_at: string; last_synced_at: string }
 export type SyncSpeciesResult = { species: Species | null; synced_providers: string[]; skipped_providers: string[]; errors: string[] }
 export type TaxonResult = { id: number; name: string; preferred_common_name: string | null; rank: string | null; default_photo_url: string | null; wikipedia_url: string | null; matched_term: string | null }
@@ -1461,6 +1483,7 @@ export type UpsertIntegrationConfig = { enabled: boolean; auth_json: string | nu
 export type WeatherData = { current: CurrentWeather; hourly: ForecastItem[]; daily: DailyForecast[]; from_cache: boolean; fetched_at: string }
 export type WikiSummary = { title: string; slug: string; extract: string | null; thumbnail_url: string | null; page_url: string | null; raw_json: string }
 export type WikiSearchResult = { title: string; slug: string; description: string | null; url: string | null }
+export type EolSearchResult = { id: number; title: string; link: string | null; snippet: string | null }
 
 /** tauri-specta globals **/
 

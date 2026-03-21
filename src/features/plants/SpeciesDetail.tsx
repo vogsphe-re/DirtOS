@@ -29,7 +29,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { commands } from "../../lib/bindings";
-import type { WikiSearchResult } from "../../lib/bindings";
+import type { WikiSearchResult, EolSearchResult } from "../../lib/bindings";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
 import { AddPlantModal } from "./AddPlantModal";
 import type { Plant, Species } from "./types";
@@ -45,6 +45,8 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
   const [addPlantOpen, setAddPlantOpen] = useState(false);
   const [wikiPickerOpen, setWikiPickerOpen] = useState(false);
   const [wikiCandidates, setWikiCandidates] = useState<WikiSearchResult[]>([]);
+  const [eolPickerOpen, setEolPickerOpen] = useState(false);
+  const [eolCandidates, setEolCandidates] = useState<EolSearchResult[]>([]);
 
   const { data: species, isLoading, isError } = useQuery({
     queryKey: ["species", speciesId],
@@ -118,6 +120,46 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
     },
     onError: (err: Error) =>
       notifications.show({ title: "Wikipedia error", message: err.message, color: "red" }),
+  });
+
+  const searchEolCandidates = useMutation({
+    mutationFn: async () => {
+      const res = await commands.searchEolCandidates(speciesId);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data;
+    },
+    onSuccess: (candidates) => {
+      if (candidates.length === 0) {
+        notifications.show({
+          title: "No results",
+          message: "No Encyclopedia of Life pages found for this species.",
+          color: "orange",
+        });
+      } else if (candidates.length === 1) {
+        enrichEolById.mutate(candidates[0].id);
+      } else {
+        setEolCandidates(candidates);
+        setEolPickerOpen(true);
+      }
+    },
+    onError: (err: Error) =>
+      notifications.show({ title: "EoL search error", message: err.message, color: "red" }),
+  });
+
+  const enrichEolById = useMutation({
+    mutationFn: async (eolPageId: number) => {
+      const res = await commands.enrichSpeciesEolById(speciesId, eolPageId);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data;
+    },
+    onSuccess: () => {
+      setEolPickerOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["species", speciesId] });
+      queryClient.invalidateQueries({ queryKey: ["species"] });
+      notifications.show({ title: "Enriched", message: "Encyclopedia of Life data applied.", color: "teal" });
+    },
+    onError: (err: Error) =>
+      notifications.show({ title: "EoL error", message: err.message, color: "red" }),
   });
 
   if (isLoading) return <Loader m="xl" />;
@@ -213,6 +255,16 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
               onClick={() => searchWikiCandidates.mutate()}
             >
               Enrich from Wikipedia
+            </Button>
+            <Button
+              size="xs"
+              variant="light"
+              color="teal"
+              leftSection={<IconPlant size={14} />}
+              loading={searchEolCandidates.isPending || enrichEolById.isPending}
+              onClick={() => searchEolCandidates.mutate()}
+            >
+              Enrich from EoL
             </Button>
           </Group>
         </Stack>
@@ -381,6 +433,49 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
                   variant="light"
                   loading={enrichWikiBySlug.isPending}
                   onClick={() => enrichWikiBySlug.mutate(c.slug)}
+                >
+                  Use this
+                </Button>
+              </Group>
+            </Card>
+          ))}
+        </Stack>
+      </Modal>
+
+      {/* Encyclopedia of Life page picker */}
+      <Modal
+        opened={eolPickerOpen}
+        onClose={() => setEolPickerOpen(false)}
+        title="Select Encyclopedia of Life page"
+        size="lg"
+      >
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">
+            Multiple EoL pages matched. Choose the one that best describes this species.
+          </Text>
+          <Divider />
+          {eolCandidates.map((c) => (
+            <Card key={c.id} withBorder padding="sm">
+              <Group justify="space-between" align="flex-start" wrap="nowrap">
+                <Stack gap={2} flex={1}>
+                  <Text fw={500} size="sm">{c.title}</Text>
+                  {c.snippet && (
+                    <Text size="xs" c="dimmed" lineClamp={2}>
+                      {c.snippet}
+                    </Text>
+                  )}
+                  {c.link && (
+                    <Anchor href={c.link} target="_blank" size="xs">
+                      {c.link} <IconExternalLink size={11} />
+                    </Anchor>
+                  )}
+                </Stack>
+                <Button
+                  size="xs"
+                  variant="light"
+                  color="teal"
+                  loading={enrichEolById.isPending}
+                  onClick={() => enrichEolById.mutate(c.id)}
                 >
                   Use this
                 </Button>

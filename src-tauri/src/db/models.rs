@@ -133,6 +133,7 @@ pub enum SensorConnectionType {
 pub enum IntegrationProvider {
     Inaturalist,
     Wikipedia,
+    Eol,
     Osm,
     HomeAssistant,
     #[serde(rename = "n8n")]
@@ -286,8 +287,10 @@ pub struct Species {
     pub hardiness_zone_max: Option<String>,
     pub description: Option<String>,
     pub image_url: Option<String>,
+    pub eol_page_id: Option<i64>,
     pub cached_inaturalist_json: Option<String>,
     pub cached_wikipedia_json: Option<String>,
+    pub cached_eol_json: Option<String>,
     pub is_user_added: bool,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,

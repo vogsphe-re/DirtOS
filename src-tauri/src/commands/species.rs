@@ -7,7 +7,7 @@ use crate::{
         models::{NewSpecies, Pagination, Species, SpeciesFilters, UpdateSpecies},
         species,
     },
-    services::{inaturalist, wikipedia},
+    services::{inaturalist, eol, wikipedia},
 };
 
 #[tauri::command]
@@ -213,6 +213,76 @@ pub async fn enrich_species_wikipedia(
 /// Search Wikipedia for candidate articles for a species using fuzzy (OpenSearch)
 /// matching against both the scientific name and common name.  Returns deduplicated
 /// results so the user can pick the correct article.
+
+/// Search Encyclopedia of Life for candidate pages for a species.
+/// Queries by scientific name then common name, deduplicates by EoL page id.
+#[tauri::command]
+#[specta::specta]
+pub async fn search_eol_candidates(
+    pool: State<'_, SqlitePool>,
+    species_id: i64,
+) -> Result<Vec<eol::EolSearchResult>, String> {
+    let sp = species::get_species(&pool, species_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Species {species_id} not found"))?;
+
+    let client = Client::builder()
+        .use_rustls_tls()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let mut queries: Vec<String> = Vec::new();
+    if let Some(sci) = sp.scientific_name.filter(|s| !s.is_empty()) {
+        queries.push(sci);
+    }
+    if !sp.common_name.is_empty() {
+        queries.push(sp.common_name);
+    }
+
+    let mut seen = std::collections::HashSet::new();
+    let mut results: Vec<eol::EolSearchResult> = Vec::new();
+
+    for query in queries {
+        if let Ok(candidates) = eol::search(&client, &query, 6).await {
+            for c in candidates {
+                if seen.insert(c.id) {
+                    results.push(c);
+                }
+            }
+        }
+    }
+
+    Ok(results)
+}
+
+/// Enrich a species record with data from a specific EoL page chosen by the user.
+#[tauri::command]
+#[specta::specta]
+pub async fn enrich_species_eol_by_id(
+    pool: State<'_, SqlitePool>,
+    species_id: i64,
+    eol_page_id: i64,
+) -> Result<Species, String> {
+    let client = Client::builder()
+        .use_rustls_tls()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let detail = eol::get_page(&client, eol_page_id).await?;
+
+    species::update_species_eol(
+        &pool,
+        species_id,
+        detail.page_id,
+        detail.description,
+        detail.image_url,
+        detail.raw_json,
+    )
+    .await
+    .map_err(|e| e.to_string())?
+    .ok_or_else(|| format!("Species {species_id} not found after EoL update"))
+}
 #[tauri::command]
 #[specta::specta]
 pub async fn search_wikipedia_candidates(

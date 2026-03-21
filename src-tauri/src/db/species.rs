@@ -247,3 +247,31 @@ pub async fn update_species_wikipedia(
     .await?;
     get_species(pool, id).await
 }
+
+/// Persist Encyclopedia of Life (EoL) enrichment data on a species row.
+pub async fn update_species_eol(
+    pool: &SqlitePool,
+    id: i64,
+    eol_page_id: i64,
+    description: Option<String>,
+    image_url: Option<String>,
+    cached_json: String,
+) -> Result<Option<Species>, sqlx::Error> {
+    sqlx::query(
+        "UPDATE species SET
+            eol_page_id      = ?,
+            description      = COALESCE(?, description),
+            image_url        = COALESCE(?, image_url),
+            cached_eol_json  = ?,
+            updated_at       = datetime('now')
+         WHERE id = ?",
+    )
+    .bind(eol_page_id)
+    .bind(description)
+    .bind(image_url)
+    .bind(cached_json)
+    .bind(id)
+    .execute(pool)
+    .await?;
+    get_species(pool, id).await
+}
