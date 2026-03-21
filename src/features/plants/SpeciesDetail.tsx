@@ -2,9 +2,12 @@ import {
   Anchor,
   Badge,
   Button,
+  Card,
+  Divider,
   Group,
   Image,
   Loader,
+  Modal,
   SimpleGrid,
   Stack,
   Table,
@@ -26,6 +29,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { commands } from "../../lib/bindings";
+import type { WikiSearchResult } from "../../lib/bindings";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
 import { AddPlantModal } from "./AddPlantModal";
 import type { Plant, Species } from "./types";
@@ -39,6 +43,8 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [addPlantOpen, setAddPlantOpen] = useState(false);
+  const [wikiPickerOpen, setWikiPickerOpen] = useState(false);
+  const [wikiCandidates, setWikiCandidates] = useState<WikiSearchResult[]>([]);
 
   const { data: species, isLoading, isError } = useQuery({
     queryKey: ["species", speciesId],
@@ -73,13 +79,39 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
       notifications.show({ title: "iNaturalist error", message: err.message, color: "red" }),
   });
 
-  const enrichWiki = useMutation({
+  const searchWikiCandidates = useMutation({
     mutationFn: async () => {
-      const res = await (commands as any).enrichSpeciesWikipedia(speciesId);
+      const res = await commands.searchWikipediaCandidates(speciesId);
       if (res.status === "error") throw new Error(res.error);
-      return res.data as Species;
+      return res.data;
+    },
+    onSuccess: (candidates) => {
+      if (candidates.length === 0) {
+        notifications.show({
+          title: "No results",
+          message: "No Wikipedia articles found for this species.",
+          color: "orange",
+        });
+      } else if (candidates.length === 1) {
+        // Single result — enrich immediately without prompting
+        enrichWikiBySlug.mutate(candidates[0].slug);
+      } else {
+        setWikiCandidates(candidates);
+        setWikiPickerOpen(true);
+      }
+    },
+    onError: (err: Error) =>
+      notifications.show({ title: "Wikipedia search error", message: err.message, color: "red" }),
+  });
+
+  const enrichWikiBySlug = useMutation({
+    mutationFn: async (slug: string) => {
+      const res = await commands.enrichSpeciesWikipediaBySlug(speciesId, slug);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data;
     },
     onSuccess: () => {
+      setWikiPickerOpen(false);
       queryClient.invalidateQueries({ queryKey: ["species", speciesId] });
       queryClient.invalidateQueries({ queryKey: ["species"] });
       notifications.show({ title: "Enriched", message: "Wikipedia description applied.", color: "green" });
@@ -177,8 +209,8 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
               variant="light"
               color="gray"
               leftSection={<IconBrandWikipedia size={14} />}
-              loading={enrichWiki.isPending}
-              onClick={() => enrichWiki.mutate()}
+              loading={searchWikiCandidates.isPending || enrichWikiBySlug.isPending}
+              onClick={() => searchWikiCandidates.mutate()}
             >
               Enrich from Wikipedia
             </Button>
@@ -315,6 +347,48 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
           queryClient.invalidateQueries({ queryKey: ["plants-by-species", speciesId] });
         }}
       />
+
+      {/* Wikipedia article picker */}
+      <Modal
+        opened={wikiPickerOpen}
+        onClose={() => setWikiPickerOpen(false)}
+        title="Select Wikipedia article"
+        size="lg"
+      >
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">
+            Multiple Wikipedia articles matched. Choose the one that best describes this species.
+          </Text>
+          <Divider />
+          {wikiCandidates.map((c) => (
+            <Card key={c.slug} withBorder padding="sm">
+              <Group justify="space-between" align="flex-start" wrap="nowrap">
+                <Stack gap={2} flex={1}>
+                  <Text fw={500} size="sm">{c.title}</Text>
+                  {c.description && (
+                    <Text size="xs" c="dimmed" lineClamp={2}>
+                      {c.description}
+                    </Text>
+                  )}
+                  {c.url && (
+                    <Anchor href={c.url} target="_blank" size="xs">
+                      {c.url} <IconExternalLink size={11} />
+                    </Anchor>
+                  )}
+                </Stack>
+                <Button
+                  size="xs"
+                  variant="light"
+                  loading={enrichWikiBySlug.isPending}
+                  onClick={() => enrichWikiBySlug.mutate(c.slug)}
+                >
+                  Use this
+                </Button>
+              </Group>
+            </Card>
+          ))}
+        </Stack>
+      </Modal>
     </Stack>
   );
 }

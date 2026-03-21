@@ -96,7 +96,7 @@ export const gruvboxResolver: CSSVariablesResolver = () => ({
 });
 
 export const dirtTheme = createTheme({
-  primaryColor: "green",
+  primaryColor: "blue",
   defaultRadius: "md",
   fontFamily: 'Inter, "Segoe UI", sans-serif',
   fontFamilyMonospace: '"Roboto Mono", "SFMono-Regular", monospace',

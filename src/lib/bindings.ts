@@ -163,6 +163,29 @@ async enrichSpeciesWikipedia(speciesId: number) : Promise<Result<Species, string
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Search Wikipedia for candidate articles for a species using fuzzy (OpenSearch)
+ * matching against both the scientific name and common name.
+ */
+async searchWikipediaCandidates(speciesId: number) : Promise<Result<WikiSearchResult[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("search_wikipedia_candidates", { speciesId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Enrich a species record using a specific Wikipedia slug chosen by the user.
+ */
+async enrichSpeciesWikipediaBySlug(speciesId: number, slug: string) : Promise<Result<Species, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("enrich_species_wikipedia_by_slug", { speciesId, slug }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async listIntegrationConfigs() : Promise<Result<IntegrationConfig[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("list_integration_configs") };
@@ -1437,6 +1460,7 @@ export type UpsertIndoorReservoirTarget = { ph_min: number | null; ph_max: numbe
 export type UpsertIntegrationConfig = { enabled: boolean; auth_json: string | null; settings_json: string | null; sync_interval_minutes: number | null; cache_ttl_minutes: number | null; rate_limit_per_minute: number | null }
 export type WeatherData = { current: CurrentWeather; hourly: ForecastItem[]; daily: DailyForecast[]; from_cache: boolean; fetched_at: string }
 export type WikiSummary = { title: string; slug: string; extract: string | null; thumbnail_url: string | null; page_url: string | null; raw_json: string }
+export type WikiSearchResult = { title: string; slug: string; description: string | null; url: string | null }
 
 /** tauri-specta globals **/
 

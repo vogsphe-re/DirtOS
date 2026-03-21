@@ -209,3 +209,75 @@ pub async fn enrich_species_wikipedia(
     .map_err(|e| e.to_string())?
     .ok_or_else(|| format!("Species {species_id} not found after update"))
 }
+
+/// Search Wikipedia for candidate articles for a species using fuzzy (OpenSearch)
+/// matching against both the scientific name and common name.  Returns deduplicated
+/// results so the user can pick the correct article.
+#[tauri::command]
+#[specta::specta]
+pub async fn search_wikipedia_candidates(
+    pool: State<'_, SqlitePool>,
+    species_id: i64,
+) -> Result<Vec<wikipedia::WikiSearchResult>, String> {
+    let sp = species::get_species(&pool, species_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Species {species_id} not found"))?;
+
+    let client = Client::builder()
+        .use_rustls_tls()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    // Build candidate queries: scientific name first, then common name.
+    let mut queries: Vec<String> = Vec::new();
+    if let Some(sci) = sp.scientific_name.filter(|s| !s.is_empty()) {
+        queries.push(sci);
+    }
+    if !sp.common_name.is_empty() {
+        queries.push(sp.common_name);
+    }
+
+    let mut seen = std::collections::HashSet::new();
+    let mut results: Vec<wikipedia::WikiSearchResult> = Vec::new();
+
+    for query in queries {
+        if let Ok(candidates) = wikipedia::search_candidates(&client, &query, 6).await {
+            for c in candidates {
+                if seen.insert(c.slug.clone()) {
+                    results.push(c);
+                }
+            }
+        }
+    }
+
+    Ok(results)
+}
+
+/// Enrich a species record using a specific Wikipedia slug chosen by the user.
+#[tauri::command]
+#[specta::specta]
+pub async fn enrich_species_wikipedia_by_slug(
+    pool: State<'_, SqlitePool>,
+    species_id: i64,
+    slug: String,
+) -> Result<Species, String> {
+    let client = Client::builder()
+        .use_rustls_tls()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let summary = wikipedia::get_summary(&client, &slug).await?;
+
+    species::update_species_wikipedia(
+        &pool,
+        species_id,
+        summary.slug.clone(),
+        summary.extract,
+        summary.thumbnail_url,
+        summary.raw_json,
+    )
+    .await
+    .map_err(|e| e.to_string())?
+    .ok_or_else(|| format!("Species {species_id} not found after update"))
+}

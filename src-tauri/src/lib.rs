@@ -70,6 +70,8 @@ fn specta_builder() -> Builder<tauri::Wry> {
         commands::enrich_species_inaturalist,
         commands::search_wikipedia,
         commands::enrich_species_wikipedia,
+        commands::search_wikipedia_candidates,
+        commands::enrich_species_wikipedia_by_slug,
         // Integrations & extensions
         commands::list_integration_configs,
         commands::upsert_integration_config,
