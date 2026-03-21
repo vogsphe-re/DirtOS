@@ -5,11 +5,27 @@ import path from "path";
 
 const host = process.env.TAURI_DEV_HOST;
 
-export default defineConfig(async () => ({
+export default defineConfig(() => ({
   plugins: [TanStackRouterVite(), react()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (id.includes("/react-dom/") || (id.includes("/react/") && !id.includes("/react-three/") && !id.includes("/react-konva"))) return "vendor-react";
+            if (id.includes("/@mantine/")) return "vendor-mantine";
+            if (id.includes("/three/") || id.includes("/@react-three/")) return "vendor-three";
+            if (id.includes("/recharts/")) return "vendor-charts";
+            if (id.includes("/konva/") || id.includes("/react-konva/")) return "vendor-canvas";
+            if (id.includes("/@tanstack/")) return "vendor-router";
+          }
+        },
+      },
     },
   },
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

@@ -46,7 +46,7 @@ echo "Version bumped to $NEW_VERSION in package.json, Cargo.toml, and tauri.conf
 # ── Clean build ───────────────────────────────────────────────────────────────
 echo "Running clean build..."
 rm -rf dist
-pnpm build
+pnpm build -v
 
 # ── Commit version bump and tag ───────────────────────────────────────────────
 git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json
