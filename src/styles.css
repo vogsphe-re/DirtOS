@@ -34,10 +34,10 @@ body[data-ready="false"] {
 [data-mantine-color-scheme="dark"] {
   --dirtos-bg: #1d2021;
   --dirtos-bg-alt: #282828;
-  --dirtos-fg: #ebdbb2;
-  --dirtos-fg-muted: #a89984;
-  --dirtos-contrast: #3c3836;
-  --dirtos-accent: #8ec07c;
+  --dirtos-fg: #fbf1c7;
+  --dirtos-fg-muted: #bdae93;
+  --dirtos-contrast: #d65d0e;
+  --dirtos-accent: #83a598;
 
   --app-shell-panel: #1d2021;
   --app-shell-border: rgba(168, 153, 132, 0.18);
@@ -45,11 +45,11 @@ body[data-ready="false"] {
   /* Mantine internal overrides */
   --mantine-color-body: #1d2021;
   --mantine-color-default-border: #3c3836;
-  --mantine-color-text: #ebdbb2;
-  --mantine-color-dimmed: #a89984;
+  --mantine-color-text: #fbf1c7;
+  --mantine-color-dimmed: #bdae93;
   --mantine-color-default: #282828;
-  --mantine-color-default-hover: #32302f;
-  --mantine-color-default-color: #ebdbb2;
+  --mantine-color-default-hover: #83a598;
+  --mantine-color-default-color: #fbf1c7;
 }
 
 /* ---------- LIGHT MODE ---------- */
@@ -58,7 +58,7 @@ body[data-ready="false"] {
   --dirtos-bg-alt: #f9f5d7;
   --dirtos-fg: #3c3836;
   --dirtos-fg-muted: #665c54;
-  --dirtos-contrast: #ebdbb2;
+  --dirtos-contrast: #d65d0e;
   --dirtos-accent: #458588;
 
   --app-shell-panel: #f9f5d7;
@@ -69,7 +69,7 @@ body[data-ready="false"] {
   --mantine-color-text: #3c3836;
   --mantine-color-dimmed: #665c54;
   --mantine-color-default: #fbf1c7;
-  --mantine-color-default-hover: #f2e5bc;
+  --mantine-color-default-hover: #83a598;
   --mantine-color-default-color: #3c3836;
 }
 
@@ -91,6 +91,6 @@ body[data-ready="false"] {
 }
 
 .dirtos-scroll-panel {
-  max-height: min(64vh, 720px);
+  max-height: min(64vh, 744px);
   overflow: auto;
 }
