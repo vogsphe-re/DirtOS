@@ -254,7 +254,7 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
             <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }}>
               {PROVIDERS.map((provider) => (
                 <Card key={provider.value} withBorder padding="sm">
-                  <Text fw={600} size="sm" mb={6}>{provider.label}</Text>
+                  <Text fw={600} size="xs" mb={6}>{provider.label}</Text>
                   <Group justify="space-between" align="center">
                     <Switch
                       size="sm"
