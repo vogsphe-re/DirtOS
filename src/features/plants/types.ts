@@ -9,6 +9,8 @@ export interface Species {
   genus: string | null;
   inaturalist_id: number | null;
   wikipedia_slug: string | null;
+  eol_page_id: number | null;
+  eol_description: string | null;
   growth_type: string | null;
   sun_requirement: string | null;
   water_requirement: string | null;
@@ -21,6 +23,12 @@ export interface Species {
   days_to_harvest_max: number | null;
   hardiness_zone_min: string | null;
   hardiness_zone_max: string | null;
+  habitat: string | null;
+  min_temperature_c: number | null;
+  max_temperature_c: number | null;
+  rooting_depth: string | null;
+  uses: string | null;
+  tags: string | null;
   description: string | null;
   image_url: string | null;
   cached_inaturalist_json: string | null;

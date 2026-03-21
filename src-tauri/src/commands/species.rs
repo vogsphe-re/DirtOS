@@ -235,21 +235,34 @@ pub async fn search_eol_candidates(
     let sci_query: Option<String> = sp.scientific_name.filter(|s| !s.is_empty());
     let common_query: Option<String> = if sp.common_name.is_empty() { None } else { Some(sp.common_name) };
 
-    // Run both searches concurrently; ignore individual failures.
-    let (sci_results, common_results) = tokio::join!(
+    if sci_query.is_none() && common_query.is_none() {
+        return Err("This species has no scientific name or common name to search with.".to_string());
+    }
+
+    // Run both searches concurrently.
+    let (sci_result, common_result) = tokio::join!(
         async {
             match sci_query.as_deref() {
-                Some(name) => eol::search(&client, name, 5).await.unwrap_or_default(),
-                None => Vec::new(),
+                Some(name) => eol::search(&client, name, 5).await,
+                None => Ok(Vec::new()),
             }
         },
         async {
             match common_query.as_deref() {
-                Some(name) => eol::search(&client, name, 5).await.unwrap_or_default(),
-                None => Vec::new(),
+                Some(name) => eol::search(&client, name, 5).await,
+                None => Ok(Vec::new()),
             }
         }
     );
+
+    // If both searches failed, surface the primary error so the user can see
+    // what went wrong (network error, TLS failure, etc.).
+    let sci_results = match sci_result {
+        Ok(v) => v,
+        Err(e) if common_result.is_err() => return Err(e),
+        Err(_) => Vec::new(),
+    };
+    let common_results = common_result.unwrap_or_default();
 
     let mut seen = std::collections::HashSet::new();
     let mut results: Vec<eol::EolSearchResult> = Vec::new();
@@ -282,6 +295,17 @@ pub async fn enrich_species_eol_by_id(
     );
     let detail = page_result?;
 
+    let tags_json = if detail.tags.is_empty() {
+        None
+    } else {
+        Some(serde_json::to_string(&detail.tags).unwrap_or_default())
+    };
+    let uses_str = if traits.uses.is_empty() {
+        None
+    } else {
+        Some(traits.uses.join(", "))
+    };
+
     species::update_species_eol(
         &pool,
         species_id,
@@ -291,8 +315,16 @@ pub async fn enrich_species_eol_by_id(
         traits.growth_type,
         traits.sun_requirement,
         traits.water_requirement,
+        traits.soil_ph_min,
+        traits.soil_ph_max,
         traits.hardiness_zone_min,
         traits.hardiness_zone_max,
+        traits.habitat,
+        traits.min_temperature_c,
+        traits.max_temperature_c,
+        traits.rooting_depth,
+        uses_str,
+        tags_json,
         detail.raw_json,
     )
     .await

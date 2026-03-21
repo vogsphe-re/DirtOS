@@ -253,37 +253,61 @@ pub async fn update_species_eol(
     pool: &SqlitePool,
     id: i64,
     eol_page_id: i64,
-    description: Option<String>,
+    eol_description: Option<String>,
     image_url: Option<String>,
     growth_type: Option<String>,
     sun_requirement: Option<String>,
     water_requirement: Option<String>,
+    soil_ph_min: Option<f64>,
+    soil_ph_max: Option<f64>,
     hardiness_zone_min: Option<String>,
     hardiness_zone_max: Option<String>,
+    habitat: Option<String>,
+    min_temperature_c: Option<f64>,
+    max_temperature_c: Option<f64>,
+    rooting_depth: Option<String>,
+    uses: Option<String>,
+    tags: Option<String>,
     cached_json: String,
 ) -> Result<Option<Species>, sqlx::Error> {
     sqlx::query(
         "UPDATE species SET
             eol_page_id        = ?,
-            description        = COALESCE(?, description),
+            eol_description    = COALESCE(?, eol_description),
             image_url          = COALESCE(?, image_url),
             growth_type        = COALESCE(?, growth_type),
             sun_requirement    = COALESCE(?, sun_requirement),
             water_requirement  = COALESCE(?, water_requirement),
+            soil_ph_min        = COALESCE(?, soil_ph_min),
+            soil_ph_max        = COALESCE(?, soil_ph_max),
             hardiness_zone_min = COALESCE(?, hardiness_zone_min),
             hardiness_zone_max = COALESCE(?, hardiness_zone_max),
+            habitat            = COALESCE(?, habitat),
+            min_temperature_c  = COALESCE(?, min_temperature_c),
+            max_temperature_c  = COALESCE(?, max_temperature_c),
+            rooting_depth      = COALESCE(?, rooting_depth),
+            uses               = COALESCE(?, uses),
+            tags               = COALESCE(?, tags),
             cached_eol_json    = ?,
             updated_at         = datetime('now')
          WHERE id = ?",
     )
     .bind(eol_page_id)
-    .bind(description)
+    .bind(eol_description)
     .bind(image_url)
     .bind(growth_type)
     .bind(sun_requirement)
     .bind(water_requirement)
+    .bind(soil_ph_min)
+    .bind(soil_ph_max)
     .bind(hardiness_zone_min)
     .bind(hardiness_zone_max)
+    .bind(habitat)
+    .bind(min_temperature_c)
+    .bind(max_temperature_c)
+    .bind(rooting_depth)
+    .bind(uses)
+    .bind(tags)
     .bind(cached_json)
     .bind(id)
     .execute(pool)

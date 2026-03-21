@@ -306,45 +306,79 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
                 }
               />
             </SimpleGrid>
+            {species.tags && (() => {
+              let parsed: string[] = [];
+              try { parsed = JSON.parse(species.tags); } catch {}
+              return parsed.length > 0 ? (
+                <Group gap="xs" mt="xs">
+                  {parsed.map((tag) => (
+                    <Badge key={tag} variant="light" color="teal" size="sm">{tag}</Badge>
+                  ))}
+                </Group>
+              ) : null;
+            })()}
           </Stack>
         </Tabs.Panel>
 
         {/* Growing Info */}
         <Tabs.Panel value="growing" pt="md">
-          <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
-            <InfoItem label="Sun requirement" value={species.sun_requirement} />
-            <InfoItem label="Water requirement" value={species.water_requirement} />
-            <InfoItem
-              label="Soil pH"
-              value={
-                species.soil_ph_min != null
-                  ? `${species.soil_ph_min}${species.soil_ph_max ? `–${species.soil_ph_max}` : ""}`
-                  : null
-              }
-            />
-            <InfoItem
-              label="Spacing (cm)"
-              value={species.spacing_cm?.toString()}
-            />
-            <InfoItem
-              label="Days to germination"
-              value={
-                species.days_to_germination_min != null
-                  ? `${species.days_to_germination_min}${species.days_to_germination_max ? `–${species.days_to_germination_max}` : ""}`
-                  : null
-              }
-            />
-            <InfoItem
-              label="Days to harvest"
-              value={
-                species.days_to_harvest_min != null
-                  ? `${species.days_to_harvest_min}${species.days_to_harvest_max ? `–${species.days_to_harvest_max}` : ""}`
-                  : null
-              }
-            />
-            <InfoItem label="Hardiness zone min" value={species.hardiness_zone_min} />
-            <InfoItem label="Hardiness zone max" value={species.hardiness_zone_max} />
-          </SimpleGrid>
+          <Stack gap="md">
+            {species.eol_description && (
+              <Stack gap={4}>
+                <Text size="sm" fw={600} c="dimmed">Summary (Encyclopedia of Life)</Text>
+                <Text size="sm">{species.eol_description}</Text>
+                <Divider />
+              </Stack>
+            )}
+            <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
+              <InfoItem label="Growth form" value={species.growth_type} />
+              <InfoItem label="Sun requirement" value={species.sun_requirement} />
+              <InfoItem label="Water requirement" value={species.water_requirement} />
+              <InfoItem label="Habitat" value={species.habitat} />
+              <InfoItem
+                label="Soil pH"
+                value={
+                  species.soil_ph_min != null
+                    ? `${species.soil_ph_min}${species.soil_ph_max ? `–${species.soil_ph_max}` : ""}`
+                    : null
+                }
+              />
+              <InfoItem
+                label="Temperature (°C)"
+                value={
+                  species.min_temperature_c != null
+                    ? `${species.min_temperature_c.toFixed(1)}${species.max_temperature_c != null ? `–${species.max_temperature_c.toFixed(1)}` : ""}`
+                    : species.max_temperature_c != null
+                      ? `≤ ${species.max_temperature_c.toFixed(1)}`
+                      : null
+                }
+              />
+              <InfoItem label="Hardiness zone min" value={species.hardiness_zone_min} />
+              <InfoItem label="Hardiness zone max" value={species.hardiness_zone_max} />
+              <InfoItem label="Rooting depth" value={species.rooting_depth} />
+              <InfoItem label="Uses" value={species.uses} />
+              <InfoItem
+                label="Spacing (cm)"
+                value={species.spacing_cm?.toString()}
+              />
+              <InfoItem
+                label="Days to germination"
+                value={
+                  species.days_to_germination_min != null
+                    ? `${species.days_to_germination_min}${species.days_to_germination_max ? `–${species.days_to_germination_max}` : ""}`
+                    : null
+                }
+              />
+              <InfoItem
+                label="Days to harvest"
+                value={
+                  species.days_to_harvest_min != null
+                    ? `${species.days_to_harvest_min}${species.days_to_harvest_max ? `–${species.days_to_harvest_max}` : ""}`
+                    : null
+                }
+              />
+            </SimpleGrid>
+          </Stack>
         </Tabs.Panel>
 
         {/* Individual Plants */}
