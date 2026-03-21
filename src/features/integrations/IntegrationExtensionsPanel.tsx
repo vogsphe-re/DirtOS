@@ -24,7 +24,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { useMemo, useState } from "react";
-import { commands } from "../../lib/bindings";
+import { commands, type AutomationEvent, type BackupFormat, type BackupJob, type BackupRun, type IntegrationConfig, type IntegrationSyncRun, type IntegrationWebhookToken, type OSMPlaceResult, type SpeciesExternalSource } from "../../lib/bindings";
 
 type Provider = "inaturalist" | "wikipedia" | "osm" | "home_assistant" | "n8n";
 
@@ -49,14 +49,14 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
   const { data: integrationConfigs = [] } = useQuery({
     queryKey: ["integration-configs"],
     queryFn: async () => {
-      const res = await (commands as any).listIntegrationConfigs();
+      const res = await commands.listIntegrationConfigs();
       if (res.status === "error") throw new Error(res.error);
-      return res.data as any[];
+      return res.data;
     },
   });
 
   const configByProvider = useMemo(() => {
-    const map = new Map<Provider, any>();
+    const map = new Map<Provider, IntegrationConfig>();
     integrationConfigs.forEach((cfg) => map.set(cfg.provider as Provider, cfg));
     return map;
   }, [integrationConfigs]);
@@ -64,9 +64,9 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
   const { data: species = [] } = useQuery({
     queryKey: ["integration-species"],
     queryFn: async () => {
-      const res = await (commands as any).listSpeciesForIntegration(200);
+      const res = await commands.listSpeciesForIntegration(200);
       if (res.status === "error") throw new Error(res.error);
-      return res.data as any[];
+      return res.data;
     },
   });
 
@@ -74,9 +74,9 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
     queryKey: ["species-external-sources", selectedSpeciesId],
     queryFn: async () => {
       if (!selectedSpeciesId) return [];
-      const res = await (commands as any).listSpeciesExternalSources(Number(selectedSpeciesId));
+      const res = await commands.listSpeciesExternalSources(Number(selectedSpeciesId));
       if (res.status === "error") throw new Error(res.error);
-      return res.data as any[];
+      return res.data;
     },
     enabled: !!selectedSpeciesId,
   });
@@ -84,9 +84,9 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
   const { data: syncRuns = [] } = useQuery({
     queryKey: ["integration-sync-runs"],
     queryFn: async () => {
-      const res = await (commands as any).listIntegrationSyncRuns(null, 40);
+      const res = await commands.listIntegrationSyncRuns(null, 40);
       if (res.status === "error") throw new Error(res.error);
-      return res.data as any[];
+      return res.data;
     },
   });
 
@@ -94,9 +94,9 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
     queryKey: ["environment-map-setting", activeEnvironmentId],
     queryFn: async () => {
       if (!activeEnvironmentId) return null;
-      const res = await (commands as any).getEnvironmentMapSetting(activeEnvironmentId);
+      const res = await commands.getEnvironmentMapSetting(activeEnvironmentId);
       if (res.status === "error") throw new Error(res.error);
-      return res.data as any | null;
+      return res.data;
     },
     enabled: !!activeEnvironmentId,
   });
@@ -114,9 +114,9 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
     queryKey: ["osm-search", osmQuery],
     queryFn: async () => {
       if (!osmQuery.trim()) return [];
-      const res = await (commands as any).searchOsmPlaces(osmQuery, 8);
+      const res = await commands.searchOsmPlaces(osmQuery, 8);
       if (res.status === "error") throw new Error(res.error);
-      return res.data as any[];
+      return res.data;
     },
     enabled: osmQuery.trim().length > 2,
   });
@@ -124,25 +124,25 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
   const { data: webhookTokens = [] } = useQuery({
     queryKey: ["integration-webhook-tokens", webhookProvider],
     queryFn: async () => {
-      const res = await (commands as any).listIntegrationWebhookTokens(webhookProvider);
+      const res = await commands.listIntegrationWebhookTokens(webhookProvider);
       if (res.status === "error") throw new Error(res.error);
-      return res.data as any[];
+      return res.data;
     },
   });
 
   const { data: automationEvents = [] } = useQuery({
     queryKey: ["automation-events"],
     queryFn: async () => {
-      const res = await (commands as any).listAutomationEvents(null, 30);
+      const res = await commands.listAutomationEvents(null, 30);
       if (res.status === "error") throw new Error(res.error);
-      return res.data as any[];
+      return res.data;
     },
   });
 
   const upsertConfig = useMutation({
     mutationFn: async ({ provider, enabled }: { provider: Provider; enabled: boolean }) => {
       const cfg = configByProvider.get(provider);
-      const res = await (commands as any).upsertIntegrationConfig(provider, {
+      const res = await commands.upsertIntegrationConfig(provider, {
         enabled,
         auth_json: cfg?.auth_json ?? null,
         settings_json: cfg?.settings_json ?? null,
@@ -160,9 +160,9 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
 
   const syncSpecies = useMutation({
     mutationFn: async (speciesId: number) => {
-      const res = await (commands as any).syncSpeciesExternalSources(speciesId);
+      const res = await commands.syncSpeciesExternalSources(speciesId);
       if (res.status === "error") throw new Error(res.error);
-      return res.data as any;
+      return res.data;
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["species-external-sources", selectedSpeciesId] });
@@ -181,7 +181,7 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
   const saveMap = useMutation({
     mutationFn: async () => {
       if (!activeEnvironmentId) throw new Error("No active environment selected");
-      const res = await (commands as any).upsertEnvironmentMapSetting(activeEnvironmentId, {
+      const res = await commands.upsertEnvironmentMapSetting(activeEnvironmentId, {
         latitude: typeof mapLat === "number" ? mapLat : null,
         longitude: typeof mapLon === "number" ? mapLon : null,
         zoom_level: typeof mapZoom === "number" ? mapZoom : 14,
@@ -189,7 +189,7 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
         weather_overlay: weatherOverlay,
         soil_overlay: soilOverlay,
         boundaries_geojson: boundariesGeojson.trim() || null,
-        privacy_level: mapPrivacy,
+        privacy_level: mapPrivacy as "private" | "obfuscated" | "shared",
         allow_sharing: allowSharing,
       });
       if (res.status === "error") throw new Error(res.error);
@@ -203,9 +203,9 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
 
   const createToken = useMutation({
     mutationFn: async () => {
-      const res = await (commands as any).createIntegrationWebhookToken(webhookProvider, webhookName || "Default token");
+      const res = await commands.createIntegrationWebhookToken(webhookProvider, webhookName || "Default token");
       if (res.status === "error") throw new Error(res.error);
-      return res.data as any;
+      return res.data;
     },
     onSuccess: (token) => {
       setWebhookName("");
@@ -218,7 +218,7 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
 
   const sendCallback = useMutation({
     mutationFn: async () => {
-      const res = await (commands as any).processIntegrationCallback(callbackProvider, callbackToken.trim(), callbackPayload);
+      const res = await commands.processIntegrationCallback(callbackProvider, callbackToken.trim(), callbackPayload);
       if (res.status === "error") throw new Error(res.error);
       return res.data as string;
     },
@@ -232,7 +232,7 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
   const speciesOptions = species.map((s) => ({ value: String(s.id), label: s.common_name }));
 
   const selectedSourceByProvider = (provider: Provider) =>
-    speciesSources.find((src: any) => src.provider === provider);
+    speciesSources.find((src: SpeciesExternalSource) => src.provider === provider);
 
   const mapFrameUrl =
     typeof mapLat === "number" && typeof mapLon === "number"
@@ -258,7 +258,7 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
                   <Group justify="space-between" align="center">
                     <Switch
                       size="sm"
-                      label={!!configByProvider.get(provider.value)?.enabled ? "Enabled" : "Disabled"}
+                      label={configByProvider.get(provider.value)?.enabled ? "Enabled" : "Disabled"}
                       checked={!!configByProvider.get(provider.value)?.enabled}
                       onChange={(e) =>
                         upsertConfig.mutate({
@@ -316,7 +316,7 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {syncRuns.slice(0, 6).map((run: any) => (
+                  {syncRuns.slice(0, 6).map((run: IntegrationSyncRun) => (
                     <Table.Tr key={run.id}>
                       <Table.Td>{run.provider}</Table.Td>
                       <Table.Td>
@@ -351,7 +351,7 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
             {osmResults.length > 0 && (
               <Card withBorder>
                 <Stack gap={6}>
-                  {osmResults.map((place: any, idx: number) => (
+                  {osmResults.map((place: OSMPlaceResult, idx: number) => (
                     <Button
                       key={`${place.display_name}-${idx}`}
                       variant="subtle"
@@ -378,7 +378,7 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
               <Select
                 label="Privacy"
                 value={mapPrivacy}
-                onChange={(v) => setMapPrivacy(v || "private")}
+                onChange={(v) => setMapPrivacy(v ?? "private")}
                 data={[
                   { value: "private", label: "Private" },
                   { value: "obfuscated", label: "Obfuscated" },
@@ -453,7 +453,7 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
             <Card withBorder>
               <Text fw={600} mb={8}>Active tokens</Text>
               <Stack gap={6}>
-                {webhookTokens.map((t: any) => (
+                {webhookTokens.map((t: IntegrationWebhookToken) => (
                   <Code key={t.id} block>
                     {t.provider} | {t.name} | {t.token}
                   </Code>
@@ -504,7 +504,7 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {automationEvents.slice(0, 8).map((event: any) => (
+                  {automationEvents.slice(0, 8).map((event: AutomationEvent) => (
                     <Table.Tr key={event.id}>
                       <Table.Td>{event.provider}</Table.Td>
                       <Table.Td>{event.event_type}</Table.Td>
@@ -522,7 +522,7 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
   );
 }
 
-function SourceCard({ source, title }: { source: any; title: string }) {
+function SourceCard({ source, title }: { source: SpeciesExternalSource | undefined; title: string }) {
   return (
     <Card withBorder>
       <Text fw={600} mb={6}>{title}</Text>
@@ -555,10 +555,10 @@ export function BackupManagerPanel() {
   const qc = useQueryClient();
   const [jobName, setJobName] = useState("");
   const [cronExpr, setCronExpr] = useState("0 0 * * *");
-  const [format, setFormat] = useState("json");
+  const [format, setFormat] = useState<BackupFormat>("json");
   const [includeSecrets, setIncludeSecrets] = useState(false);
   const [encryptionPassword, setEncryptionPassword] = useState("");
-  const [importFormat, setImportFormat] = useState("json");
+  const [importFormat, setImportFormat] = useState<BackupFormat>("json");
   const [importContent, setImportContent] = useState("");
   const [gardenImportContent, setGardenImportContent] = useState("");
   const [lastExport, setLastExport] = useState<string | null>(null);
@@ -566,24 +566,24 @@ export function BackupManagerPanel() {
   const { data: jobs = [] } = useQuery({
     queryKey: ["backup-jobs"],
     queryFn: async () => {
-      const res = await (commands as any).listBackupJobs();
+      const res = await commands.listBackupJobs();
       if (res.status === "error") throw new Error(res.error);
-      return res.data as any[];
+      return res.data;
     },
   });
 
   const { data: runs = [] } = useQuery({
     queryKey: ["backup-runs"],
     queryFn: async () => {
-      const res = await (commands as any).listBackupRuns(null, 20);
+      const res = await commands.listBackupRuns(null, 20);
       if (res.status === "error") throw new Error(res.error);
-      return res.data as any[];
+      return res.data;
     },
   });
 
   const createJob = useMutation({
     mutationFn: async () => {
-      const res = await (commands as any).createBackupJob({
+      const res = await commands.createBackupJob({
         name: jobName || "Scheduled backup",
         schedule_cron: cronExpr.trim() || null,
         format,
@@ -602,13 +602,13 @@ export function BackupManagerPanel() {
 
   const exportNow = useMutation({
     mutationFn: async () => {
-      const res = await (commands as any).exportConfiguration(
+      const res = await commands.exportConfiguration(
         format,
         includeSecrets,
         encryptionPassword.trim() || null,
       );
       if (res.status === "error") throw new Error(res.error);
-      return res.data as any;
+      return res.data;
     },
     onSuccess: (data) => {
       setLastExport(data.content);
@@ -620,9 +620,9 @@ export function BackupManagerPanel() {
 
   const runJob = useMutation({
     mutationFn: async (jobId: number) => {
-      const res = await (commands as any).runBackupJob(jobId, encryptionPassword.trim() || null);
+      const res = await commands.runBackupJob(jobId, encryptionPassword.trim() || null);
       if (res.status === "error") throw new Error(res.error);
-      return res.data as any;
+      return res.data;
     },
     onSuccess: (data) => {
       setLastExport(data.content);
@@ -634,7 +634,7 @@ export function BackupManagerPanel() {
 
   const importNow = useMutation({
     mutationFn: async () => {
-      const res = await (commands as any).importConfiguration(
+      const res = await commands.importConfiguration(
         {
           format: importFormat,
           content: importContent,
@@ -655,7 +655,7 @@ export function BackupManagerPanel() {
 
   const exportGardenData = useMutation({
     mutationFn: async () => {
-      const res = await (commands as any).exportFullGardenData();
+      const res = await commands.exportFullGardenData();
       if (res.status === "error") throw new Error(res.error);
       return res.data as { filename: string; content: string };
     },
@@ -678,7 +678,7 @@ export function BackupManagerPanel() {
 
   const importGardenData = useMutation({
     mutationFn: async () => {
-      const res = await (commands as any).importFullGardenData(gardenImportContent);
+      const res = await commands.importFullGardenData(gardenImportContent);
       if (res.status === "error") throw new Error(res.error);
       return res.data as string;
     },
@@ -756,7 +756,7 @@ export function BackupManagerPanel() {
               <Select
                 label="Format"
                 value={format}
-                onChange={(v) => setFormat(v || "json")}
+                onChange={(v) => setFormat(((v ?? "json") as BackupFormat))}
                 data={[
                   { value: "json", label: "JSON" },
                   { value: "yaml", label: "YAML" },
@@ -787,7 +787,7 @@ export function BackupManagerPanel() {
               <Select
                 label="Import format"
                 value={importFormat}
-                onChange={(v) => setImportFormat(v || "json")}
+                onChange={(v) => setImportFormat(((v ?? "json") as BackupFormat))}
                 data={[
                   { value: "json", label: "JSON" },
                   { value: "yaml", label: "YAML" },
@@ -817,7 +817,7 @@ export function BackupManagerPanel() {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {jobs.map((job: any) => (
+              {jobs.map((job: BackupJob) => (
                 <Table.Tr key={job.id}>
                   <Table.Td>{job.name}</Table.Td>
                   <Table.Td>{job.schedule_cron || "-"}</Table.Td>
@@ -843,7 +843,7 @@ export function BackupManagerPanel() {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {runs.map((run: any) => (
+              {runs.map((run: BackupRun) => (
                 <Table.Tr key={run.id}>
                   <Table.Td>{run.status}</Table.Td>
                   <Table.Td>{run.format}</Table.Td>
