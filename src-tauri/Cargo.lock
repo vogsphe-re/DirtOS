@@ -1096,7 +1096,7 @@ dependencies = [
 
 [[package]]
 name = "dirtos"
-version = "0.1.10"
+version = "0.1.11"
 dependencies = [
  "aes-gcm-siv",
  "async-trait",
