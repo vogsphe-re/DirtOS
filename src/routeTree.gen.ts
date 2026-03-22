@@ -27,6 +27,8 @@ import { Route as JournalIndexRouteImport } from './routes/journal.index'
 import { Route as IssuesIndexRouteImport } from './routes/issues.index'
 import { Route as IndoorIndexRouteImport } from './routes/indoor.index'
 import { Route as GardenIndexRouteImport } from './routes/garden.index'
+import { Route as PlantsTraysRouteImport } from './routes/plants.trays'
+import { Route as PlantsSeedsRouteImport } from './routes/plants.seeds'
 import { Route as PlantsSeedlingsRouteImport } from './routes/plants.seedlings'
 import { Route as PlantsIndividualsRouteImport } from './routes/plants.individuals'
 import { Route as PlantsGroupsRouteImport } from './routes/plants.groups'
@@ -128,6 +130,16 @@ const GardenIndexRoute = GardenIndexRouteImport.update({
   path: '/',
   getParentRoute: () => GardenRoute,
 } as any)
+const PlantsTraysRoute = PlantsTraysRouteImport.update({
+  id: '/trays',
+  path: '/trays',
+  getParentRoute: () => PlantsRoute,
+} as any)
+const PlantsSeedsRoute = PlantsSeedsRouteImport.update({
+  id: '/seeds',
+  path: '/seeds',
+  getParentRoute: () => PlantsRoute,
+} as any)
 const PlantsSeedlingsRoute = PlantsSeedlingsRouteImport.update({
   id: '/seedlings',
   path: '/seedlings',
@@ -201,6 +213,8 @@ export interface FileRoutesByFullPath {
   '/plants/groups': typeof PlantsGroupsRoute
   '/plants/individuals': typeof PlantsIndividualsRouteWithChildren
   '/plants/seedlings': typeof PlantsSeedlingsRoute
+  '/plants/seeds': typeof PlantsSeedsRoute
+  '/plants/trays': typeof PlantsTraysRoute
   '/garden/': typeof GardenIndexRoute
   '/indoor/': typeof IndoorIndexRoute
   '/issues/': typeof IssuesIndexRoute
@@ -224,6 +238,8 @@ export interface FileRoutesByTo {
   '/plants/$speciesId': typeof PlantsSpeciesIdRoute
   '/plants/groups': typeof PlantsGroupsRoute
   '/plants/seedlings': typeof PlantsSeedlingsRoute
+  '/plants/seeds': typeof PlantsSeedsRoute
+  '/plants/trays': typeof PlantsTraysRoute
   '/garden': typeof GardenIndexRoute
   '/indoor': typeof IndoorIndexRoute
   '/issues': typeof IssuesIndexRoute
@@ -255,6 +271,8 @@ export interface FileRoutesById {
   '/plants/groups': typeof PlantsGroupsRoute
   '/plants/individuals': typeof PlantsIndividualsRouteWithChildren
   '/plants/seedlings': typeof PlantsSeedlingsRoute
+  '/plants/seeds': typeof PlantsSeedsRoute
+  '/plants/trays': typeof PlantsTraysRoute
   '/garden/': typeof GardenIndexRoute
   '/indoor/': typeof IndoorIndexRoute
   '/issues/': typeof IssuesIndexRoute
@@ -287,6 +305,8 @@ export interface FileRouteTypes {
     | '/plants/groups'
     | '/plants/individuals'
     | '/plants/seedlings'
+    | '/plants/seeds'
+    | '/plants/trays'
     | '/garden/'
     | '/indoor/'
     | '/issues/'
@@ -310,6 +330,8 @@ export interface FileRouteTypes {
     | '/plants/$speciesId'
     | '/plants/groups'
     | '/plants/seedlings'
+    | '/plants/seeds'
+    | '/plants/trays'
     | '/garden'
     | '/indoor'
     | '/issues'
@@ -340,6 +362,8 @@ export interface FileRouteTypes {
     | '/plants/groups'
     | '/plants/individuals'
     | '/plants/seedlings'
+    | '/plants/seeds'
+    | '/plants/trays'
     | '/garden/'
     | '/indoor/'
     | '/issues/'
@@ -493,6 +517,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GardenIndexRouteImport
       parentRoute: typeof GardenRoute
     }
+    '/plants/trays': {
+      id: '/plants/trays'
+      path: '/trays'
+      fullPath: '/plants/trays'
+      preLoaderRoute: typeof PlantsTraysRouteImport
+      parentRoute: typeof PlantsRoute
+    }
+    '/plants/seeds': {
+      id: '/plants/seeds'
+      path: '/seeds'
+      fullPath: '/plants/seeds'
+      preLoaderRoute: typeof PlantsSeedsRouteImport
+      parentRoute: typeof PlantsRoute
+    }
     '/plants/seedlings': {
       id: '/plants/seedlings'
       path: '/seedlings'
@@ -636,6 +674,8 @@ interface PlantsRouteChildren {
   PlantsGroupsRoute: typeof PlantsGroupsRoute
   PlantsIndividualsRoute: typeof PlantsIndividualsRouteWithChildren
   PlantsSeedlingsRoute: typeof PlantsSeedlingsRoute
+  PlantsSeedsRoute: typeof PlantsSeedsRoute
+  PlantsTraysRoute: typeof PlantsTraysRoute
   PlantsIndexRoute: typeof PlantsIndexRoute
 }
 
@@ -644,6 +684,8 @@ const PlantsRouteChildren: PlantsRouteChildren = {
   PlantsGroupsRoute: PlantsGroupsRoute,
   PlantsIndividualsRoute: PlantsIndividualsRouteWithChildren,
   PlantsSeedlingsRoute: PlantsSeedlingsRoute,
+  PlantsSeedsRoute: PlantsSeedsRoute,
+  PlantsTraysRoute: PlantsTraysRoute,
   PlantsIndexRoute: PlantsIndexRoute,
 }
 

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { devtools } from "zustand/middleware";
 
 export interface AppNotification {
   id: string;
@@ -18,32 +19,53 @@ interface NotificationState {
   dismiss: (id: string) => void;
 }
 
-export const useNotificationStore = create<NotificationState>((set) => ({
-  notifications: [],
-  addNotification: (n) =>
-    set((s) => ({
-      notifications: [
-        {
-          ...n,
-          id: `${Date.now()}-${Math.random()}`,
-          read: false,
-          created_at: new Date().toISOString(),
-        },
-        ...s.notifications,
-      ].slice(0, 50), // Keep last 50
-    })),
-  markRead: (id) =>
-    set((s) => ({
-      notifications: s.notifications.map((n) =>
-        n.id === id ? { ...n, read: true } : n
-      ),
-    })),
-  markAllRead: () =>
-    set((s) => ({
-      notifications: s.notifications.map((n) => ({ ...n, read: true })),
-    })),
-  dismiss: (id) =>
-    set((s) => ({
-      notifications: s.notifications.filter((n) => n.id !== id),
-    })),
-}));
+export const useNotificationStore = create<NotificationState>()(
+  devtools(
+    (set) => ({
+      notifications: [],
+      addNotification: (n) =>
+        set(
+          (s) => ({
+            notifications: [
+              {
+                ...n,
+                id: `${Date.now()}-${Math.random()}`,
+                read: false,
+                created_at: new Date().toISOString(),
+              },
+              ...s.notifications,
+            ].slice(0, 50), // Keep last 50
+          }),
+          undefined,
+          "notifications/add"
+        ),
+      markRead: (id) =>
+        set(
+          (s) => ({
+            notifications: s.notifications.map((n) =>
+              n.id === id ? { ...n, read: true } : n
+            ),
+          }),
+          undefined,
+          "notifications/markRead"
+        ),
+      markAllRead: () =>
+        set(
+          (s) => ({
+            notifications: s.notifications.map((n) => ({ ...n, read: true })),
+          }),
+          undefined,
+          "notifications/markAllRead"
+        ),
+      dismiss: (id) =>
+        set(
+          (s) => ({
+            notifications: s.notifications.filter((n) => n.id !== id),
+          }),
+          undefined,
+          "notifications/dismiss"
+        ),
+    }),
+    { name: "NotificationStore" }
+  )
+);

@@ -1,6 +1,7 @@
 pub mod backup;
 pub mod eol;
 pub mod export;
+pub mod gbif;
 pub mod export_import;
 pub mod inaturalist;
 pub mod issue_generator;
@@ -12,6 +13,7 @@ pub mod recommendations;
 pub mod schedule_suggestions;
 pub mod scheduler;
 pub mod sensors;
+pub mod trefle;
 pub mod weather;
 pub mod weather_alerts;
 pub mod wikipedia;

@@ -22,6 +22,29 @@
 3. Choose `Export full backup` to save a portable JSON backup of the workspace.
 4. Use `Load backup file` and `Import full backup` to restore it.
 
+## Trefle — Plant Growing Data
+
+DirtOS can enrich species with growing information (sun, water, soil pH, hardiness
+zones, temperature ranges, and more) via [Trefle.io](https://trefle.io), a free
+REST API backed by the USDA PLANTS database.
+
+### Registering for a Trefle Access Token
+
+1. Go to <https://trefle.io/users/sign_up> and create a free account.
+2. Confirm your email address.
+3. After signing in, visit <https://trefle.io/profile> to view your **Access Token**.
+4. Copy the token (a long alphanumeric string).
+
+### Adding the Token to DirtOS
+
+1. Open **Settings** in DirtOS.
+2. Find the **Trefle — Plant Data** card.
+3. Click **Add key**, paste your access token, and click **Save**.
+
+Once configured, the **Enrich from Trefle** button will appear on species detail
+pages.  Trefle's free tier allows **120 requests per minute** with an effective
+per-token limit of 60 requests per minute.
+
 ## Notes
 
 - DirtOS stores its database and media locally in the application data directory.

@@ -288,9 +288,23 @@ pub struct Species {
     pub description: Option<String>,
     pub image_url: Option<String>,
     pub eol_page_id: Option<i64>,
+    pub eol_description: Option<String>,
+    pub gbif_key: Option<i64>,
+    pub gbif_accepted_name: Option<String>,
+    pub native_range: Option<String>,
+    pub establishment_means: Option<String>,
+    pub habitat: Option<String>,
+    pub min_temperature_c: Option<f64>,
+    pub max_temperature_c: Option<f64>,
+    pub rooting_depth: Option<String>,
+    pub uses: Option<String>,
+    pub tags: Option<String>,
+    pub trefle_id: Option<i64>,
     pub cached_inaturalist_json: Option<String>,
     pub cached_wikipedia_json: Option<String>,
     pub cached_eol_json: Option<String>,
+    pub cached_gbif_json: Option<String>,
+    pub cached_trefle_json: Option<String>,
     pub is_user_added: bool,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
@@ -440,6 +454,74 @@ pub struct SpeciesFilters {
     pub sun_requirement: Option<String>,
     pub water_requirement: Option<String>,
     pub growth_type: Option<String>,
+}
+
+// ---------------------------------------------------------------------------
+// Enrichment preview
+// ---------------------------------------------------------------------------
+
+/// A single field proposed by an enrichment source.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct EnrichmentFieldPreview {
+    /// DB column / display key, e.g. "family"
+    pub field: String,
+    /// Human-readable label, e.g. "Family"
+    pub label: String,
+    /// Current value already stored on the species (stringified).
+    pub current_value: Option<String>,
+    /// Value the enrichment source would set.
+    pub new_value: Option<String>,
+}
+
+/// Full preview returned by a `preview_enrich_*` command.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct EnrichmentPreviewResult {
+    pub source: String,
+    pub fields: Vec<EnrichmentFieldPreview>,
+    /// Raw JSON from the external API, to be saved in the cached_*_json column
+    /// if the user confirms enrichment.
+    pub cached_json: Option<String>,
+    /// Source-specific identifier (iNat taxon id, EoL page id, GBIF key, etc.)
+    pub source_id: Option<String>,
+}
+
+/// Selective enrichment: user picks which fields to apply.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ApplyEnrichmentFields {
+    pub source: String,
+    /// Field names the user approved (keys from EnrichmentFieldPreview.field).
+    pub approved_fields: Vec<String>,
+    /// The cached JSON blob to store.
+    pub cached_json: Option<String>,
+    /// Source-specific identifier.
+    pub source_id: Option<String>,
+
+    // All possible field values – only applied if the field name is in approved_fields.
+    pub scientific_name: Option<String>,
+    pub family: Option<String>,
+    pub genus: Option<String>,
+    pub image_url: Option<String>,
+    pub description: Option<String>,
+    pub eol_description: Option<String>,
+    pub growth_type: Option<String>,
+    pub sun_requirement: Option<String>,
+    pub water_requirement: Option<String>,
+    pub soil_ph_min: Option<f64>,
+    pub soil_ph_max: Option<f64>,
+    pub spacing_cm: Option<f64>,
+    pub days_to_harvest_min: Option<i64>,
+    pub days_to_harvest_max: Option<i64>,
+    pub hardiness_zone_min: Option<String>,
+    pub hardiness_zone_max: Option<String>,
+    pub habitat: Option<String>,
+    pub native_range: Option<String>,
+    pub establishment_means: Option<String>,
+    pub min_temperature_c: Option<f64>,
+    pub max_temperature_c: Option<f64>,
+    pub rooting_depth: Option<String>,
+    pub uses: Option<String>,
+    pub tags: Option<String>,
+    pub gbif_accepted_name: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -1093,7 +1175,7 @@ pub struct NewHarvest {
 }
 
 // ---------------------------------------------------------------------------
-// Seed lots
+// Seed lots / seed store
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
@@ -1101,13 +1183,64 @@ pub struct SeedLot {
     pub id: i64,
     pub parent_plant_id: Option<i64>,
     pub harvest_id: Option<i64>,
+    pub species_id: Option<i64>,
     pub lot_label: Option<String>,
     pub quantity: Option<f64>,
     pub viability_pct: Option<f64>,
     pub storage_location: Option<String>,
     pub collected_date: Option<String>,
+    pub source_type: String,
+    pub vendor: Option<String>,
+    pub purchase_date: Option<String>,
+    pub expiration_date: Option<String>,
+    pub packet_info: Option<String>,
     pub notes: Option<String>,
     pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct NewSeedLot {
+    pub species_id: Option<i64>,
+    pub parent_plant_id: Option<i64>,
+    pub harvest_id: Option<i64>,
+    pub lot_label: Option<String>,
+    pub quantity: Option<f64>,
+    pub viability_pct: Option<f64>,
+    pub storage_location: Option<String>,
+    pub collected_date: Option<String>,
+    pub source_type: Option<String>,
+    pub vendor: Option<String>,
+    pub purchase_date: Option<String>,
+    pub expiration_date: Option<String>,
+    pub packet_info: Option<String>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct UpdateSeedLot {
+    pub species_id: Option<i64>,
+    pub lot_label: Option<String>,
+    pub quantity: Option<f64>,
+    pub viability_pct: Option<f64>,
+    pub storage_location: Option<String>,
+    pub collected_date: Option<String>,
+    pub source_type: Option<String>,
+    pub vendor: Option<String>,
+    pub purchase_date: Option<String>,
+    pub expiration_date: Option<String>,
+    pub packet_info: Option<String>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct SowSeedInput {
+    pub seed_lot_id: i64,
+    pub tray_id: i64,
+    pub row: i64,
+    pub col: i64,
+    pub plant_name: Option<String>,
+    pub notes: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -1484,6 +1617,75 @@ pub struct UpdateDashboard {
     pub description: Option<String>,
     pub layout_json: Option<String>,
     pub is_default: Option<bool>,
+}
+
+// ---------------------------------------------------------------------------
+// Seedling trays
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
+pub struct SeedlingTray {
+    pub id: i64,
+    pub environment_id: i64,
+    pub name: String,
+    pub rows: i64,
+    pub cols: i64,
+    pub cell_size_cm: Option<f64>,
+    pub notes: Option<String>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct NewSeedlingTray {
+    pub environment_id: i64,
+    pub name: String,
+    pub rows: i64,
+    pub cols: i64,
+    pub cell_size_cm: Option<f64>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct UpdateSeedlingTray {
+    pub name: Option<String>,
+    pub rows: Option<i64>,
+    pub cols: Option<i64>,
+    pub cell_size_cm: Option<f64>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
+pub struct SeedlingTrayCell {
+    pub id: i64,
+    pub tray_id: i64,
+    pub row: i64,
+    pub col: i64,
+    pub plant_id: Option<i64>,
+    pub notes: Option<String>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct AssignTrayCell {
+    pub tray_id: i64,
+    pub row: i64,
+    pub col: i64,
+    pub plant_id: Option<i64>,
+    pub notes: Option<String>,
+}
+
+// ---------------------------------------------------------------------------
+// Auto-enrichment result
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct AutoEnrichResult {
+    /// Number of species queued for background enrichment.
+    pub queued: i64,
+    /// Human-readable status message.
+    pub message: String,
 }
 
 // ---------------------------------------------------------------------------

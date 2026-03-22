@@ -233,7 +233,11 @@ export function SpeciesCatalog() {
       <AddSpeciesModal
         opened={addOpen}
         onClose={() => setAddOpen(false)}
-        onCreated={() => { setAddOpen(false); refetch(); }}
+        onCreated={(sp) => {
+          setAddOpen(false);
+          refetch();
+          navigate({ to: "/plants/$speciesId", params: { speciesId: String(sp.id) } });
+        }}
       />
     </Stack>
   );

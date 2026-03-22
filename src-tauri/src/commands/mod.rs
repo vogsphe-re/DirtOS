@@ -15,6 +15,8 @@ pub mod journal;
 pub mod media;
 pub mod reports;
 pub mod schedules;
+pub mod seed_store;
+pub mod seedling_trays;
 pub mod sensors;
 pub mod weather;
 // Re-export everything so macro-generated symbols (__cmd__*, __specta__fn__*)
@@ -36,5 +38,7 @@ pub use journal::*;
 pub use media::*;
 pub use reports::*;
 pub use schedules::*;
+pub use seed_store::*;
+pub use seedling_trays::*;
 pub use sensors::*;
 pub use weather::*;

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { devtools, persist } from "zustand/middleware";
 
 export type ColorScheme = "light" | "dark";
 export type ColorSchemePreference = ColorScheme | "system";
@@ -18,37 +18,44 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>()(
-  persist(
-    (set) => ({
-      activeEnvironmentId: null,
-      activeDashboardId: null,
-      sidebarCollapsed: false,
-      colorScheme: "system",
+  devtools(
+    persist(
+      (set) => ({
+        activeEnvironmentId: null,
+        activeDashboardId: null,
+        sidebarCollapsed: false,
+        colorScheme: "system",
 
-      setActiveEnvironmentId: (id) => set({ activeEnvironmentId: id }),
-      setActiveDashboardId: (id) => set({ activeDashboardId: id }),
-      setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
-      setColorScheme: (colorScheme) => set({ colorScheme }),
-      toggleColorScheme: (resolvedColorScheme) =>
-        set((state) => ({
-          colorScheme:
-            state.colorScheme === "system"
-              ? resolvedColorScheme === "dark"
-                ? "light"
-                : "dark"
-              : state.colorScheme === "dark"
-                ? "light"
-                : "dark",
-        })),
-    }),
-    {
-      name: "dirtos-app-store",
-      partialize: (state) => ({
-        activeEnvironmentId: state.activeEnvironmentId,
-        activeDashboardId: state.activeDashboardId,
-        sidebarCollapsed: state.sidebarCollapsed,
-        colorScheme: state.colorScheme,
+        setActiveEnvironmentId: (id) => set({ activeEnvironmentId: id }, undefined, "app/setActiveEnvironmentId"),
+        setActiveDashboardId: (id) => set({ activeDashboardId: id }, undefined, "app/setActiveDashboardId"),
+        setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }, undefined, "app/setSidebarCollapsed"),
+        setColorScheme: (colorScheme) => set({ colorScheme }, undefined, "app/setColorScheme"),
+        toggleColorScheme: (resolvedColorScheme) =>
+          set(
+            (state) => ({
+              colorScheme:
+                state.colorScheme === "system"
+                  ? resolvedColorScheme === "dark"
+                    ? "light"
+                    : "dark"
+                  : state.colorScheme === "dark"
+                    ? "light"
+                    : "dark",
+            }),
+            undefined,
+            "app/toggleColorScheme"
+          ),
       }),
-    }
+      {
+        name: "dirtos-app-store",
+        partialize: (state) => ({
+          activeEnvironmentId: state.activeEnvironmentId,
+          activeDashboardId: state.activeDashboardId,
+          sidebarCollapsed: state.sidebarCollapsed,
+          colorScheme: state.colorScheme,
+        }),
+      }
+    ),
+    { name: "AppStore" }
   )
 );

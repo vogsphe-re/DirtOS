@@ -163,10 +163,6 @@ async enrichSpeciesWikipedia(speciesId: number) : Promise<Result<Species, string
     else return { status: "error", error: e  as any };
 }
 },
-/**
- * Search Wikipedia for candidate articles for a species using fuzzy (OpenSearch)
- * matching against both the scientific name and common name.
- */
 async searchWikipediaCandidates(speciesId: number) : Promise<Result<WikiSearchResult[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("search_wikipedia_candidates", { speciesId }) };
@@ -187,7 +183,11 @@ async enrichSpeciesWikipediaBySlug(speciesId: number, slug: string) : Promise<Re
 }
 },
 /**
+ * Search Wikipedia for candidate articles for a species using fuzzy (OpenSearch)
+ * matching against both the scientific name and common name.  Returns deduplicated
+ * results so the user can pick the correct article.
  * Search Encyclopedia of Life for candidate pages for a species.
+ * Queries by scientific name then common name, deduplicates by EoL page id.
  */
 async searchEolCandidates(speciesId: number) : Promise<Result<EolSearchResult[], string>> {
     try {
@@ -203,6 +203,138 @@ async searchEolCandidates(speciesId: number) : Promise<Result<EolSearchResult[],
 async enrichSpeciesEolById(speciesId: number, eolPageId: number) : Promise<Result<Species, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("enrich_species_eol_by_id", { speciesId, eolPageId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Search GBIF for candidate backbone taxa matching a species.
+ * Uses fuzzy match and free-text search concurrently, deduplicates by usage key.
+ */
+async searchGbifCandidates(speciesId: number) : Promise<Result<GbifSearchResult[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("search_gbif_candidates", { speciesId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Enrich a species record with data from a specific GBIF backbone taxon
+ * chosen by the user.
+ */
+async enrichSpeciesGbifByKey(speciesId: number, gbifKey: number) : Promise<Result<Species, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("enrich_species_gbif_by_key", { speciesId, gbifKey }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Search Trefle for candidate plants matching a species.
+ * Uses the stored Trefle API token from app_settings.
+ */
+async searchTrefleCandidates(speciesId: number) : Promise<Result<TrefleSearchResult[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("search_trefle_candidates", { speciesId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Enrich a species record with data from a specific Trefle plant chosen by the user.
+ */
+async enrichSpeciesTrefleById(speciesId: number, trefleId: number) : Promise<Result<Species, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("enrich_species_trefle_by_id", { speciesId, trefleId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Preview iNaturalist enrichment without writing to DB.
+ */
+async previewEnrichInaturalist(speciesId: number) : Promise<Result<EnrichmentPreviewResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("preview_enrich_inaturalist", { speciesId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Preview Wikipedia enrichment without writing to DB.
+ */
+async previewEnrichWikipedia(speciesId: number, slug: string) : Promise<Result<EnrichmentPreviewResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("preview_enrich_wikipedia", { speciesId, slug }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Preview EoL enrichment without writing to DB.
+ */
+async previewEnrichEol(speciesId: number, eolPageId: number) : Promise<Result<EnrichmentPreviewResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("preview_enrich_eol", { speciesId, eolPageId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Preview GBIF enrichment without writing to DB.
+ */
+async previewEnrichGbif(speciesId: number, gbifKey: number) : Promise<Result<EnrichmentPreviewResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("preview_enrich_gbif", { speciesId, gbifKey }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Preview Trefle enrichment without writing to DB.
+ */
+async previewEnrichTrefle(speciesId: number, trefleId: number) : Promise<Result<EnrichmentPreviewResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("preview_enrich_trefle", { speciesId, trefleId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Apply user-approved enrichment fields to a species.
+ */
+async applyEnrichmentPreview(speciesId: number, input: ApplyEnrichmentFields) : Promise<Result<Species, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("apply_enrichment_preview", { speciesId, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Automatically enrich species from Trefle in the background.
+ * 
+ * - Pass `species_ids = null` to enrich **all** species that currently lack a
+ * `trefle_id` (i.e. have never been enriched from Trefle).
+ * - Pass a list of IDs to limit enrichment to those specific species (only
+ * processes species whose `trefle_id` is still NULL).
+ * 
+ * Requests are rate-limited to ≤ 30 per minute (2 s between each HTTP call).
+ * The command returns immediately; enrichment runs in a background task.
+ */
+async autoEnrichTrefle(speciesIds: number[] | null) : Promise<Result<AutoEnrichResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("auto_enrich_trefle", { speciesIds }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -1082,6 +1214,28 @@ async setWeatherApiKey(apiKey: string) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Return the stored Trefle API token, or None if not set.
+ */
+async getTrefleApiKey() : Promise<Result<string | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_trefle_api_key") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Persist the Trefle API token in app_settings.
+ */
+async setTrefleApiKey(apiKey: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_trefle_api_key", { apiKey }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async listSensors(environmentId: number, limit: number | null, offset: number | null) : Promise<Result<Sensor[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("list_sensors", { environmentId, limit, offset }) };
@@ -1269,6 +1423,118 @@ async createSeedLot(parentPlantId: number | null, harvestId: number | null, lotL
     else return { status: "error", error: e  as any };
 }
 },
+async listSeedlingTrays(environmentId: number) : Promise<Result<SeedlingTray[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_seedling_trays", { environmentId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getSeedlingTray(id: number) : Promise<Result<SeedlingTray | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_seedling_tray", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createSeedlingTray(input: NewSeedlingTray) : Promise<Result<SeedlingTray, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_seedling_tray", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateSeedlingTray(id: number, input: UpdateSeedlingTray) : Promise<Result<SeedlingTray | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_seedling_tray", { id, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteSeedlingTray(id: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_seedling_tray", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listSeedlingTrayCells(trayId: number) : Promise<Result<SeedlingTrayCell[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_seedling_tray_cells", { trayId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async assignSeedlingTrayCell(input: AssignTrayCell) : Promise<Result<SeedlingTrayCell, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("assign_seedling_tray_cell", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async clearSeedlingTrayCell(trayId: number, row: number, col: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("clear_seedling_tray_cell", { trayId, row, col }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listSeedStore(limit: number | null, offset: number | null) : Promise<Result<SeedLot[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_seed_store", { limit, offset }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getSeedStoreItem(id: number) : Promise<Result<SeedLot | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_seed_store_item", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createSeedStoreItem(input: NewSeedLot) : Promise<Result<SeedLot, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_seed_store_item", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateSeedStoreItem(id: number, input: UpdateSeedLot) : Promise<Result<SeedLot | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_seed_store_item", { id, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteSeedStoreItem(id: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_seed_store_item", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async sowSeedToTray(input: SowSeedInput) : Promise<Result<number, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("sow_seed_to_tray", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async listSeasons(environmentId: number) : Promise<Result<Season[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("list_seasons", { environmentId }) };
@@ -1364,6 +1630,32 @@ async deleteDashboard(id: number) : Promise<Result<boolean, string>> {
 export type Additive = { id: number; name: string; additive_type: AdditiveType; npk_n: number | null; npk_p: number | null; npk_k: number | null; application_rate: number | null; application_unit: string | null; notes: string | null }
 export type AdditiveType = "Fertilizer" | "Amendment" | "Pesticide" | "Fungicide" | "Other"
 export type AppStartupStatus = { ready: boolean; recovering: boolean; recovered_from_backup: boolean; message: string | null }
+/**
+ * Selective enrichment: user picks which fields to apply.
+ */
+export type ApplyEnrichmentFields = { source: string; 
+/**
+ * Field names the user approved (keys from EnrichmentFieldPreview.field).
+ */
+approved_fields: string[]; 
+/**
+ * The cached JSON blob to store.
+ */
+cached_json: string | null; 
+/**
+ * Source-specific identifier.
+ */
+source_id: string | null; scientific_name: string | null; family: string | null; genus: string | null; image_url: string | null; description: string | null; eol_description: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; habitat: string | null; native_range: string | null; establishment_means: string | null; min_temperature_c: number | null; max_temperature_c: number | null; rooting_depth: string | null; uses: string | null; tags: string | null; gbif_accepted_name: string | null }
+export type AssignTrayCell = { tray_id: number; row: number; col: number; plant_id: number | null; notes: string | null }
+export type AutoEnrichResult = { 
+/**
+ * Number of species queued for background enrichment.
+ */
+queued: number; 
+/**
+ * Human-readable status message.
+ */
+message: string }
 export type AutomationEvent = { id: number; provider: string; event_type: string; direction: string; payload_json: string | null; status: string; error_message: string | null; created_at: string; processed_at: string | null }
 export type BackupFormat = "json" | "yaml" | "archive"
 export type BackupJob = { id: number; name: string; schedule_cron: string | null; format: BackupFormat; include_secrets: boolean; is_active: boolean; last_run_status: string | null; last_run_at: string | null; last_error: string | null; created_at: string; updated_at: string }
@@ -1380,10 +1672,95 @@ export type Dashboard = { id: number; environment_id: number | null; name: strin
  * JSON-serialised Vec<WidgetConfig>
  */
 layout_json: string; is_default: boolean; created_at: string; updated_at: string }
+/**
+ * A single field proposed by an enrichment source.
+ */
+export type EnrichmentFieldPreview = { 
+/**
+ * DB column / display key, e.g. "family"
+ */
+field: string; 
+/**
+ * Human-readable label, e.g. "Family"
+ */
+label: string; 
+/**
+ * Current value already stored on the species (stringified).
+ */
+current_value: string | null; 
+/**
+ * Value the enrichment source would set.
+ */
+new_value: string | null }
+/**
+ * Full preview returned by a `preview_enrich_*` command.
+ */
+export type EnrichmentPreviewResult = { source: string; fields: EnrichmentFieldPreview[]; 
+/**
+ * Raw JSON from the external API, to be saved in the cached_*_json column
+ * if the user confirms enrichment.
+ */
+cached_json: string | null; 
+/**
+ * Source-specific identifier (iNat taxon id, EoL page id, GBIF key, etc.)
+ */
+source_id: string | null }
 export type Environment = { id: number; name: string; latitude: number | null; longitude: number | null; elevation_m: number | null; timezone: string | null; climate_zone: string | null; created_at: string; updated_at: string }
 export type EnvironmentMapSetting = { id: number; environment_id: number; latitude: number | null; longitude: number | null; zoom_level: number | null; geocode_json: string | null; weather_overlay: boolean; soil_overlay: boolean; boundaries_geojson: string | null; privacy_level: MapPrivacyLevel; allow_sharing: boolean; updated_at: string }
+/**
+ * A candidate page returned by the EoL search API.
+ */
+export type EolSearchResult = { 
+/**
+ * EoL numeric page identifier.
+ */
+id: number; 
+/**
+ * Scientific (or vernacular) name used as the page title.
+ */
+title: string; 
+/**
+ * Direct link to the EoL page.
+ */
+link: string | null; 
+/**
+ * Short context snippet provided by the search index.
+ */
+snippet: string | null }
 export type ExportPayload = { format: BackupFormat; filename: string; content: string; is_base64: boolean }
 export type ForecastItem = { dt: number; temperature_c: number; feels_like_c: number; humidity: number; wind_speed_ms: number; cloud_cover_pct: number; precipitation_mm: number | null; precipitation_prob: number | null; description: string; icon: string }
+/**
+ * A search/match candidate returned to the frontend for the user to pick.
+ */
+export type GbifSearchResult = { 
+/**
+ * GBIF backbone usage key.
+ */
+key: number; 
+/**
+ * Scientific name (with authorship) as given by GBIF.
+ */
+scientific_name: string; 
+/**
+ * Canonical name without authorship.
+ */
+canonical_name: string | null; 
+/**
+ * Taxonomic rank (SPECIES, GENUS, etc.).
+ */
+rank: string | null; 
+/**
+ * Taxonomic status (ACCEPTED, SYNONYM, etc.).
+ */
+status: string | null; 
+/**
+ * Match confidence (0–100) from the fuzzy match endpoint.
+ */
+confidence: number | null; 
+/**
+ * Full classification breadcrumb (e.g. "Plantae > Tracheophyta > …").
+ */
+classification: string | null }
 /**
  * Temporary smoke-test command to verify IPC and specta type export.
  * This command will be removed after Phase 0 verification.
@@ -1430,7 +1807,9 @@ export type NewPlant = { species_id: number | null; location_id: number | null; 
 export type NewPlantGroup = { environment_id: number; name: string; description: string | null; group_type: string | null; color: string | null }
 export type NewSchedule = { environment_id: number | null; plant_id: number | null; location_id: number | null; schedule_type: ScheduleType; title: string; cron_expression: string | null; next_run_at: string | null; is_active: boolean | null; additive_id: number | null; notes: string | null }
 export type NewSeason = { environment_id: number; name: string; start_date: string; end_date: string; notes: string | null }
+export type NewSeedLot = { species_id: number | null; parent_plant_id: number | null; harvest_id: number | null; lot_label: string | null; quantity: number | null; viability_pct: number | null; storage_location: string | null; collected_date: string | null; source_type: string | null; vendor: string | null; purchase_date: string | null; expiration_date: string | null; packet_info: string | null; notes: string | null }
 export type NewSeedlingObservation = { plant_id: number; observed_at: string | null; height_cm: number | null; stem_thickness_mm: number | null; leaf_node_count: number | null; leaf_node_spacing_mm: number | null; notes: string | null }
+export type NewSeedlingTray = { environment_id: number; name: string; rows: number; cols: number; cell_size_cm: number | null; notes: string | null }
 export type NewSensor = { environment_id: number | null; location_id: number | null; plant_id: number | null; name: string; sensor_type: SensorType; connection_type: SensorConnectionType; connection_config_json: string | null; poll_interval_seconds: number | null; is_active: boolean | null }
 export type NewSoilTest = { location_id: number; test_date: string; ph: number | null; nitrogen_ppm: number | null; phosphorus_ppm: number | null; potassium_ppm: number | null; moisture_pct: number | null; organic_matter_pct: number | null; notes: string | null }
 export type NewSpecies = { common_name: string; scientific_name: string | null; family: string | null; genus: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; description: string | null; image_url: string | null; is_user_added: boolean | null }
@@ -1451,18 +1830,53 @@ export type ScheduleRunStatus = "completed" | "skipped" | "missed"
 export type ScheduleSuggestion = { schedule_type: ScheduleType; title: string; cron_expression: string; cron_label: string; notes: string | null }
 export type ScheduleType = "water" | "feed" | "maintenance" | "treatment" | "sample" | "custom"
 export type Season = { id: number; environment_id: number; name: string; start_date: string; end_date: string; notes: string | null; created_at: string }
-export type SeedLot = { id: number; parent_plant_id: number | null; harvest_id: number | null; lot_label: string | null; quantity: number | null; viability_pct: number | null; storage_location: string | null; collected_date: string | null; notes: string | null; created_at: string }
+export type SeedLot = { id: number; parent_plant_id: number | null; harvest_id: number | null; species_id: number | null; lot_label: string | null; quantity: number | null; viability_pct: number | null; storage_location: string | null; collected_date: string | null; source_type: string; vendor: string | null; purchase_date: string | null; expiration_date: string | null; packet_info: string | null; notes: string | null; created_at: string; updated_at: string }
 export type SeedlingObservation = { id: number; plant_id: number; observed_at: string; height_cm: number | null; stem_thickness_mm: number | null; leaf_node_count: number | null; leaf_node_spacing_mm: number | null; notes: string | null; created_at: string }
+export type SeedlingTray = { id: number; environment_id: number; name: string; rows: number; cols: number; cell_size_cm: number | null; notes: string | null; created_at: string; updated_at: string }
+export type SeedlingTrayCell = { id: number; tray_id: number; row: number; col: number; plant_id: number | null; notes: string | null; created_at: string; updated_at: string }
 export type Sensor = { id: number; environment_id: number | null; location_id: number | null; plant_id: number | null; name: string; sensor_type: SensorType; connection_type: SensorConnectionType; connection_config_json: string | null; poll_interval_seconds: number | null; is_active: boolean; created_at: string; updated_at: string }
 export type SensorConnectionType = "serial" | "usb" | "mqtt" | "http" | "manual"
 export type SensorLimit = { id: number; sensor_id: number; min_value: number | null; max_value: number | null; unit: string | null; alert_enabled: boolean }
 export type SensorReading = { id: number; sensor_id: number; value: number; unit: string | null; recorded_at: string }
 export type SensorType = "moisture" | "light" | "temperature" | "humidity" | "ph" | "ec" | "co2" | "air_quality" | "custom"
 export type SoilTest = { id: number; location_id: number; test_date: string; ph: number | null; nitrogen_ppm: number | null; phosphorus_ppm: number | null; potassium_ppm: number | null; moisture_pct: number | null; organic_matter_pct: number | null; notes: string | null; created_at: string }
-export type Species = { id: number; common_name: string; scientific_name: string | null; family: string | null; genus: string | null; inaturalist_id: number | null; wikipedia_slug: string | null; eol_page_id: number | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; description: string | null; image_url: string | null; cached_inaturalist_json: string | null; cached_wikipedia_json: string | null; cached_eol_json: string | null; is_user_added: boolean; created_at: string; updated_at: string }
+export type SowSeedInput = { seed_lot_id: number; tray_id: number; row: number; col: number; plant_name: string | null; notes: string | null }
+export type Species = { id: number; common_name: string; scientific_name: string | null; family: string | null; genus: string | null; inaturalist_id: number | null; wikipedia_slug: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; description: string | null; image_url: string | null; eol_page_id: number | null; eol_description: string | null; gbif_key: number | null; gbif_accepted_name: string | null; native_range: string | null; establishment_means: string | null; habitat: string | null; min_temperature_c: number | null; max_temperature_c: number | null; rooting_depth: string | null; uses: string | null; tags: string | null; trefle_id: number | null; cached_inaturalist_json: string | null; cached_wikipedia_json: string | null; cached_eol_json: string | null; cached_gbif_json: string | null; cached_trefle_json: string | null; is_user_added: boolean; created_at: string; updated_at: string }
 export type SpeciesExternalSource = { id: number; species_id: number; provider: IntegrationProvider; external_id: string | null; source_url: string | null; attribution: string | null; revision_id: string | null; native_range_json: string | null; metadata_json: string | null; retrieved_at: string; last_synced_at: string }
 export type SyncSpeciesResult = { species: Species | null; synced_providers: string[]; skipped_providers: string[]; errors: string[] }
 export type TaxonResult = { id: number; name: string; preferred_common_name: string | null; rank: string | null; default_photo_url: string | null; wikipedia_url: string | null; matched_term: string | null }
+/**
+ * A search candidate returned to the frontend for the user to pick.
+ */
+export type TrefleSearchResult = { 
+/**
+ * Trefle plant ID.
+ */
+id: number; 
+/**
+ * Common name (may be empty).
+ */
+common_name: string | null; 
+/**
+ * Scientific name.
+ */
+scientific_name: string; 
+/**
+ * Family common name.
+ */
+family_common_name: string | null; 
+/**
+ * Family scientific name.
+ */
+family: string | null; 
+/**
+ * Genus.
+ */
+genus: string | null; 
+/**
+ * Image URL (thumbnail).
+ */
+image_url: string | null }
 export type UpdateBackupJob = { name: string | null; schedule_cron: string | null; format: BackupFormat | null; include_secrets: boolean | null; is_active: boolean | null }
 export type UpdateCustomField = { field_name: string | null; field_value: string | null; field_type: CustomFieldType | null }
 export type UpdateDashboard = { name: string | null; description: string | null; layout_json: string | null; is_default: boolean | null }
@@ -1475,15 +1889,35 @@ export type UpdateLocation = { parent_id: number | null; location_type: Location
 export type UpdatePlant = { species_id: number | null; location_id: number | null; status: PlantStatus | null; name: string | null; label: string | null; planted_date: string | null; germinated_date: string | null; transplanted_date: string | null; removed_date: string | null; parent_plant_id: number | null; seed_lot_id: number | null; purchase_source: string | null; purchase_date: string | null; purchase_price: number | null; notes: string | null }
 export type UpdatePlantGroup = { name: string | null; description: string | null; group_type: string | null; color: string | null }
 export type UpdateSchedule = { schedule_type: ScheduleType | null; title: string | null; cron_expression: string | null; is_active: boolean | null; plant_id: number | null; location_id: number | null; additive_id: number | null; notes: string | null }
+export type UpdateSeedLot = { species_id: number | null; lot_label: string | null; quantity: number | null; viability_pct: number | null; storage_location: string | null; collected_date: string | null; source_type: string | null; vendor: string | null; purchase_date: string | null; expiration_date: string | null; packet_info: string | null; notes: string | null }
+export type UpdateSeedlingTray = { name: string | null; rows: number | null; cols: number | null; cell_size_cm: number | null; notes: string | null }
 export type UpdateSensor = { name: string | null; sensor_type: SensorType | null; connection_type: SensorConnectionType | null; connection_config_json: string | null; poll_interval_seconds: number | null; location_id: number | null; plant_id: number | null; is_active: boolean | null }
 export type UpdateSpecies = { common_name: string | null; scientific_name: string | null; family: string | null; genus: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; description: string | null; image_url: string | null }
 export type UpsertEnvironmentMapSetting = { latitude: number | null; longitude: number | null; zoom_level: number | null; geocode_json: string | null; weather_overlay: boolean; soil_overlay: boolean; boundaries_geojson: string | null; privacy_level: MapPrivacyLevel; allow_sharing: boolean }
 export type UpsertIndoorReservoirTarget = { ph_min: number | null; ph_max: number | null; ec_min: number | null; ec_max: number | null; ppm_min: number | null; ppm_max: number | null }
 export type UpsertIntegrationConfig = { enabled: boolean; auth_json: string | null; settings_json: string | null; sync_interval_minutes: number | null; cache_ttl_minutes: number | null; rate_limit_per_minute: number | null }
 export type WeatherData = { current: CurrentWeather; hourly: ForecastItem[]; daily: DailyForecast[]; from_cache: boolean; fetched_at: string }
+/**
+ * A candidate article returned by the fuzzy OpenSearch API.
+ */
+export type WikiSearchResult = { 
+/**
+ * Display title of the Wikipedia article.
+ */
+title: string; 
+/**
+ * URL-safe page slug (spaces → underscores).
+ */
+slug: string; 
+/**
+ * Short description / disambiguation snippet, if available.
+ */
+description: string | null; 
+/**
+ * Full URL to the Wikipedia article.
+ */
+url: string | null }
 export type WikiSummary = { title: string; slug: string; extract: string | null; thumbnail_url: string | null; page_url: string | null; raw_json: string }
-export type WikiSearchResult = { title: string; slug: string; description: string | null; url: string | null }
-export type EolSearchResult = { id: number; title: string; link: string | null; snippet: string | null }
 
 /** tauri-specta globals **/
 

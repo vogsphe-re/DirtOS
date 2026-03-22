@@ -247,7 +247,7 @@ function FieldAddRow({
       </Table.Td>
       <Table.Td>
         <Group gap={4} wrap="nowrap">
-          <ActionIcon size="xs" color="green" onClick={() => createMutation.mutate()}>
+          <ActionIcon size="xs" color="gray" onClick={() => createMutation.mutate()}>
             <IconCheck size={12} />
           </ActionIcon>
           <ActionIcon size="xs" color="red" variant="subtle" onClick={onCancel}>
@@ -315,7 +315,7 @@ function FieldEditRow({
       </Table.Td>
       <Table.Td>
         <Group gap={4} wrap="nowrap">
-          <ActionIcon size="xs" color="green" onClick={() => updateMutation.mutate()}>
+          <ActionIcon size="xs" color="gray" onClick={() => updateMutation.mutate()}>
             <IconCheck size={12} />
           </ActionIcon>
           <ActionIcon size="xs" variant="subtle" onClick={onCancel}>

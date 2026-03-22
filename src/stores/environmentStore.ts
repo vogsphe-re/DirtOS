@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { devtools } from "zustand/middleware";
 
 /** Mirror of the Rust `Environment` model (generated types live in bindings.ts after build). */
 export interface Environment {
@@ -18,7 +19,12 @@ interface EnvironmentState {
   setEnvironment: (env: Environment | null) => void;
 }
 
-export const useEnvironmentStore = create<EnvironmentState>()((set) => ({
-  environment: null,
-  setEnvironment: (env) => set({ environment: env }),
-}));
+export const useEnvironmentStore = create<EnvironmentState>()(
+  devtools(
+    (set) => ({
+      environment: null,
+      setEnvironment: (env) => set({ environment: env }, undefined, "environment/setEnvironment"),
+    }),
+    { name: "EnvironmentStore" }
+  )
+);

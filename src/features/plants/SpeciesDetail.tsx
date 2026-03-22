@@ -8,11 +8,14 @@ import {
   Image,
   Loader,
   Modal,
+  NumberInput,
+  Select,
   SimpleGrid,
   Stack,
   Table,
   Tabs,
   Text,
+  TextInput,
   Title,
   Tooltip,
 } from "@mantine/core";
@@ -20,17 +23,27 @@ import { notifications } from "@mantine/notifications";
 import {
   IconArrowLeft,
   IconBrandWikipedia,
+  IconEdit,
   IconExternalLink,
+  IconGlobe,
   IconLeaf,
   IconPlant,
   IconPlus,
+  IconTrash,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { commands } from "../../lib/bindings";
-import type { WikiSearchResult, EolSearchResult } from "../../lib/bindings";
+import type {
+  WikiSearchResult,
+  EolSearchResult,
+  GbifSearchResult,
+  TrefleSearchResult,
+  EnrichmentPreviewResult,
+} from "../../lib/bindings";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
+import { EnrichmentPreview } from "./EnrichmentPreview";
 import { AddPlantModal } from "./AddPlantModal";
 import type { Plant, Species } from "./types";
 import { PLANT_STATUS_COLORS, PLANT_STATUS_LABELS } from "./types";
@@ -47,6 +60,18 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
   const [wikiCandidates, setWikiCandidates] = useState<WikiSearchResult[]>([]);
   const [eolPickerOpen, setEolPickerOpen] = useState(false);
   const [eolCandidates, setEolCandidates] = useState<EolSearchResult[]>([]);
+  const [gbifPickerOpen, setGbifPickerOpen] = useState(false);
+  const [gbifCandidates, setGbifCandidates] = useState<GbifSearchResult[]>([]);
+  const [treflePickerOpen, setTreflePickerOpen] = useState(false);
+  const [trefleCandidates, setTrefleCandidates] = useState<TrefleSearchResult[]>([]);
+
+  // Edit / Delete state
+  const [editing, setEditing] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+
+  // Enrichment preview state
+  const [enrichPreviewOpen, setEnrichPreviewOpen] = useState(false);
+  const [enrichPreview, setEnrichPreview] = useState<EnrichmentPreviewResult | null>(null);
 
   const { data: species, isLoading, isError } = useQuery({
     queryKey: ["species", speciesId],
@@ -66,16 +91,20 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
     },
   });
 
+  // --- iNaturalist: preview-based enrichment ---
   const enrichInat = useMutation({
     mutationFn: async () => {
-      const res = await (commands as any).enrichSpeciesInaturalist(speciesId);
+      const res = await (commands as any).previewEnrichInaturalist(speciesId);
       if (res.status === "error") throw new Error(res.error);
-      return res.data as Species;
+      return res.data as EnrichmentPreviewResult;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["species", speciesId] });
-      queryClient.invalidateQueries({ queryKey: ["species"] });
-      notifications.show({ title: "Enriched", message: "iNaturalist data applied.", color: "green" });
+    onSuccess: (preview: EnrichmentPreviewResult) => {
+      if (preview.fields.length === 0) {
+        notifications.show({ title: "No new data", message: "iNaturalist returned no new fields.", color: "orange" });
+      } else {
+        setEnrichPreview(preview);
+        setEnrichPreviewOpen(true);
+      }
     },
     onError: (err: Error) =>
       notifications.show({ title: "iNaturalist error", message: err.message, color: "red" }),
@@ -95,8 +124,8 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
           color: "orange",
         });
       } else if (candidates.length === 1) {
-        // Single result — enrich immediately without prompting
-        enrichWikiBySlug.mutate(candidates[0].slug);
+        // Single result — show preview instead of auto-enriching
+        previewWiki.mutate(candidates[0].slug);
       } else {
         setWikiCandidates(candidates);
         setWikiPickerOpen(true);
@@ -106,17 +135,20 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
       notifications.show({ title: "Wikipedia search error", message: err.message, color: "red" }),
   });
 
-  const enrichWikiBySlug = useMutation({
+  const previewWiki = useMutation({
     mutationFn: async (slug: string) => {
-      const res = await commands.enrichSpeciesWikipediaBySlug(speciesId, slug);
+      const res = await commands.previewEnrichWikipedia(speciesId, slug);
       if (res.status === "error") throw new Error(res.error);
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (preview: EnrichmentPreviewResult) => {
       setWikiPickerOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["species", speciesId] });
-      queryClient.invalidateQueries({ queryKey: ["species"] });
-      notifications.show({ title: "Enriched", message: "Wikipedia description applied.", color: "green" });
+      if (preview.fields.length === 0) {
+        notifications.show({ title: "No new data", message: "Wikipedia returned no new fields.", color: "orange" });
+      } else {
+        setEnrichPreview(preview);
+        setEnrichPreviewOpen(true);
+      }
     },
     onError: (err: Error) =>
       notifications.show({ title: "Wikipedia error", message: err.message, color: "red" }),
@@ -136,7 +168,7 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
           color: "orange",
         });
       } else if (candidates.length === 1) {
-        enrichEolById.mutate(candidates[0].id);
+        previewEol.mutate(candidates[0].id);
       } else {
         setEolCandidates(candidates);
         setEolPickerOpen(true);
@@ -146,20 +178,142 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
       notifications.show({ title: "EoL search error", message: err.message, color: "red" }),
   });
 
-  const enrichEolById = useMutation({
+  const previewEol = useMutation({
     mutationFn: async (eolPageId: number) => {
-      const res = await commands.enrichSpeciesEolById(speciesId, eolPageId);
+      const res = await commands.previewEnrichEol(speciesId, eolPageId);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data;
+    },
+    onSuccess: (preview: EnrichmentPreviewResult) => {
+      setEolPickerOpen(false);
+      if (preview.fields.length === 0) {
+        notifications.show({ title: "No new data", message: "EoL returned no new fields.", color: "orange" });
+      } else {
+        setEnrichPreview(preview);
+        setEnrichPreviewOpen(true);
+      }
+    },
+    onError: (err: Error) =>
+      notifications.show({ title: "EoL error", message: err.message, color: "red" }),
+  });
+
+  const searchGbifCandidates = useMutation({
+    mutationFn: async () => {
+      const res = await commands.searchGbifCandidates(speciesId);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data;
+    },
+    onSuccess: (candidates) => {
+      if (candidates.length === 0) {
+        notifications.show({
+          title: "No results",
+          message: "No GBIF backbone taxa found for this species.",
+          color: "orange",
+        });
+      } else if (candidates.length === 1) {
+        previewGbif.mutate(candidates[0].key);
+      } else {
+        setGbifCandidates(candidates);
+        setGbifPickerOpen(true);
+      }
+    },
+    onError: (err: Error) =>
+      notifications.show({ title: "GBIF search error", message: err.message, color: "red" }),
+  });
+
+  const previewGbif = useMutation({
+    mutationFn: async (gbifKey: number) => {
+      const res = await commands.previewEnrichGbif(speciesId, gbifKey);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data;
+    },
+    onSuccess: (preview: EnrichmentPreviewResult) => {
+      setGbifPickerOpen(false);
+      if (preview.fields.length === 0) {
+        notifications.show({ title: "No new data", message: "GBIF returned no new fields.", color: "orange" });
+      } else {
+        setEnrichPreview(preview);
+        setEnrichPreviewOpen(true);
+      }
+    },
+    onError: (err: Error) =>
+      notifications.show({ title: "GBIF error", message: err.message, color: "red" }),
+  });
+
+  const searchTrefleCandidates = useMutation({
+    mutationFn: async () => {
+      const res = await commands.searchTrefleCandidates(speciesId);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data;
+    },
+    onSuccess: (candidates) => {
+      if (candidates.length === 0) {
+        notifications.show({
+          title: "No results",
+          message: "No Trefle plants found for this species.",
+          color: "orange",
+        });
+      } else if (candidates.length === 1) {
+        previewTrefle.mutate(candidates[0].id);
+      } else {
+        setTrefleCandidates(candidates);
+        setTreflePickerOpen(true);
+      }
+    },
+    onError: (err: Error) =>
+      notifications.show({ title: "Trefle search error", message: err.message, color: "red" }),
+  });
+
+  const previewTrefle = useMutation({
+    mutationFn: async (trefleId: number) => {
+      const res = await commands.previewEnrichTrefle(speciesId, trefleId);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data;
+    },
+    onSuccess: (preview: EnrichmentPreviewResult) => {
+      setTreflePickerOpen(false);
+      if (preview.fields.length === 0) {
+        notifications.show({ title: "No new data", message: "Trefle returned no new fields.", color: "orange" });
+      } else {
+        setEnrichPreview(preview);
+        setEnrichPreviewOpen(true);
+      }
+    },
+    onError: (err: Error) =>
+      notifications.show({ title: "Trefle error", message: err.message, color: "red" }),
+  });
+
+  // --- Delete species ---
+  const deleteSpecies = useMutation({
+    mutationFn: async () => {
+      const res = await (commands as any).deleteSpecies(speciesId);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data as boolean;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["species"] });
+      notifications.show({ title: "Deleted", message: "Species removed.", color: "orange" });
+      navigate({ to: "/plants" });
+    },
+    onError: (err: Error) =>
+      notifications.show({ title: "Delete error", message: err.message, color: "red" }),
+  });
+
+  // --- Update species (edit form) ---
+  const updateSpecies = useMutation({
+    mutationFn: async (input: Record<string, any>) => {
+      const res = await (commands as any).updateSpecies(speciesId, input);
       if (res.status === "error") throw new Error(res.error);
       return res.data;
     },
     onSuccess: () => {
-      setEolPickerOpen(false);
+      setEditing(false);
       queryClient.invalidateQueries({ queryKey: ["species", speciesId] });
       queryClient.invalidateQueries({ queryKey: ["species"] });
-      notifications.show({ title: "Enriched", message: "Encyclopedia of Life data applied.", color: "teal" });
+      notifications.show({ title: "Saved", message: "Species updated.", color: "green" });
     },
     onError: (err: Error) =>
-      notifications.show({ title: "EoL error", message: err.message, color: "red" }),
+      notifications.show({ title: "Update error", message: err.message, color: "red" }),
   });
 
   if (isLoading) return <Loader m="xl" />;
@@ -189,7 +343,7 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
   return (
     <Stack p="md" gap="md">
       {/* Header */}
-      <Group>
+      <Group justify="space-between">
         <Tooltip label="Back to catalog">
           <Button
             variant="subtle"
@@ -200,6 +354,29 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
             Catalog
           </Button>
         </Tooltip>
+        <Group gap="xs">
+          <Tooltip label="Edit species">
+            <Button
+              variant="light"
+              size="xs"
+              leftSection={<IconEdit size={14} />}
+              onClick={() => setEditing(true)}
+            >
+              Edit
+            </Button>
+          </Tooltip>
+          <Tooltip label="Delete species">
+            <Button
+              variant="light"
+              color="red"
+              size="xs"
+              leftSection={<IconTrash size={14} />}
+              onClick={() => setDeleteConfirmOpen(true)}
+            >
+              Delete
+            </Button>
+          </Tooltip>
+        </Group>
       </Group>
 
       <Group align="flex-start" wrap="nowrap" gap="xl">
@@ -251,7 +428,7 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
               variant="light"
               color="gray"
               leftSection={<IconBrandWikipedia size={14} />}
-              loading={searchWikiCandidates.isPending || enrichWikiBySlug.isPending}
+              loading={searchWikiCandidates.isPending || previewWiki.isPending}
               onClick={() => searchWikiCandidates.mutate()}
             >
               Enrich from Wikipedia
@@ -261,10 +438,30 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
               variant="light"
               color="teal"
               leftSection={<IconPlant size={14} />}
-              loading={searchEolCandidates.isPending || enrichEolById.isPending}
+              loading={searchEolCandidates.isPending || previewEol.isPending}
               onClick={() => searchEolCandidates.mutate()}
             >
               Enrich from EoL
+            </Button>
+            <Button
+              size="xs"
+              variant="light"
+              color="grape"
+              leftSection={<IconGlobe size={14} />}
+              loading={searchGbifCandidates.isPending || previewGbif.isPending}
+              onClick={() => searchGbifCandidates.mutate()}
+            >
+              Enrich from GBIF
+            </Button>
+            <Button
+              size="xs"
+              variant="light"
+              color="green"
+              leftSection={<IconLeaf size={14} />}
+              loading={searchTrefleCandidates.isPending || previewTrefle.isPending}
+              onClick={() => searchTrefleCandidates.mutate()}
+            >
+              Enrich from Trefle
             </Button>
           </Group>
         </Stack>
@@ -290,7 +487,20 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
               <InfoItem label="Family" value={species.family} />
               <InfoItem label="Genus" value={species.genus} />
               <InfoItem label="Scientific name" value={species.scientific_name} />
-              <InfoItem label="iNaturalist ID" value={species.inaturalist_id?.toString()} />
+              <InfoItem
+                label="iNaturalist ID"
+                value={
+                  species.inaturalist_id ? (
+                    <Anchor
+                      href={`https://www.inaturalist.org/taxa/${species.inaturalist_id}`}
+                      target="_blank"
+                      size="sm"
+                    >
+                      {species.inaturalist_id} <IconExternalLink size={12} />
+                    </Anchor>
+                  ) : null
+                }
+              />
               <InfoItem
                 label="Wikipedia"
                 value={
@@ -305,46 +515,96 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
                   ) : null
                 }
               />
+              <InfoItem
+                label="GBIF"
+                value={
+                  species.gbif_key ? (
+                    <Anchor
+                      href={`https://www.gbif.org/species/${species.gbif_key}`}
+                      target="_blank"
+                      size="sm"
+                    >
+                      {species.gbif_accepted_name ?? species.gbif_key} <IconExternalLink size={12} />
+                    </Anchor>
+                  ) : null
+                }
+              />
+              <InfoItem label="Native range" value={species.native_range} />
+              <InfoItem label="Establishment" value={species.establishment_means} />
             </SimpleGrid>
+            {species.tags && (() => {
+              let parsed: string[] = [];
+              try { parsed = JSON.parse(species.tags); } catch {}
+              return parsed.length > 0 ? (
+                <Group gap="xs" mt="xs">
+                  {parsed.map((tag) => (
+                    <Badge key={tag} variant="light" color="teal" size="sm">{tag}</Badge>
+                  ))}
+                </Group>
+              ) : null;
+            })()}
           </Stack>
         </Tabs.Panel>
 
         {/* Growing Info */}
         <Tabs.Panel value="growing" pt="md">
-          <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
-            <InfoItem label="Sun requirement" value={species.sun_requirement} />
-            <InfoItem label="Water requirement" value={species.water_requirement} />
-            <InfoItem
-              label="Soil pH"
-              value={
-                species.soil_ph_min != null
-                  ? `${species.soil_ph_min}${species.soil_ph_max ? `–${species.soil_ph_max}` : ""}`
-                  : null
-              }
-            />
-            <InfoItem
-              label="Spacing (cm)"
-              value={species.spacing_cm?.toString()}
-            />
-            <InfoItem
-              label="Days to germination"
-              value={
-                species.days_to_germination_min != null
-                  ? `${species.days_to_germination_min}${species.days_to_germination_max ? `–${species.days_to_germination_max}` : ""}`
-                  : null
-              }
-            />
-            <InfoItem
-              label="Days to harvest"
-              value={
-                species.days_to_harvest_min != null
-                  ? `${species.days_to_harvest_min}${species.days_to_harvest_max ? `–${species.days_to_harvest_max}` : ""}`
-                  : null
-              }
-            />
-            <InfoItem label="Hardiness zone min" value={species.hardiness_zone_min} />
-            <InfoItem label="Hardiness zone max" value={species.hardiness_zone_max} />
-          </SimpleGrid>
+          <Stack gap="md">
+            {species.eol_description && (
+              <Stack gap={4}>
+                <Text size="sm" fw={600} c="dimmed">Summary (Encyclopedia of Life)</Text>
+                <Text size="sm">{species.eol_description}</Text>
+                <Divider />
+              </Stack>
+            )}
+            <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
+              <InfoItem label="Growth form" value={species.growth_type} />
+              <InfoItem label="Sun requirement" value={species.sun_requirement} />
+              <InfoItem label="Water requirement" value={species.water_requirement} />
+              <InfoItem label="Habitat" value={species.habitat} />
+              <InfoItem
+                label="Soil pH"
+                value={
+                  species.soil_ph_min != null
+                    ? `${species.soil_ph_min}${species.soil_ph_max ? `–${species.soil_ph_max}` : ""}`
+                    : null
+                }
+              />
+              <InfoItem
+                label="Temperature (°C)"
+                value={
+                  species.min_temperature_c != null
+                    ? `${species.min_temperature_c.toFixed(1)}${species.max_temperature_c != null ? `–${species.max_temperature_c.toFixed(1)}` : ""}`
+                    : species.max_temperature_c != null
+                      ? `≤ ${species.max_temperature_c.toFixed(1)}`
+                      : null
+                }
+              />
+              <InfoItem label="Hardiness zone min" value={species.hardiness_zone_min} />
+              <InfoItem label="Hardiness zone max" value={species.hardiness_zone_max} />
+              <InfoItem label="Rooting depth" value={species.rooting_depth} />
+              <InfoItem label="Uses" value={species.uses} />
+              <InfoItem
+                label="Spacing (cm)"
+                value={species.spacing_cm?.toString()}
+              />
+              <InfoItem
+                label="Days to germination"
+                value={
+                  species.days_to_germination_min != null
+                    ? `${species.days_to_germination_min}${species.days_to_germination_max ? `–${species.days_to_germination_max}` : ""}`
+                    : null
+                }
+              />
+              <InfoItem
+                label="Days to harvest"
+                value={
+                  species.days_to_harvest_min != null
+                    ? `${species.days_to_harvest_min}${species.days_to_harvest_max ? `–${species.days_to_harvest_max}` : ""}`
+                    : null
+                }
+              />
+            </SimpleGrid>
+          </Stack>
         </Tabs.Panel>
 
         {/* Individual Plants */}
@@ -431,8 +691,8 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
                 <Button
                   size="xs"
                   variant="light"
-                  loading={enrichWikiBySlug.isPending}
-                  onClick={() => enrichWikiBySlug.mutate(c.slug)}
+                  loading={previewWiki.isPending && previewWiki.variables === c.slug}
+                  onClick={() => previewWiki.mutate(c.slug)}
                 >
                   Use this
                 </Button>
@@ -474,8 +734,8 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
                   size="xs"
                   variant="light"
                   color="teal"
-                  loading={enrichEolById.isPending}
-                  onClick={() => enrichEolById.mutate(c.id)}
+                  loading={previewEol.isPending && previewEol.variables === c.id}
+                  onClick={() => previewEol.mutate(c.id)}
                 >
                   Use this
                 </Button>
@@ -484,6 +744,163 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
           ))}
         </Stack>
       </Modal>
+
+      {/* GBIF backbone taxon picker */}
+      <Modal
+        opened={gbifPickerOpen}
+        onClose={() => setGbifPickerOpen(false)}
+        title="Select GBIF backbone taxon"
+        size="lg"
+      >
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">
+            Multiple GBIF taxa matched. Choose the one that best describes this species.
+          </Text>
+          <Divider />
+          {gbifCandidates.map((c) => (
+            <Card key={c.key} withBorder padding="sm">
+              <Group justify="space-between" align="flex-start" wrap="nowrap">
+                <Stack gap={2} flex={1}>
+                  <Text fw={500} size="sm">{c.scientific_name}</Text>
+                  {c.canonical_name && c.canonical_name !== c.scientific_name && (
+                    <Text size="xs" fs="italic" c="dimmed">{c.canonical_name}</Text>
+                  )}
+                  <Group gap="xs">
+                    {c.rank && <Badge size="xs" variant="outline">{c.rank}</Badge>}
+                    {c.status && <Badge size="xs" variant="light">{c.status}</Badge>}
+                    {c.confidence != null && (
+                      <Badge size="xs" variant="light" color="grape">
+                        {c.confidence}% match
+                      </Badge>
+                    )}
+                  </Group>
+                  {c.classification && (
+                    <Text size="xs" c="dimmed" lineClamp={1}>
+                      {c.classification}
+                    </Text>
+                  )}
+                  <Anchor
+                    href={`https://www.gbif.org/species/${c.key}`}
+                    target="_blank"
+                    size="xs"
+                  >
+                    gbif.org/species/{c.key} <IconExternalLink size={11} />
+                  </Anchor>
+                </Stack>
+                <Button
+                  size="xs"
+                  variant="light"
+                  color="grape"
+                  loading={previewGbif.isPending && previewGbif.variables === c.key}
+                  onClick={() => previewGbif.mutate(c.key)}
+                >
+                  Use this
+                </Button>
+              </Group>
+            </Card>
+          ))}
+        </Stack>
+      </Modal>
+
+      {/* Trefle plant picker */}
+      <Modal
+        opened={treflePickerOpen}
+        onClose={() => setTreflePickerOpen(false)}
+        title="Select Trefle plant"
+        size="lg"
+      >
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">
+            Multiple Trefle plants matched. Choose the one that best describes this species.
+          </Text>
+          <Divider />
+          {trefleCandidates.map((c) => (
+            <Card key={c.id} withBorder padding="sm">
+              <Group justify="space-between" align="flex-start" wrap="nowrap">
+                <Stack gap={2} flex={1}>
+                  <Text fw={500} size="sm" fs="italic">{c.scientific_name}</Text>
+                  {c.common_name && (
+                    <Text size="xs" c="dimmed">{c.common_name}</Text>
+                  )}
+                  <Group gap="xs">
+                    {c.family && <Badge size="xs" variant="outline">{c.family}</Badge>}
+                    {c.genus && <Badge size="xs" variant="light">{c.genus}</Badge>}
+                  </Group>
+                  <Anchor
+                    href={`https://trefle.io/api/v1/plants/${c.id}`}
+                    target="_blank"
+                    size="xs"
+                  >
+                    trefle.io/plants/{c.id} <IconExternalLink size={11} />
+                  </Anchor>
+                </Stack>
+                {c.image_url && (
+                  <Image src={c.image_url} w={50} h={50} radius="sm" fit="cover" />
+                )}
+                <Button
+                  size="xs"
+                  variant="light"
+                  color="green"
+                  loading={previewTrefle.isPending && previewTrefle.variables === c.id}
+                  onClick={() => previewTrefle.mutate(c.id)}
+                >
+                  Use this
+                </Button>
+              </Group>
+            </Card>
+          ))}
+        </Stack>
+      </Modal>
+
+      {/* Delete confirmation */}
+      <Modal
+        opened={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        title="Delete species"
+        size="sm"
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            Delete <Text span fw={600}>{species.common_name}</Text>?
+            {plants.length > 0 && (
+              <Text size="sm" c="orange" mt={4}>
+                {plants.length} individual plant{plants.length === 1 ? "" : "s"} will
+                have their species reference cleared.
+              </Text>
+            )}
+          </Text>
+          <Group justify="flex-end" gap="sm">
+            <Button variant="subtle" onClick={() => setDeleteConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              loading={deleteSpecies.isPending}
+              onClick={() => deleteSpecies.mutate()}
+            >
+              Delete
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Edit species modal */}
+      <SpeciesEditModal
+        opened={editing}
+        onClose={() => setEditing(false)}
+        species={species}
+        onSave={(fields) => updateSpecies.mutate(fields)}
+        saving={updateSpecies.isPending}
+      />
+
+      {/* Enrichment field-level preview */}
+      <EnrichmentPreview
+        opened={enrichPreviewOpen}
+        onClose={() => setEnrichPreviewOpen(false)}
+        speciesId={speciesId}
+        species={species}
+        preview={enrichPreview}
+      />
     </Stack>
   );
 }
@@ -512,5 +929,112 @@ function InfoItem({
         </Text>
       )}
     </Stack>
+  );
+}
+
+const SUN_OPTIONS = [
+  { value: "full_sun", label: "Full sun" },
+  { value: "partial_sun", label: "Partial sun" },
+  { value: "shade", label: "Shade" },
+];
+
+const WATER_OPTIONS = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+];
+
+const GROWTH_OPTIONS = [
+  { value: "annual", label: "Annual" },
+  { value: "perennial", label: "Perennial" },
+  { value: "biennial", label: "Biennial" },
+  { value: "tree", label: "Tree" },
+  { value: "shrub", label: "Shrub" },
+  { value: "vine", label: "Vine" },
+  { value: "herb", label: "Herb" },
+];
+
+function SpeciesEditModal({
+  opened,
+  onClose,
+  species,
+  onSave,
+  saving,
+}: {
+  opened: boolean;
+  onClose: () => void;
+  species: Species;
+  onSave: (fields: Record<string, any>) => void;
+  saving: boolean;
+}) {
+  const [commonName, setCommonName] = useState(species.common_name);
+  const [scientificName, setScientificName] = useState(species.scientific_name ?? "");
+  const [family, setFamily] = useState(species.family ?? "");
+  const [genus, setGenus] = useState(species.genus ?? "");
+  const [growthType, setGrowthType] = useState<string | null>(species.growth_type ?? null);
+  const [sunReq, setSunReq] = useState<string | null>(species.sun_requirement ?? null);
+  const [waterReq, setWaterReq] = useState<string | null>(species.water_requirement ?? null);
+  const [desc, setDesc] = useState(species.description ?? "");
+  const [imageUrl, setImageUrl] = useState(species.image_url ?? "");
+  const [spacingCm, setSpacingCm] = useState<number | string>(species.spacing_cm ?? "");
+  const [germMin, setGermMin] = useState<number | string>(species.days_to_germination_min ?? "");
+  const [germMax, setGermMax] = useState<number | string>(species.days_to_germination_max ?? "");
+  const [harvestMin, setHarvestMin] = useState<number | string>(species.days_to_harvest_min ?? "");
+  const [harvestMax, setHarvestMax] = useState<number | string>(species.days_to_harvest_max ?? "");
+
+  const handleSave = () => {
+    onSave({
+      common_name: commonName || null,
+      scientific_name: scientificName || null,
+      family: family || null,
+      genus: genus || null,
+      growth_type: growthType || null,
+      sun_requirement: sunReq || null,
+      water_requirement: waterReq || null,
+      description: desc || null,
+      image_url: imageUrl || null,
+      spacing_cm: spacingCm !== "" ? Number(spacingCm) : null,
+      days_to_germination_min: germMin !== "" ? Number(germMin) : null,
+      days_to_germination_max: germMax !== "" ? Number(germMax) : null,
+      days_to_harvest_min: harvestMin !== "" ? Number(harvestMin) : null,
+      days_to_harvest_max: harvestMax !== "" ? Number(harvestMax) : null,
+      hardiness_zone_min: null,
+      hardiness_zone_max: null,
+      soil_ph_min: null,
+      soil_ph_max: null,
+    });
+  };
+
+  return (
+    <Modal opened={opened} onClose={onClose} title="Edit Species" size="lg">
+      <Stack gap="sm">
+        <TextInput label="Common name" value={commonName} onChange={(e) => setCommonName(e.currentTarget.value)} required />
+        <TextInput label="Scientific name" value={scientificName} onChange={(e) => setScientificName(e.currentTarget.value)} />
+        <Group grow>
+          <TextInput label="Family" value={family} onChange={(e) => setFamily(e.currentTarget.value)} />
+          <TextInput label="Genus" value={genus} onChange={(e) => setGenus(e.currentTarget.value)} />
+        </Group>
+        <Group grow>
+          <Select label="Growth type" data={GROWTH_OPTIONS} value={growthType} onChange={setGrowthType} clearable />
+          <Select label="Sun requirement" data={SUN_OPTIONS} value={sunReq} onChange={setSunReq} clearable />
+          <Select label="Water requirement" data={WATER_OPTIONS} value={waterReq} onChange={setWaterReq} clearable />
+        </Group>
+        <TextInput label="Image URL" value={imageUrl} onChange={(e) => setImageUrl(e.currentTarget.value)} />
+        <TextInput label="Description" value={desc} onChange={(e) => setDesc(e.currentTarget.value)} />
+        <Group grow>
+          <NumberInput label="Spacing (cm)" value={spacingCm} onChange={setSpacingCm} min={0} />
+          <NumberInput label="Germination min (days)" value={germMin} onChange={setGermMin} min={0} />
+          <NumberInput label="Germination max (days)" value={germMax} onChange={setGermMax} min={0} />
+        </Group>
+        <Group grow>
+          <NumberInput label="Harvest min (days)" value={harvestMin} onChange={setHarvestMin} min={0} />
+          <NumberInput label="Harvest max (days)" value={harvestMax} onChange={setHarvestMax} min={0} />
+        </Group>
+        <Group justify="flex-end" mt="sm">
+          <Button variant="subtle" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSave} loading={saving}>Save</Button>
+        </Group>
+      </Stack>
+    </Modal>
   );
 }
