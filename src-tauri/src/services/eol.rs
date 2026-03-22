@@ -1,9 +1,8 @@
 /// Encyclopedia of Life (EoL) API integration.
 ///
 /// Uses the EoL v1 REST API (no authentication required for read operations).
-/// Search:    https://eol.org/api/search/1.0.json?q={query}&page=1&per_page=N
-/// Pages:     https://eol.org/api/pages/1.0.json?id={id}&details=true&taxonomy=true&...
-/// TraitBank: https://eol.org/service/cypher (read-only Cypher query API)
+/// Search: https://eol.org/api/search/1.0.json?q={query}&page=1&per_page=N
+/// Pages:  https://eol.org/api/pages/1.0.json?id={id}&details=true&taxonomy=true&...
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -93,24 +92,38 @@ struct EolSearchItem {
     content: Option<String>,
 }
 
+/// Top-level wrapper returned by the EoL pages API.
+/// The actual data lives under `taxonConcept`.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct EolPageResponse {
+struct EolPageResponseWrapper {
+    taxon_concept: EolPageInner,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EolPageInner {
     data_objects: Option<Vec<EolDataObject>>,
     taxon_concepts: Option<Vec<EolTaxonConcept>>,
 }
 
 #[derive(Debug, Deserialize)]
 struct EolDataObject {
-    #[serde(rename = "type")]
+    #[serde(rename = "dataType")]
     data_type: Option<String>,
     #[serde(rename = "mimeType")]
     mime_type: Option<String>,
     #[serde(rename = "description")]
     description: Option<String>,
+    language: Option<String>,
     // EoL uses "mediaURL" (capital URL), not the camelCase "mediaUrl".
     #[serde(rename = "mediaURL")]
     media_url: Option<String>,
+    /// CDN-hosted media URL (preferred over the source mediaURL).
+    #[serde(rename = "eolMediaURL")]
+    eol_media_url: Option<String>,
+    #[serde(rename = "eolThumbnailURL")]
+    _eol_thumbnail_url: Option<String>,
 }
 
 /// One entry per classification provider; we use the first that has ancestors.
@@ -191,6 +204,7 @@ pub async fn search(
             let title = item.title.as_deref().unwrap_or("").to_lowercase();
             !NON_PLANT_KEYWORDS.iter().any(|kw| title.contains(kw))
         })
+        .take(limit as usize)
         .map(|item| EolSearchResult {
             id: item.id,
             title: item.title.unwrap_or_else(|| format!("EoL page {}", item.id)),
@@ -213,7 +227,8 @@ pub async fn get_page(client: &Client, page_id: i64) -> Result<EolDetail, String
             ("details", "true"),
             ("taxonomy", "true"),
             ("images_per_page", "1"),
-            ("texts_per_page", "1"),
+            ("texts_per_page", "5"),
+            ("language", "en"),
             ("videos_per_page", "0"),
             ("sounds_per_page", "0"),
             ("vetted", "2"),
@@ -237,22 +252,37 @@ pub async fn get_page(client: &Client, page_id: i64) -> Result<EolDetail, String
         .await
         .map_err(|e| format!("Failed to read EoL response body: {e}"))?;
 
-    let data: EolPageResponse = serde_json::from_str(&raw_json)
+    let wrapper: EolPageResponseWrapper = serde_json::from_str(&raw_json)
         .map_err(|e| format!("Failed to parse EoL page response: {e}"))?;
+    let data = wrapper.taxon_concept;
 
     let page_url = format!("https://eol.org/pages/{page_id}");
     let data_objects = data.data_objects.unwrap_or_default();
 
-    let description = data_objects
+    // Prefer English text; fall back to any text description.
+    let text_objs: Vec<&EolDataObject> = data_objects
         .iter()
-        .find(|o| o.data_type.as_deref().map(|t| t.contains("Text")).unwrap_or(false))
+        .filter(|o| {
+            o.data_type
+                .as_deref()
+                .map(|t| t.contains("Text"))
+                .unwrap_or(false)
+        })
+        .collect();
+    let best_text = text_objs
+        .iter()
+        .find(|o| o.language.as_deref() == Some("en"))
+        .or_else(|| text_objs.first());
+    let description = best_text
         .and_then(|o| o.description.as_deref())
         .map(strip_html_tags);
 
-    let image_url = data_objects
+    // Prefer the EoL CDN URL for images, fall back to source mediaURL.
+    let image_obj = data_objects
         .iter()
-        .find(|o| o.mime_type.as_deref().map(|m| m.starts_with("image/")).unwrap_or(false))
-        .and_then(|o| o.media_url.clone());
+        .find(|o| o.mime_type.as_deref().map(|m| m.starts_with("image/")).unwrap_or(false));
+    let image_url = image_obj
+        .and_then(|o| o.eol_media_url.clone().or_else(|| o.media_url.clone()));
 
     let tags = extract_taxonomy_tags(data.taxon_concepts.as_deref().unwrap_or(&[]));
 
@@ -286,8 +316,9 @@ async fn get_traits_inner(client: &Client, page_id: i64) -> Result<EolTraits, St
         .query(&[("query", query.as_str())])
         .header("User-Agent", USER_AGENT)
         .header("Accept", "application/json")
-        // Short timeout — silently skip traits if TraitBank is slow.
-        .timeout(Duration::from_secs(8))
+        // Short timeout — silently skip traits if TraitBank is slow or
+        // requires authentication (the Cypher API may return 401).
+        .timeout(Duration::from_secs(5))
         .send()
         .await
         .map_err(|e| e.to_string())?;

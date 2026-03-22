@@ -17,6 +17,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconPlant, IconSeeding } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { commands, type SeedlingObservation } from "../../lib/bindings";
 import { useAppStore } from "../../stores/appStore";
@@ -55,6 +56,7 @@ interface SeedlingCardProps {
 }
 
 function SeedlingCard({ plant, species, observations, onLogObs, onTransplant }: SeedlingCardProps) {
+  const navigate = useNavigate();
   const latest = observations[observations.length - 1];
   const ready = isReadyToTransplant(latest);
 
@@ -84,7 +86,16 @@ function SeedlingCard({ plant, species, observations, onLogObs, onTransplant }: 
         </Group>
 
         {species && (
-          <Text size="xs" c="dimmed" lineClamp={1}>
+          <Text
+            size="xs"
+            c="dimmed"
+            lineClamp={1}
+            style={{ cursor: "pointer", textDecoration: "underline" }}
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate({ to: "/plants/$speciesId", params: { speciesId: String(species.id) } });
+            }}
+          >
             {species.common_name}
           </Text>
         )}
