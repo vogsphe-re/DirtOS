@@ -1,6 +1,8 @@
 use sqlx::SqlitePool;
 
-use super::models::{NewSpecies, Pagination, Species, SpeciesFilters, UpdateSpecies};
+use super::models::{
+    ApplyEnrichmentFields, NewSpecies, Pagination, Species, SpeciesFilters, UpdateSpecies,
+};
 
 pub async fn list_species(
     pool: &SqlitePool,
@@ -412,5 +414,130 @@ pub async fn update_species_trefle(
     .bind(id)
     .execute(pool)
     .await?;
+    get_species(pool, id).await
+}
+
+/// Apply only the user-approved enrichment fields to a species row.
+/// Dynamically builds the UPDATE based on which fields are in `approved_fields`.
+pub async fn apply_enrichment_fields(
+    pool: &SqlitePool,
+    id: i64,
+    input: ApplyEnrichmentFields,
+) -> Result<Option<Species>, sqlx::Error> {
+    let approved: std::collections::HashSet<&str> =
+        input.approved_fields.iter().map(|s| s.as_str()).collect();
+
+    // Build SET clauses dynamically. Only include columns the user approved.
+    let mut set_clauses: Vec<String> = Vec::new();
+    let mut values: Vec<Option<String>> = Vec::new();
+
+    macro_rules! maybe {
+        ($col:expr, $val:expr) => {
+            if approved.contains($col) {
+                if let Some(v) = $val {
+                    set_clauses.push(format!("{} = ?", $col));
+                    values.push(Some(v.to_string()));
+                }
+            }
+        };
+    }
+
+    macro_rules! maybe_num {
+        ($col:expr, $val:expr) => {
+            if approved.contains($col) {
+                if let Some(v) = $val {
+                    set_clauses.push(format!("{} = ?", $col));
+                    values.push(Some(v.to_string()));
+                }
+            }
+        };
+    }
+
+    maybe!("scientific_name", input.scientific_name);
+    maybe!("family", input.family);
+    maybe!("genus", input.genus);
+    maybe!("image_url", input.image_url);
+    maybe!("description", input.description);
+    maybe!("eol_description", input.eol_description);
+    maybe!("growth_type", input.growth_type);
+    maybe!("sun_requirement", input.sun_requirement);
+    maybe!("water_requirement", input.water_requirement);
+    maybe_num!("soil_ph_min", input.soil_ph_min);
+    maybe_num!("soil_ph_max", input.soil_ph_max);
+    maybe_num!("spacing_cm", input.spacing_cm);
+    maybe_num!("days_to_harvest_min", input.days_to_harvest_min);
+    maybe_num!("days_to_harvest_max", input.days_to_harvest_max);
+    maybe!("hardiness_zone_min", input.hardiness_zone_min);
+    maybe!("hardiness_zone_max", input.hardiness_zone_max);
+    maybe!("habitat", input.habitat);
+    maybe!("native_range", input.native_range);
+    maybe!("establishment_means", input.establishment_means);
+    maybe_num!("min_temperature_c", input.min_temperature_c);
+    maybe_num!("max_temperature_c", input.max_temperature_c);
+    maybe!("rooting_depth", input.rooting_depth);
+    maybe!("uses", input.uses);
+    maybe!("tags", input.tags);
+    maybe!("gbif_accepted_name", input.gbif_accepted_name);
+
+    // Always set the source-specific identifier & cached JSON
+    if let Some(sid) = &input.source_id {
+        match input.source.as_str() {
+            "inaturalist" => {
+                set_clauses.push("inaturalist_id = ?".to_string());
+                values.push(Some(sid.clone()));
+            }
+            "eol" => {
+                set_clauses.push("eol_page_id = ?".to_string());
+                values.push(Some(sid.clone()));
+            }
+            "gbif" => {
+                set_clauses.push("gbif_key = ?".to_string());
+                values.push(Some(sid.clone()));
+            }
+            "trefle" => {
+                set_clauses.push("trefle_id = ?".to_string());
+                values.push(Some(sid.clone()));
+            }
+            "wikipedia" => {
+                set_clauses.push("wikipedia_slug = ?".to_string());
+                values.push(Some(sid.clone()));
+            }
+            _ => {}
+        }
+    }
+
+    if let Some(ref cj) = input.cached_json {
+        let col = match input.source.as_str() {
+            "inaturalist" => Some("cached_inaturalist_json"),
+            "wikipedia" => Some("cached_wikipedia_json"),
+            "eol" => Some("cached_eol_json"),
+            "gbif" => Some("cached_gbif_json"),
+            "trefle" => Some("cached_trefle_json"),
+            _ => None,
+        };
+        if let Some(col) = col {
+            set_clauses.push(format!("{col} = ?"));
+            values.push(Some(cj.clone()));
+        }
+    }
+
+    if set_clauses.is_empty() {
+        return get_species(pool, id).await;
+    }
+
+    set_clauses.push("updated_at = datetime('now')".to_string());
+
+    let sql = format!(
+        "UPDATE species SET {} WHERE id = ?",
+        set_clauses.join(", ")
+    );
+
+    let mut query = sqlx::query(&sql);
+    for v in &values {
+        query = query.bind(v.as_deref());
+    }
+    query = query.bind(id);
+    query.execute(pool).await?;
+
     get_species(pool, id).await
 }

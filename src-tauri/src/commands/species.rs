@@ -5,7 +5,10 @@ use tauri::State;
 use crate::{
     db::{
         self,
-        models::{NewSpecies, Pagination, Species, SpeciesFilters, UpdateSpecies},
+        models::{
+            ApplyEnrichmentFields, EnrichmentFieldPreview, EnrichmentPreviewResult, NewSpecies,
+            Pagination, Species, SpeciesFilters, UpdateSpecies,
+        },
         species,
     },
     services::{inaturalist, eol, gbif, trefle, wikipedia},
@@ -610,4 +613,317 @@ pub async fn enrich_species_trefle_by_id(
     .await
     .map_err(|e| e.to_string())?
     .ok_or_else(|| format!("Species {species_id} not found after Trefle update"))
+}
+
+// ---------------------------------------------------------------------------
+// Enrichment Preview Commands
+// ---------------------------------------------------------------------------
+
+fn field(
+    field: &str,
+    label: &str,
+    current: Option<&str>,
+    new_val: Option<String>,
+) -> EnrichmentFieldPreview {
+    EnrichmentFieldPreview {
+        field: field.to_string(),
+        label: label.to_string(),
+        current_value: current.map(|s| s.to_string()),
+        new_value: new_val,
+    }
+}
+
+fn field_num<T: std::fmt::Display>(
+    field_name: &str,
+    label: &str,
+    current: Option<T>,
+    new_val: Option<T>,
+) -> EnrichmentFieldPreview {
+    EnrichmentFieldPreview {
+        field: field_name.to_string(),
+        label: label.to_string(),
+        current_value: current.map(|v| v.to_string()),
+        new_value: new_val.map(|v| v.to_string()),
+    }
+}
+
+/// Preview iNaturalist enrichment without writing to DB.
+#[tauri::command]
+#[specta::specta]
+pub async fn preview_enrich_inaturalist(
+    pool: State<'_, SqlitePool>,
+    species_id: i64,
+) -> Result<EnrichmentPreviewResult, String> {
+    let sp = species::get_species(&pool, species_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Species {species_id} not found"))?;
+
+    let client = Client::builder()
+        .use_rustls_tls()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let taxon_id: i64 = if let Some(id) = sp.inaturalist_id {
+        id
+    } else {
+        let query = sp
+            .scientific_name
+            .as_deref()
+            .filter(|s| !s.is_empty())
+            .unwrap_or(sp.common_name.as_str());
+        let results = inaturalist::search_taxa(&client, query).await?;
+        results
+            .into_iter()
+            .next()
+            .ok_or_else(|| format!("No iNaturalist results for '{query}'"))?
+            .id
+    };
+
+    let detail = inaturalist::get_taxon(&client, taxon_id).await?;
+
+    let mut fields = vec![
+        field(
+            "scientific_name",
+            "Scientific name",
+            sp.scientific_name.as_deref(),
+            Some(detail.name.clone()),
+        ),
+        field("family", "Family", sp.family.as_deref(), detail.family.clone()),
+        field("genus", "Genus", sp.genus.as_deref(), detail.genus.clone()),
+        field(
+            "image_url",
+            "Image",
+            sp.image_url.as_deref(),
+            detail.default_photo_url.clone(),
+        ),
+    ];
+    // Only include fields that actually have a new value
+    fields.retain(|f| f.new_value.is_some());
+
+    Ok(EnrichmentPreviewResult {
+        source: "inaturalist".to_string(),
+        fields,
+        cached_json: Some(detail.raw_json),
+        source_id: Some(taxon_id.to_string()),
+    })
+}
+
+/// Preview Wikipedia enrichment without writing to DB.
+#[tauri::command]
+#[specta::specta]
+pub async fn preview_enrich_wikipedia(
+    pool: State<'_, SqlitePool>,
+    species_id: i64,
+    slug: String,
+) -> Result<EnrichmentPreviewResult, String> {
+    let sp = species::get_species(&pool, species_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Species {species_id} not found"))?;
+
+    let client = Client::builder()
+        .use_rustls_tls()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let summary = wikipedia::get_summary(&client, &slug).await?;
+
+    let mut fields = vec![
+        field(
+            "description",
+            "Description",
+            sp.description.as_deref(),
+            summary.extract.clone(),
+        ),
+        field(
+            "image_url",
+            "Image",
+            sp.image_url.as_deref(),
+            summary.thumbnail_url.clone(),
+        ),
+    ];
+    fields.retain(|f| f.new_value.is_some());
+
+    Ok(EnrichmentPreviewResult {
+        source: "wikipedia".to_string(),
+        fields,
+        cached_json: Some(summary.raw_json),
+        source_id: Some(summary.slug),
+    })
+}
+
+/// Preview EoL enrichment without writing to DB.
+#[tauri::command]
+#[specta::specta]
+pub async fn preview_enrich_eol(
+    pool: State<'_, SqlitePool>,
+    species_id: i64,
+    eol_page_id: i64,
+) -> Result<EnrichmentPreviewResult, String> {
+    let sp = species::get_species(&pool, species_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Species {species_id} not found"))?;
+
+    let client = Client::builder()
+        .use_rustls_tls()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let (page_result, traits) = tokio::join!(
+        eol::get_page(&client, eol_page_id),
+        eol::get_traits(&client, eol_page_id)
+    );
+    let detail = page_result?;
+
+    let tags_json = if detail.tags.is_empty() {
+        None
+    } else {
+        Some(serde_json::to_string(&detail.tags).unwrap_or_default())
+    };
+    let uses_str = if traits.uses.is_empty() {
+        None
+    } else {
+        Some(traits.uses.join(", "))
+    };
+
+    let mut fields = vec![
+        field("eol_description", "Description (EoL)", sp.eol_description.as_deref(), detail.description.clone()),
+        field("image_url", "Image", sp.image_url.as_deref(), detail.image_url.clone()),
+        field("growth_type", "Growth type", sp.growth_type.as_deref(), traits.growth_type.clone()),
+        field("sun_requirement", "Sun requirement", sp.sun_requirement.as_deref(), traits.sun_requirement.clone()),
+        field("water_requirement", "Water requirement", sp.water_requirement.as_deref(), traits.water_requirement.clone()),
+        field_num("soil_ph_min", "Soil pH min", sp.soil_ph_min, traits.soil_ph_min),
+        field_num("soil_ph_max", "Soil pH max", sp.soil_ph_max, traits.soil_ph_max),
+        field("hardiness_zone_min", "Hardiness zone min", sp.hardiness_zone_min.as_deref(), traits.hardiness_zone_min.clone()),
+        field("hardiness_zone_max", "Hardiness zone max", sp.hardiness_zone_max.as_deref(), traits.hardiness_zone_max.clone()),
+        field("habitat", "Habitat", sp.habitat.as_deref(), traits.habitat.clone()),
+        field_num("min_temperature_c", "Min temperature (°C)", sp.min_temperature_c, traits.min_temperature_c),
+        field_num("max_temperature_c", "Max temperature (°C)", sp.max_temperature_c, traits.max_temperature_c),
+        field("rooting_depth", "Rooting depth", sp.rooting_depth.as_deref(), traits.rooting_depth.clone()),
+        field("uses", "Uses", sp.uses.as_deref(), uses_str.clone()),
+        field("tags", "Tags", sp.tags.as_deref(), tags_json.clone()),
+    ];
+    fields.retain(|f| f.new_value.is_some());
+
+    Ok(EnrichmentPreviewResult {
+        source: "eol".to_string(),
+        fields,
+        cached_json: Some(detail.raw_json),
+        source_id: Some(eol_page_id.to_string()),
+    })
+}
+
+/// Preview GBIF enrichment without writing to DB.
+#[tauri::command]
+#[specta::specta]
+pub async fn preview_enrich_gbif(
+    pool: State<'_, SqlitePool>,
+    species_id: i64,
+    gbif_key: i64,
+) -> Result<EnrichmentPreviewResult, String> {
+    let sp = species::get_species(&pool, species_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Species {species_id} not found"))?;
+
+    let client = Client::builder()
+        .use_rustls_tls()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let detail = gbif::get_detail(&client, gbif_key).await?;
+
+    let native_range = if detail.native_range.is_empty() {
+        None
+    } else {
+        Some(detail.native_range.join("; "))
+    };
+    let establishment_means = if detail.establishment_means.is_empty() {
+        None
+    } else {
+        Some(detail.establishment_means.join(", "))
+    };
+
+    let mut fields = vec![
+        field("gbif_accepted_name", "Accepted name", sp.gbif_accepted_name.as_deref(), Some(detail.scientific_name.clone())),
+        field("family", "Family", sp.family.as_deref(), detail.family.clone()),
+        field("genus", "Genus", sp.genus.as_deref(), detail.genus.clone()),
+        field("habitat", "Habitat", sp.habitat.as_deref(), detail.habitat.clone()),
+        field("native_range", "Native range", sp.native_range.as_deref(), native_range.clone()),
+        field("establishment_means", "Establishment means", sp.establishment_means.as_deref(), establishment_means.clone()),
+    ];
+    fields.retain(|f| f.new_value.is_some());
+
+    Ok(EnrichmentPreviewResult {
+        source: "gbif".to_string(),
+        fields,
+        cached_json: Some(detail.raw_json),
+        source_id: Some(gbif_key.to_string()),
+    })
+}
+
+/// Preview Trefle enrichment without writing to DB.
+#[tauri::command]
+#[specta::specta]
+pub async fn preview_enrich_trefle(
+    pool: State<'_, SqlitePool>,
+    species_id: i64,
+    trefle_id: i64,
+) -> Result<EnrichmentPreviewResult, String> {
+    let token = db::weather::get_setting(&pool, "trefle_api_key")
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "Trefle API token not configured. Set it in Settings.".to_string())?;
+
+    let sp = species::get_species(&pool, species_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Species {species_id} not found"))?;
+
+    let client = Client::builder()
+        .use_rustls_tls()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let detail = trefle::get_detail(&client, trefle_id, &token).await?;
+
+    let mut fields = vec![
+        field("family", "Family", sp.family.as_deref(), detail.family.clone()),
+        field("genus", "Genus", sp.genus.as_deref(), detail.genus.clone()),
+        field("image_url", "Image", sp.image_url.as_deref(), detail.image_url.clone()),
+        field("growth_type", "Growth type", sp.growth_type.as_deref(), detail.growth_type.clone()),
+        field("sun_requirement", "Sun requirement", sp.sun_requirement.as_deref(), detail.sun_requirement.clone()),
+        field("water_requirement", "Water requirement", sp.water_requirement.as_deref(), detail.water_requirement.clone()),
+        field_num("soil_ph_min", "Soil pH min", sp.soil_ph_min, detail.soil_ph_min),
+        field_num("soil_ph_max", "Soil pH max", sp.soil_ph_max, detail.soil_ph_max),
+        field_num("spacing_cm", "Spacing (cm)", sp.spacing_cm, detail.spacing_cm),
+        field_num("days_to_harvest_min", "Days to harvest (min)", sp.days_to_harvest_min, detail.days_to_harvest_min),
+        field_num("days_to_harvest_max", "Days to harvest (max)", sp.days_to_harvest_max, detail.days_to_harvest_max),
+        field("hardiness_zone_min", "Hardiness zone min", sp.hardiness_zone_min.as_deref(), detail.hardiness_zone_min.clone()),
+        field("hardiness_zone_max", "Hardiness zone max", sp.hardiness_zone_max.as_deref(), detail.hardiness_zone_max.clone()),
+    ];
+    fields.retain(|f| f.new_value.is_some());
+
+    Ok(EnrichmentPreviewResult {
+        source: "trefle".to_string(),
+        fields,
+        cached_json: Some(detail.raw_json),
+        source_id: Some(trefle_id.to_string()),
+    })
+}
+
+/// Apply user-approved enrichment fields to a species.
+#[tauri::command]
+#[specta::specta]
+pub async fn apply_enrichment_preview(
+    pool: State<'_, SqlitePool>,
+    species_id: i64,
+    input: ApplyEnrichmentFields,
+) -> Result<Species, String> {
+    species::apply_enrichment_fields(&pool, species_id, input)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Species {species_id} not found"))
 }

@@ -457,6 +457,74 @@ pub struct SpeciesFilters {
 }
 
 // ---------------------------------------------------------------------------
+// Enrichment preview
+// ---------------------------------------------------------------------------
+
+/// A single field proposed by an enrichment source.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct EnrichmentFieldPreview {
+    /// DB column / display key, e.g. "family"
+    pub field: String,
+    /// Human-readable label, e.g. "Family"
+    pub label: String,
+    /// Current value already stored on the species (stringified).
+    pub current_value: Option<String>,
+    /// Value the enrichment source would set.
+    pub new_value: Option<String>,
+}
+
+/// Full preview returned by a `preview_enrich_*` command.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct EnrichmentPreviewResult {
+    pub source: String,
+    pub fields: Vec<EnrichmentFieldPreview>,
+    /// Raw JSON from the external API, to be saved in the cached_*_json column
+    /// if the user confirms enrichment.
+    pub cached_json: Option<String>,
+    /// Source-specific identifier (iNat taxon id, EoL page id, GBIF key, etc.)
+    pub source_id: Option<String>,
+}
+
+/// Selective enrichment: user picks which fields to apply.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ApplyEnrichmentFields {
+    pub source: String,
+    /// Field names the user approved (keys from EnrichmentFieldPreview.field).
+    pub approved_fields: Vec<String>,
+    /// The cached JSON blob to store.
+    pub cached_json: Option<String>,
+    /// Source-specific identifier.
+    pub source_id: Option<String>,
+
+    // All possible field values – only applied if the field name is in approved_fields.
+    pub scientific_name: Option<String>,
+    pub family: Option<String>,
+    pub genus: Option<String>,
+    pub image_url: Option<String>,
+    pub description: Option<String>,
+    pub eol_description: Option<String>,
+    pub growth_type: Option<String>,
+    pub sun_requirement: Option<String>,
+    pub water_requirement: Option<String>,
+    pub soil_ph_min: Option<f64>,
+    pub soil_ph_max: Option<f64>,
+    pub spacing_cm: Option<f64>,
+    pub days_to_harvest_min: Option<i64>,
+    pub days_to_harvest_max: Option<i64>,
+    pub hardiness_zone_min: Option<String>,
+    pub hardiness_zone_max: Option<String>,
+    pub habitat: Option<String>,
+    pub native_range: Option<String>,
+    pub establishment_means: Option<String>,
+    pub min_temperature_c: Option<f64>,
+    pub max_temperature_c: Option<f64>,
+    pub rooting_depth: Option<String>,
+    pub uses: Option<String>,
+    pub tags: Option<String>,
+    pub gbif_accepted_name: Option<String>,
+}
+
+// ---------------------------------------------------------------------------
 // Soil
 // ---------------------------------------------------------------------------
 
