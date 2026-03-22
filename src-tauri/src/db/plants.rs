@@ -57,12 +57,17 @@ pub async fn get_plant(pool: &SqlitePool, id: i64) -> Result<Option<Plant>, sqlx
         .await
 }
 
-pub async fn create_plant(pool: &SqlitePool, input: NewPlant) -> Result<Plant, sqlx::Error> {
+pub async fn create_plant(
+    pool: &SqlitePool,
+    input: NewPlant,
+    asset_id: Option<String>,
+) -> Result<Plant, sqlx::Error> {
     let status = input.status.unwrap_or(PlantStatus::Planned);
     let result = sqlx::query(
         "INSERT INTO plants
-            (species_id, location_id, environment_id, status, name, label, planted_date, notes)
-         VALUES (?,?,?,?,?,?,?,?)",
+            (species_id, location_id, environment_id, status, name, label, asset_id,
+             planted_date, notes)
+         VALUES (?,?,?,?,?,?,?,?,?)",
     )
     .bind(input.species_id)
     .bind(input.location_id)
@@ -70,6 +75,7 @@ pub async fn create_plant(pool: &SqlitePool, input: NewPlant) -> Result<Plant, s
     .bind(status)
     .bind(&input.name)
     .bind(&input.label)
+    .bind(&asset_id)
     .bind(&input.planted_date)
     .bind(&input.notes)
     .execute(pool)

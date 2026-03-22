@@ -62,6 +62,7 @@ export interface Plant {
   status: PlantStatus;
   name: string;
   label: string | null;
+  asset_id: string | null;
   planted_date: string | null;
   germinated_date: string | null;
   transplanted_date: string | null;

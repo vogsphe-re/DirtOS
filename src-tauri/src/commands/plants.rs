@@ -5,7 +5,7 @@ use crate::db::{
     models::{NewPlant, NewSeedlingObservation, Pagination, Plant, PlantStatus, SeedlingObservation, UpdatePlant},
     plants, seedling_observations,
 };
-use crate::services::lifecycle;
+use crate::services::{lifecycle, plant_category};
 
 #[tauri::command]
 #[specta::specta]
@@ -82,7 +82,21 @@ pub async fn create_plant(
     pool: State<'_, SqlitePool>,
     input: NewPlant,
 ) -> Result<Plant, String> {
-    plants::create_plant(&pool, input)
+    // Derive the category slug from the species' growth_type (if a species is
+    // linked) and generate a unique asset ID for this plant.
+    let growth_type: Option<String> = if let Some(sid) = input.species_id {
+        sqlx::query_scalar::<_, Option<String>>("SELECT growth_type FROM species WHERE id = ?")
+            .bind(sid)
+            .fetch_optional(&*pool)
+            .await
+            .ok()
+            .flatten()
+            .flatten()
+    } else {
+        None
+    };
+    let asset_id = plant_category::generate_asset_id(growth_type.as_deref());
+    plants::create_plant(&pool, input, Some(asset_id))
         .await
         .map_err(|e| e.to_string())
 }

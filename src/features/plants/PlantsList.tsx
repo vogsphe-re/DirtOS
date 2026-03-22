@@ -229,6 +229,7 @@ export function AddPlantModal({
   const [status, setStatus] = useState<PlantStatus>("planned");
   const [plantedDate, setPlantedDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [createdAssetId, setCreatedAssetId] = useState<string | null>(null);
   const [nameError, setNameError] = useState("");
 
   const createMutation = useMutation({
@@ -251,6 +252,7 @@ export function AddPlantModal({
     },
     onSuccess: (plant) => {
       notifications.show({ title: "Created", message: `${plant.name} added.`, color: "green" });
+      setCreatedAssetId(plant.asset_id);
       setName(""); setLabel(""); setSpeciesId(defaultSpeciesId ? String(defaultSpeciesId) : null);
       setStatus("planned"); setPlantedDate(""); setNotes("");
       // Trigger background Trefle enrichment for the plant's species if it
@@ -269,7 +271,7 @@ export function AddPlantModal({
   return (
     <Modal
       opened={opened}
-      onClose={onClose}
+      onClose={() => { setCreatedAssetId(null); onClose(); }}
       title="Add Plant"
       scrollAreaComponent={ScrollArea.Autosize}
     >
@@ -318,6 +320,15 @@ export function AddPlantModal({
           value={notes}
           onChange={(e) => setNotes(e.currentTarget.value)}
         />
+        {createdAssetId && (
+          <TextInput
+            label="Asset ID"
+            value={createdAssetId}
+            readOnly
+            description="Auto-generated identifier — record this for physical tagging."
+            styles={{ input: { fontFamily: "monospace" } }}
+          />
+        )}
         <Group justify="flex-end" mt="sm">
           <Button variant="subtle" onClick={onClose}>Cancel</Button>
           <Button onClick={() => createMutation.mutate()} loading={createMutation.isPending}>

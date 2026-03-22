@@ -368,6 +368,7 @@ pub struct Plant {
     pub status: PlantStatus,
     pub name: String,
     pub label: Option<String>,
+    pub asset_id: Option<String>,
     pub planted_date: Option<String>,
     pub germinated_date: Option<String>,
     pub transplanted_date: Option<String>,
