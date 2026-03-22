@@ -199,6 +199,8 @@ fn specta_builder() -> Builder<tauri::Wry> {
         commands::refresh_weather,
         commands::get_weather_api_key,
         commands::set_weather_api_key,
+        commands::get_trefle_api_key,
+        commands::set_trefle_api_key,
         // Sensors
         commands::list_sensors,
         commands::get_sensor,
@@ -224,6 +226,22 @@ fn specta_builder() -> Builder<tauri::Wry> {
         commands::list_seed_lots,
         commands::get_seed_lot,
         commands::create_seed_lot,
+        // Seedling trays
+        commands::list_seedling_trays,
+        commands::get_seedling_tray,
+        commands::create_seedling_tray,
+        commands::update_seedling_tray,
+        commands::delete_seedling_tray,
+        commands::list_seedling_tray_cells,
+        commands::assign_seedling_tray_cell,
+        commands::clear_seedling_tray_cell,
+        // Seed store
+        commands::list_seed_store,
+        commands::get_seed_store_item,
+        commands::create_seed_store_item,
+        commands::update_seed_store_item,
+        commands::delete_seed_store_item,
+        commands::sow_seed_to_tray,
         // Reports & seasons
         commands::list_seasons,
         commands::create_season,

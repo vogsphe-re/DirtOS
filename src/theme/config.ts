@@ -287,6 +287,7 @@ export const dirtTheme = createTheme({
     Button: {
       defaultProps: {
         radius: "xl",
+        variant: "default",
       },
     },
     Table: {

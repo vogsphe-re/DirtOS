@@ -156,14 +156,25 @@ pub async fn create_seed_lot(
     collected_date: Option<String>,
     notes: Option<String>,
 ) -> Result<SeedLot, sqlx::Error> {
+    // Infer species_id from parent_plant_id if available
+    let species_id: Option<i64> = if let Some(pid) = parent_plant_id {
+        sqlx::query_scalar("SELECT species_id FROM plants WHERE id = ?")
+            .bind(pid)
+            .fetch_optional(pool)
+            .await?
+    } else {
+        None
+    };
+
     let result = sqlx::query(
         "INSERT INTO seed_lots
-            (parent_plant_id, harvest_id, lot_label, quantity, viability_pct,
-             storage_location, collected_date, notes)
-         VALUES (?,?,?,?,?,?,?,?)",
+            (parent_plant_id, harvest_id, species_id, lot_label, quantity, viability_pct,
+             storage_location, collected_date, source_type, notes)
+         VALUES (?,?,?,?,?,?,?,?,'harvested',?)",
     )
     .bind(parent_plant_id)
     .bind(harvest_id)
+    .bind(species_id)
     .bind(&lot_label)
     .bind(quantity)
     .bind(viability_pct)

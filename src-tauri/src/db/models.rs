@@ -1105,7 +1105,7 @@ pub struct NewHarvest {
 }
 
 // ---------------------------------------------------------------------------
-// Seed lots
+// Seed lots / seed store
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
@@ -1113,13 +1113,64 @@ pub struct SeedLot {
     pub id: i64,
     pub parent_plant_id: Option<i64>,
     pub harvest_id: Option<i64>,
+    pub species_id: Option<i64>,
     pub lot_label: Option<String>,
     pub quantity: Option<f64>,
     pub viability_pct: Option<f64>,
     pub storage_location: Option<String>,
     pub collected_date: Option<String>,
+    pub source_type: String,
+    pub vendor: Option<String>,
+    pub purchase_date: Option<String>,
+    pub expiration_date: Option<String>,
+    pub packet_info: Option<String>,
     pub notes: Option<String>,
     pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct NewSeedLot {
+    pub species_id: Option<i64>,
+    pub parent_plant_id: Option<i64>,
+    pub harvest_id: Option<i64>,
+    pub lot_label: Option<String>,
+    pub quantity: Option<f64>,
+    pub viability_pct: Option<f64>,
+    pub storage_location: Option<String>,
+    pub collected_date: Option<String>,
+    pub source_type: Option<String>,
+    pub vendor: Option<String>,
+    pub purchase_date: Option<String>,
+    pub expiration_date: Option<String>,
+    pub packet_info: Option<String>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct UpdateSeedLot {
+    pub species_id: Option<i64>,
+    pub lot_label: Option<String>,
+    pub quantity: Option<f64>,
+    pub viability_pct: Option<f64>,
+    pub storage_location: Option<String>,
+    pub collected_date: Option<String>,
+    pub source_type: Option<String>,
+    pub vendor: Option<String>,
+    pub purchase_date: Option<String>,
+    pub expiration_date: Option<String>,
+    pub packet_info: Option<String>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct SowSeedInput {
+    pub seed_lot_id: i64,
+    pub tray_id: i64,
+    pub row: i64,
+    pub col: i64,
+    pub plant_name: Option<String>,
+    pub notes: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -1496,6 +1547,63 @@ pub struct UpdateDashboard {
     pub description: Option<String>,
     pub layout_json: Option<String>,
     pub is_default: Option<bool>,
+}
+
+// ---------------------------------------------------------------------------
+// Seedling trays
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
+pub struct SeedlingTray {
+    pub id: i64,
+    pub environment_id: i64,
+    pub name: String,
+    pub rows: i64,
+    pub cols: i64,
+    pub cell_size_cm: Option<f64>,
+    pub notes: Option<String>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct NewSeedlingTray {
+    pub environment_id: i64,
+    pub name: String,
+    pub rows: i64,
+    pub cols: i64,
+    pub cell_size_cm: Option<f64>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct UpdateSeedlingTray {
+    pub name: Option<String>,
+    pub rows: Option<i64>,
+    pub cols: Option<i64>,
+    pub cell_size_cm: Option<f64>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
+pub struct SeedlingTrayCell {
+    pub id: i64,
+    pub tray_id: i64,
+    pub row: i64,
+    pub col: i64,
+    pub plant_id: Option<i64>,
+    pub notes: Option<String>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct AssignTrayCell {
+    pub tray_id: i64,
+    pub row: i64,
+    pub col: i64,
+    pub plant_id: Option<i64>,
+    pub notes: Option<String>,
 }
 
 // ---------------------------------------------------------------------------

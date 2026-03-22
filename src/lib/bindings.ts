@@ -1104,6 +1104,28 @@ async setWeatherApiKey(apiKey: string) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Return the stored Trefle API token, or None if not set.
+ */
+async getTrefleApiKey() : Promise<Result<string | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_trefle_api_key") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Persist the Trefle API token in app_settings.
+ */
+async setTrefleApiKey(apiKey: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_trefle_api_key", { apiKey }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async listSensors(environmentId: number, limit: number | null, offset: number | null) : Promise<Result<Sensor[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("list_sensors", { environmentId, limit, offset }) };
@@ -1370,6 +1392,118 @@ async deleteDashboard(id: number) : Promise<Result<boolean, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async listSeedlingTrays(environmentId: number) : Promise<Result<SeedlingTray[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_seedling_trays", { environmentId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getSeedlingTray(id: number) : Promise<Result<SeedlingTray | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_seedling_tray", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createSeedlingTray(input: NewSeedlingTray) : Promise<Result<SeedlingTray, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_seedling_tray", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateSeedlingTray(id: number, input: UpdateSeedlingTray) : Promise<Result<SeedlingTray | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_seedling_tray", { id, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteSeedlingTray(id: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_seedling_tray", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listSeedlingTrayCells(trayId: number) : Promise<Result<SeedlingTrayCell[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_seedling_tray_cells", { trayId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async assignSeedlingTrayCell(input: AssignTrayCell) : Promise<Result<SeedlingTrayCell, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("assign_seedling_tray_cell", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async clearSeedlingTrayCell(trayId: number, row: number, col: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("clear_seedling_tray_cell", { trayId, row, col }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listSeedStore(limit: number | null, offset: number | null) : Promise<Result<SeedLot[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_seed_store", { limit, offset }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getSeedStoreItem(id: number) : Promise<Result<SeedLot | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_seed_store_item", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createSeedStoreItem(input: NewSeedLot) : Promise<Result<SeedLot, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_seed_store_item", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateSeedStoreItem(id: number, input: UpdateSeedLot) : Promise<Result<SeedLot | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_seed_store_item", { id, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteSeedStoreItem(id: number) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_seed_store_item", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async sowSeedToTray(input: SowSeedInput) : Promise<Result<number, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("sow_seed_to_tray", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -1473,7 +1607,10 @@ export type ScheduleRunStatus = "completed" | "skipped" | "missed"
 export type ScheduleSuggestion = { schedule_type: ScheduleType; title: string; cron_expression: string; cron_label: string; notes: string | null }
 export type ScheduleType = "water" | "feed" | "maintenance" | "treatment" | "sample" | "custom"
 export type Season = { id: number; environment_id: number; name: string; start_date: string; end_date: string; notes: string | null; created_at: string }
-export type SeedLot = { id: number; parent_plant_id: number | null; harvest_id: number | null; lot_label: string | null; quantity: number | null; viability_pct: number | null; storage_location: string | null; collected_date: string | null; notes: string | null; created_at: string }
+export type SeedLot = { id: number; parent_plant_id: number | null; harvest_id: number | null; species_id: number | null; lot_label: string | null; quantity: number | null; viability_pct: number | null; storage_location: string | null; collected_date: string | null; source_type: string; vendor: string | null; purchase_date: string | null; expiration_date: string | null; packet_info: string | null; notes: string | null; created_at: string; updated_at: string }
+export type NewSeedLot = { species_id: number | null; parent_plant_id: number | null; harvest_id: number | null; lot_label: string | null; quantity: number | null; viability_pct: number | null; storage_location: string | null; collected_date: string | null; source_type: string | null; vendor: string | null; purchase_date: string | null; expiration_date: string | null; packet_info: string | null; notes: string | null }
+export type UpdateSeedLot = { species_id: number | null; lot_label: string | null; quantity: number | null; viability_pct: number | null; storage_location: string | null; collected_date: string | null; source_type: string | null; vendor: string | null; purchase_date: string | null; expiration_date: string | null; packet_info: string | null; notes: string | null }
+export type SowSeedInput = { seed_lot_id: number; tray_id: number; row: number; col: number; plant_name: string | null; notes: string | null }
 export type SeedlingObservation = { id: number; plant_id: number; observed_at: string; height_cm: number | null; stem_thickness_mm: number | null; leaf_node_count: number | null; leaf_node_spacing_mm: number | null; notes: string | null; created_at: string }
 export type Sensor = { id: number; environment_id: number | null; location_id: number | null; plant_id: number | null; name: string; sensor_type: SensorType; connection_type: SensorConnectionType; connection_config_json: string | null; poll_interval_seconds: number | null; is_active: boolean; created_at: string; updated_at: string }
 export type SensorConnectionType = "serial" | "usb" | "mqtt" | "http" | "manual"
@@ -1507,6 +1644,11 @@ export type WikiSummary = { title: string; slug: string; extract: string | null;
 export type WikiSearchResult = { title: string; slug: string; description: string | null; url: string | null }
 export type EolSearchResult = { id: number; title: string; link: string | null; snippet: string | null }
 export type GbifSearchResult = { key: number; scientific_name: string; canonical_name: string | null; rank: string | null; status: string | null; confidence: number | null; classification: string | null }
+export type SeedlingTray = { id: number; environment_id: number; name: string; rows: number; cols: number; cell_size_cm: number | null; notes: string | null; created_at: string; updated_at: string }
+export type NewSeedlingTray = { environment_id: number; name: string; rows: number; cols: number; cell_size_cm: number | null; notes: string | null }
+export type UpdateSeedlingTray = { name: string | null; rows: number | null; cols: number | null; cell_size_cm: number | null; notes: string | null }
+export type SeedlingTrayCell = { id: number; tray_id: number; row: number; col: number; plant_id: number | null; notes: string | null; created_at: string; updated_at: string }
+export type AssignTrayCell = { tray_id: number; row: number; col: number; plant_id: number | null; notes: string | null }
 
 /** tauri-specta globals **/
 

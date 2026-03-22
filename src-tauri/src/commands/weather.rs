@@ -54,3 +54,26 @@ pub async fn set_weather_api_key(
         .await
         .map_err(|e| e.to_string())
 }
+
+/// Return the stored Trefle API token, or None if not set.
+#[tauri::command]
+#[specta::specta]
+pub async fn get_trefle_api_key(
+    pool: State<'_, SqlitePool>,
+) -> Result<Option<String>, String> {
+    db::weather::get_setting(&pool, "trefle_api_key")
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Persist the Trefle API token in app_settings.
+#[tauri::command]
+#[specta::specta]
+pub async fn set_trefle_api_key(
+    pool: State<'_, SqlitePool>,
+    api_key: String,
+) -> Result<(), String> {
+    db::weather::set_setting(&pool, "trefle_api_key", &api_key)
+        .await
+        .map_err(|e| e.to_string())
+}
