@@ -155,6 +155,13 @@ if (-not $SkipInstall) {
     Write-Success "Dependencies installed"
 }
 
+# ── Stamp VERSION file ───────────────────────────────────────────────────────
+
+Write-Step "Stamping VERSION file"
+$currentVersion = (node -p "require('./package.json').version" 2>&1).Trim()
+Set-Content -Path (Join-Path $ProjectRoot 'VERSION') -Value $currentVersion
+Write-Success "VERSION = $currentVersion"
+
 # ── Tauri build ───────────────────────────────────────────────────────────────
 
 Write-Step "Running Tauri production build  (pnpm build)"

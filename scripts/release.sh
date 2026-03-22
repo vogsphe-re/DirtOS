@@ -41,7 +41,10 @@ node -e "
   fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
 "
 
-echo "Version bumped to $NEW_VERSION in package.json, Cargo.toml, and tauri.conf.json"
+# ── Update VERSION file ─────────────────────────────────────────────────────
+echo "$NEW_VERSION" > VERSION
+
+echo "Version bumped to $NEW_VERSION in package.json, Cargo.toml, tauri.conf.json, and VERSION"
 
 # ── Clean build ───────────────────────────────────────────────────────────────
 echo "Running clean build..."
@@ -49,7 +52,7 @@ rm -rf dist
 pnpm build
 
 # ── Commit version bump and tag ───────────────────────────────────────────────
-git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json
+git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json VERSION
 git commit -m "chore: bump version to $NEW_VERSION"
 git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
 
