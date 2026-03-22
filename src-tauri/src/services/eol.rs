@@ -93,42 +93,53 @@ struct EolSearchItem {
     content: Option<String>,
 }
 
+/// EoL v1 pages API wraps everything under a "taxonConcept" top-level key.
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct EolPageResponse {
+    #[serde(rename = "taxonConcept")]
+    taxon_concept: EolPageBody,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EolPageBody {
     data_objects: Option<Vec<EolDataObject>>,
-    taxon_concepts: Option<Vec<EolTaxonConcept>>,
+    taxon_concepts: Option<Vec<EolTaxonConceptRef>>,
 }
 
 #[derive(Debug, Deserialize)]
 struct EolDataObject {
-    #[serde(rename = "type")]
+    /// "http://purl.org/dc/dcmitype/Text" or "...StillImage".
+    #[serde(rename = "dataType")]
     data_type: Option<String>,
     #[serde(rename = "mimeType")]
     mime_type: Option<String>,
     #[serde(rename = "description")]
     description: Option<String>,
-    // EoL uses "mediaURL" (capital URL), not the camelCase "mediaUrl".
+    /// Preferred CDN URL served via EoL's own infrastructure.
+    #[serde(rename = "eolMediaURL")]
+    eol_media_url: Option<String>,
+    /// Original source URL (may be HTTP-only or unavailable).
     #[serde(rename = "mediaURL")]
     media_url: Option<String>,
 }
 
-/// One entry per classification provider; we use the first that has ancestors.
+/// A flat taxonomy entry as returned inside the page response.
+/// Only used to obtain the `identifier` for a follow-up hierarchy_entries call.
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct EolTaxonConcept {
-    source_hierarchy_entry: Option<EolHierarchyEntry>,
+struct EolTaxonConceptRef {
+    identifier: Option<i64>,
+}
+
+/// Response from the EoL v1 hierarchy_entries endpoint.
+#[derive(Debug, Default, Deserialize)]
+struct EolHierarchyEntryResponse {
+    ancestors: Option<Vec<EolHierarchyAncestor>>,
 }
 
 #[derive(Debug, Deserialize)]
-struct EolHierarchyEntry {
-    ancestors: Option<Vec<EolAncestor>>,
-}
-
-#[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct EolAncestor {
-    taxon_rank: Option<String>,
+struct EolHierarchyAncestor {
     scientific_name: Option<String>,
     vernacular_names: Option<Vec<EolVernacularName>>,
 }
@@ -241,7 +252,7 @@ pub async fn get_page(client: &Client, page_id: i64) -> Result<EolDetail, String
         .map_err(|e| format!("Failed to parse EoL page response: {e}"))?;
 
     let page_url = format!("https://eol.org/pages/{page_id}");
-    let data_objects = data.data_objects.unwrap_or_default();
+    let data_objects = data.taxon_concept.data_objects.unwrap_or_default();
 
     let description = data_objects
         .iter()
@@ -249,12 +260,24 @@ pub async fn get_page(client: &Client, page_id: i64) -> Result<EolDetail, String
         .and_then(|o| o.description.as_deref())
         .map(strip_html_tags);
 
+    // Prefer the EOL CDN URL (HTTPS) over the original source URL.
     let image_url = data_objects
         .iter()
-        .find(|o| o.mime_type.as_deref().map(|m| m.starts_with("image/")).unwrap_or(false))
-        .and_then(|o| o.media_url.clone());
+        .find(|o| {
+            o.data_type.as_deref().map(|t| t.contains("StillImage")).unwrap_or(false)
+                || o.mime_type.as_deref().map(|m| m.starts_with("image/")).unwrap_or(false)
+        })
+        .and_then(|o| o.eol_media_url.clone().or_else(|| o.media_url.clone()));
 
-    let tags = extract_taxonomy_tags(data.taxon_concepts.as_deref().unwrap_or(&[]));
+    // Taxonomy tags: look up the first taxon concept's ancestor hierarchy.
+    let first_concept_id = data.taxon_concept.taxon_concepts.as_deref()
+        .and_then(|tcs| tcs.first())
+        .and_then(|tc| tc.identifier);
+    let tags = if let Some(concept_id) = first_concept_id {
+        fetch_hierarchy_tags(client, concept_id).await
+    } else {
+        Vec::new()
+    };
 
     Ok(EolDetail { page_id, description, image_url, page_url, raw_json, tags })
 }
@@ -435,45 +458,41 @@ async fn get_traits_inner(client: &Client, page_id: i64) -> Result<EolTraits, St
     Ok(traits)
 }
 
-/// Extract meaningful category labels from EoL taxonomy hierarchy.
+/// Fetch ancestor taxonomy labels from the EoL v1 hierarchy_entries API.
 ///
-/// Picks ancestral taxon names at key ranks, preferring English vernacular names
-/// over scientific names so the resulting tags are human-readable.
-fn extract_taxonomy_tags(concepts: &[EolTaxonConcept]) -> Vec<String> {
-    const INCLUDED_RANKS: &[&str] = &[
-        "kingdom", "subkingdom", "infrakingdom",
-        "phylum", "division", "class", "subclass",
-        "order", "family",
-    ];
-
-    // Use the first concept that actually has ancestors.
-    let ancestors = concepts
-        .iter()
-        .filter_map(|c| c.source_hierarchy_entry.as_ref())
-        .filter_map(|h| h.ancestors.as_deref())
-        .find(|a| !a.is_empty())
-        .unwrap_or(&[]);
-
-    ancestors
-        .iter()
-        .filter(|a| {
-            let rank = a.taxon_rank.as_deref().unwrap_or("").to_lowercase();
-            INCLUDED_RANKS.iter().any(|r| rank == *r)
-        })
+/// Prefers English vernacular names; falls back to scientific names.
+/// Returns an empty vec silently on any error.
+async fn fetch_hierarchy_tags(client: &Client, entry_id: i64) -> Vec<String> {
+    let url = format!(
+        "https://eol.org/api/hierarchy_entries/1.0.json?id={entry_id}&common_names=true"
+    );
+    let resp = match client
+        .get(&url)
+        .header("User-Agent", USER_AGENT)
+        .header("Accept", "application/json")
+        .timeout(Duration::from_secs(10))
+        .send()
+        .await
+    {
+        Ok(r) if r.status().is_success() => r,
+        _ => return Vec::new(),
+    };
+    let body: EolHierarchyEntryResponse = match resp.json().await {
+        Ok(b) => b,
+        Err(_) => return Vec::new(),
+    };
+    body.ancestors
+        .unwrap_or_default()
+        .into_iter()
         .filter_map(|a| {
-            // Prefer an English vernacular name; fall back to scientific name.
-            let vernacular: Option<&str> = a
-                .vernacular_names
+            let vernacular: Option<String> = a.vernacular_names
                 .as_deref()
                 .and_then(|names| {
-                    names
-                        .iter()
+                    names.iter()
                         .find(|n| n.language.as_deref() == Some("en"))
-                        .and_then(|n| n.vernacular_name.as_deref())
+                        .and_then(|n| n.vernacular_name.clone())
                 });
-            vernacular
-                .or_else(|| a.scientific_name.as_deref())
-                .map(str::to_owned)
+            vernacular.or_else(|| a.scientific_name)
         })
         .filter(|t| !t.is_empty())
         .collect()

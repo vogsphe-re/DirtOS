@@ -2,16 +2,17 @@
 
 ## Requirements
 
-- Node.js from `.nvmrc`
+- Node.js >22 from `.nvmrc`
 - pnpm
 - Rust toolchain
 - Tauri prerequisites for your platform
 
 ## Local Setup
 
-1. `nvm use`
-2. `pnpm install`
-3. `pnpm dev`
+1. `nvm use 22 --lts`
+2. `npm i -g pnpm`
+3. `pnpm install`
+4. `pnpm dev`
 
 ## Useful Commands
 
@@ -28,10 +29,11 @@
 - `src-tauri/migrations/`: SQLite schema and migration history
 - `assets/`: source logos, icons, and theme imagery
 - `docs/`: phase notes and architecture/user docs
+- `scripts/`: scripts for build+release, database maintenance
 
 ## Contribution Notes
 
 - Prefer minimal, focused changes.
 - Use `apply_patch` style edits for text files when working through the agent workflow.
 - Keep frontend and backend types aligned through generated bindings.
-- Validate both TypeScript and Rust changes before shipping.
+- Validate both TypeScript and Rust changes before opening pull requests.
