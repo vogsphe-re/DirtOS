@@ -321,6 +321,25 @@ async applyEnrichmentPreview(speciesId: number, input: ApplyEnrichmentFields) : 
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Automatically enrich species from Trefle in the background.
+ * 
+ * - Pass `species_ids = null` to enrich **all** species that currently lack a
+ * `trefle_id` (i.e. have never been enriched from Trefle).
+ * - Pass a list of IDs to limit enrichment to those specific species (only
+ * processes species whose `trefle_id` is still NULL).
+ * 
+ * Requests are rate-limited to ≤ 30 per minute (2 s between each HTTP call).
+ * The command returns immediately; enrichment runs in a background task.
+ */
+async autoEnrichTrefle(speciesIds: number[] | null) : Promise<Result<AutoEnrichResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("auto_enrich_trefle", { speciesIds }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async listIntegrationConfigs() : Promise<Result<IntegrationConfig[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("list_integration_configs") };
@@ -1628,6 +1647,15 @@ cached_json: string | null;
  */
 source_id: string | null; scientific_name: string | null; family: string | null; genus: string | null; image_url: string | null; description: string | null; eol_description: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; habitat: string | null; native_range: string | null; establishment_means: string | null; min_temperature_c: number | null; max_temperature_c: number | null; rooting_depth: string | null; uses: string | null; tags: string | null; gbif_accepted_name: string | null }
 export type AssignTrayCell = { tray_id: number; row: number; col: number; plant_id: number | null; notes: string | null }
+export type AutoEnrichResult = { 
+/**
+ * Number of species queued for background enrichment.
+ */
+queued: number; 
+/**
+ * Human-readable status message.
+ */
+message: string }
 export type AutomationEvent = { id: number; provider: string; event_type: string; direction: string; payload_json: string | null; status: string; error_message: string | null; created_at: string; processed_at: string | null }
 export type BackupFormat = "json" | "yaml" | "archive"
 export type BackupJob = { id: number; name: string; schedule_cron: string | null; format: BackupFormat; include_secrets: boolean; is_active: boolean; last_run_status: string | null; last_run_at: string | null; last_error: string | null; created_at: string; updated_at: string }

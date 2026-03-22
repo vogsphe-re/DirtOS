@@ -1677,6 +1677,18 @@ pub struct AssignTrayCell {
 }
 
 // ---------------------------------------------------------------------------
+// Auto-enrichment result
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct AutoEnrichResult {
+    /// Number of species queued for background enrichment.
+    pub queued: i64,
+    /// Human-readable status message.
+    pub message: String,
+}
+
+// ---------------------------------------------------------------------------
 // Pagination helper
 // ---------------------------------------------------------------------------
 

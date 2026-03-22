@@ -84,6 +84,7 @@ fn specta_builder() -> Builder<tauri::Wry> {
         commands::preview_enrich_gbif,
         commands::preview_enrich_trefle,
         commands::apply_enrichment_preview,
+        commands::auto_enrich_trefle,
         // Integrations & extensions
         commands::list_integration_configs,
         commands::upsert_integration_config,

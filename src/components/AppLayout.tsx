@@ -191,6 +191,14 @@ export function AppLayout() {
     markAppReady(startupStatus?.ready === true);
   }, [startupStatus?.ready]);
 
+  // Once the app is ready, kick off background Trefle enrichment for any
+  // species that don't yet have Trefle data. Fire-and-forget; errors are
+  // silently ignored since this is a non-critical background operation.
+  useEffect(() => {
+    if (startupStatus?.ready !== true) return;
+    commands.autoEnrichTrefle(null).catch(() => {/* no-op */});
+  }, [startupStatus?.ready]); // eslint-disable-line
+
   if (startupLoading || !startupStatus) {
     return <AppSplash title="Starting DirtOS" message="Initializing the local database and desktop services." />;
   }

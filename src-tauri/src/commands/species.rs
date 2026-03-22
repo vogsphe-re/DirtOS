@@ -6,7 +6,7 @@ use crate::{
     db::{
         self,
         models::{
-            ApplyEnrichmentFields, EnrichmentFieldPreview, EnrichmentPreviewResult, NewSpecies,
+            ApplyEnrichmentFields, AutoEnrichResult, EnrichmentFieldPreview, EnrichmentPreviewResult, NewSpecies,
             Pagination, Species, SpeciesFilters, UpdateSpecies,
         },
         species,
@@ -926,4 +926,127 @@ pub async fn apply_enrichment_preview(
         .await
         .map_err(|e| e.to_string())?
         .ok_or_else(|| format!("Species {species_id} not found"))
+}
+
+/// Automatically enrich species from Trefle in the background.
+///
+/// - Pass `species_ids = null` to enrich **all** species that currently lack a
+///   `trefle_id` (i.e. have never been enriched from Trefle).
+/// - Pass a list of IDs to limit enrichment to those specific species (only
+///   processes species whose `trefle_id` is still NULL).
+///
+/// Requests are rate-limited to ≤ 30 per minute (2 s between each HTTP call).
+/// The command returns immediately; enrichment runs in a background task.
+#[tauri::command]
+#[specta::specta]
+pub async fn auto_enrich_trefle(
+    pool: State<'_, SqlitePool>,
+    species_ids: Option<Vec<i64>>,
+) -> Result<AutoEnrichResult, String> {
+    // Require a Trefle API key – return gracefully if one isn't configured.
+    let token = match db::weather::get_setting(&pool, "trefle_api_key").await {
+        Ok(Some(t)) if !t.trim().is_empty() => t,
+        _ => {
+            return Ok(AutoEnrichResult {
+                queued: 0,
+                message: "Trefle API key not configured – skipping auto-enrichment.".to_string(),
+            });
+        }
+    };
+
+    // Collect the species that still need Trefle data.
+    let to_enrich: Vec<Species> = if let Some(ref ids) = species_ids {
+        let mut result = Vec::new();
+        for &id in ids {
+            if let Ok(Some(sp)) = species::get_species(&pool, id).await {
+                if sp.trefle_id.is_none() {
+                    result.push(sp);
+                }
+            }
+        }
+        result
+    } else {
+        species::list_species_without_trefle(&pool)
+            .await
+            .map_err(|e| e.to_string())?
+    };
+
+    let queued = to_enrich.len() as i64;
+
+    if queued == 0 {
+        return Ok(AutoEnrichResult {
+            queued: 0,
+            message: "All species already have Trefle data.".to_string(),
+        });
+    }
+
+    // Clone pool + token so they can move into the background task.
+    let pool_bg = pool.inner().clone();
+
+    tauri::async_runtime::spawn(async move {
+        let client = match reqwest::Client::builder().use_rustls_tls().build() {
+            Ok(c) => c,
+            Err(_) => return,
+        };
+
+        for sp in to_enrich {
+            // Sleep first so the very first request also respects the limit.
+            tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
+
+            // Pick the best search query: prefer scientific name.
+            let query = sp
+                .scientific_name
+                .as_deref()
+                .filter(|s| !s.trim().is_empty())
+                .unwrap_or(&sp.common_name);
+
+            let candidates = match trefle::search(&client, query.trim(), &token, 1).await {
+                Ok(r) => r,
+                Err(_) => continue,
+            };
+
+            let candidate = match candidates.into_iter().next() {
+                Some(c) => c,
+                None => continue,
+            };
+
+            // Rate-limit the second request (detail fetch).
+            tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
+
+            let detail = match trefle::get_detail(&client, candidate.id, &token).await {
+                Ok(d) => d,
+                Err(_) => continue,
+            };
+
+            // update_species_trefle uses COALESCE for every column except
+            // trefle_id, so existing values are preserved.
+            let _ = species::update_species_trefle(
+                &pool_bg,
+                sp.id,
+                detail.id,
+                detail.family,
+                detail.genus,
+                detail.image_url,
+                detail.growth_type,
+                detail.sun_requirement,
+                detail.water_requirement,
+                detail.soil_ph_min,
+                detail.soil_ph_max,
+                detail.spacing_cm,
+                detail.days_to_harvest_min,
+                detail.days_to_harvest_max,
+                detail.hardiness_zone_min,
+                detail.hardiness_zone_max,
+                detail.raw_json,
+            )
+            .await;
+        }
+    });
+
+    Ok(AutoEnrichResult {
+        queued,
+        message: format!(
+            "Queued {queued} species for background Trefle enrichment."
+        ),
+    })
 }

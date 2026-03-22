@@ -417,6 +417,19 @@ pub async fn update_species_trefle(
     get_species(pool, id).await
 }
 
+/// Return all species that have not yet been enriched from Trefle (trefle_id IS NULL).
+/// Only includes species with at least a common or scientific name so they can be searched.
+pub async fn list_species_without_trefle(pool: &SqlitePool) -> Result<Vec<Species>, sqlx::Error> {
+    sqlx::query_as::<_, Species>(
+        "SELECT * FROM species
+          WHERE trefle_id IS NULL
+            AND (scientific_name IS NOT NULL OR common_name IS NOT NULL OR common_name != '')
+          ORDER BY id ASC",
+    )
+    .fetch_all(pool)
+    .await
+}
+
 /// Apply only the user-approved enrichment fields to a species row.
 /// Dynamically builds the UPDATE based on which fields are in `approved_fields`.
 pub async fn apply_enrichment_fields(

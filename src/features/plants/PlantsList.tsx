@@ -253,6 +253,11 @@ export function AddPlantModal({
       notifications.show({ title: "Created", message: `${plant.name} added.`, color: "green" });
       setName(""); setLabel(""); setSpeciesId(defaultSpeciesId ? String(defaultSpeciesId) : null);
       setStatus("planned"); setPlantedDate(""); setNotes("");
+      // Trigger background Trefle enrichment for the plant's species if it
+      // doesn't have data yet. Fire-and-forget; errors are silently ignored.
+      if (plant.species_id != null) {
+        commands.autoEnrichTrefle([plant.species_id]).catch(() => {/* no-op */});
+      }
       onCreated(plant);
     },
     onError: (err: Error) => {
