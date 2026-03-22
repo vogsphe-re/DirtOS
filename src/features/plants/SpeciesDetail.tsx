@@ -21,6 +21,7 @@ import {
   IconArrowLeft,
   IconBrandWikipedia,
   IconExternalLink,
+  IconGlobe,
   IconLeaf,
   IconPlant,
   IconPlus,
@@ -29,7 +30,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { commands } from "../../lib/bindings";
-import type { WikiSearchResult, EolSearchResult } from "../../lib/bindings";
+import type { WikiSearchResult, EolSearchResult, GbifSearchResult } from "../../lib/bindings";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
 import { AddPlantModal } from "./AddPlantModal";
 import type { Plant, Species } from "./types";
@@ -47,6 +48,8 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
   const [wikiCandidates, setWikiCandidates] = useState<WikiSearchResult[]>([]);
   const [eolPickerOpen, setEolPickerOpen] = useState(false);
   const [eolCandidates, setEolCandidates] = useState<EolSearchResult[]>([]);
+  const [gbifPickerOpen, setGbifPickerOpen] = useState(false);
+  const [gbifCandidates, setGbifCandidates] = useState<GbifSearchResult[]>([]);
 
   const { data: species, isLoading, isError } = useQuery({
     queryKey: ["species", speciesId],
@@ -162,6 +165,46 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
       notifications.show({ title: "EoL error", message: err.message, color: "red" }),
   });
 
+  const searchGbifCandidates = useMutation({
+    mutationFn: async () => {
+      const res = await commands.searchGbifCandidates(speciesId);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data;
+    },
+    onSuccess: (candidates) => {
+      if (candidates.length === 0) {
+        notifications.show({
+          title: "No results",
+          message: "No GBIF backbone taxa found for this species.",
+          color: "orange",
+        });
+      } else if (candidates.length === 1) {
+        enrichGbifByKey.mutate(candidates[0].key);
+      } else {
+        setGbifCandidates(candidates);
+        setGbifPickerOpen(true);
+      }
+    },
+    onError: (err: Error) =>
+      notifications.show({ title: "GBIF search error", message: err.message, color: "red" }),
+  });
+
+  const enrichGbifByKey = useMutation({
+    mutationFn: async (gbifKey: number) => {
+      const res = await commands.enrichSpeciesGbifByKey(speciesId, gbifKey);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data;
+    },
+    onSuccess: () => {
+      setGbifPickerOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["species", speciesId] });
+      queryClient.invalidateQueries({ queryKey: ["species"] });
+      notifications.show({ title: "Enriched", message: "GBIF biodiversity data applied.", color: "grape" });
+    },
+    onError: (err: Error) =>
+      notifications.show({ title: "GBIF error", message: err.message, color: "red" }),
+  });
+
   if (isLoading) return <Loader m="xl" />;
   if (isError || !species)
     return <Text c="red" p="md">Species not found.</Text>;
@@ -266,6 +309,16 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
             >
               Enrich from EoL
             </Button>
+            <Button
+              size="xs"
+              variant="light"
+              color="grape"
+              leftSection={<IconGlobe size={14} />}
+              loading={searchGbifCandidates.isPending || enrichGbifByKey.isPending}
+              onClick={() => searchGbifCandidates.mutate()}
+            >
+              Enrich from GBIF
+            </Button>
           </Group>
         </Stack>
       </Group>
@@ -290,7 +343,20 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
               <InfoItem label="Family" value={species.family} />
               <InfoItem label="Genus" value={species.genus} />
               <InfoItem label="Scientific name" value={species.scientific_name} />
-              <InfoItem label="iNaturalist ID" value={species.inaturalist_id?.toString()} />
+              <InfoItem
+                label="iNaturalist ID"
+                value={
+                  species.inaturalist_id ? (
+                    <Anchor
+                      href={`https://www.inaturalist.org/taxa/${species.inaturalist_id}`}
+                      target="_blank"
+                      size="sm"
+                    >
+                      {species.inaturalist_id} <IconExternalLink size={12} />
+                    </Anchor>
+                  ) : null
+                }
+              />
               <InfoItem
                 label="Wikipedia"
                 value={
@@ -305,6 +371,22 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
                   ) : null
                 }
               />
+              <InfoItem
+                label="GBIF"
+                value={
+                  species.gbif_key ? (
+                    <Anchor
+                      href={`https://www.gbif.org/species/${species.gbif_key}`}
+                      target="_blank"
+                      size="sm"
+                    >
+                      {species.gbif_accepted_name ?? species.gbif_key} <IconExternalLink size={12} />
+                    </Anchor>
+                  ) : null
+                }
+              />
+              <InfoItem label="Native range" value={species.native_range} />
+              <InfoItem label="Establishment" value={species.establishment_means} />
             </SimpleGrid>
             {species.tags && (() => {
               let parsed: string[] = [];
@@ -510,6 +592,63 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
                   color="teal"
                   loading={enrichEolById.isPending && enrichEolById.variables === c.id}
                   onClick={() => enrichEolById.mutate(c.id)}
+                >
+                  Use this
+                </Button>
+              </Group>
+            </Card>
+          ))}
+        </Stack>
+      </Modal>
+
+      {/* GBIF backbone taxon picker */}
+      <Modal
+        opened={gbifPickerOpen}
+        onClose={() => setGbifPickerOpen(false)}
+        title="Select GBIF backbone taxon"
+        size="lg"
+      >
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">
+            Multiple GBIF taxa matched. Choose the one that best describes this species.
+          </Text>
+          <Divider />
+          {gbifCandidates.map((c) => (
+            <Card key={c.key} withBorder padding="sm">
+              <Group justify="space-between" align="flex-start" wrap="nowrap">
+                <Stack gap={2} flex={1}>
+                  <Text fw={500} size="sm">{c.scientific_name}</Text>
+                  {c.canonical_name && c.canonical_name !== c.scientific_name && (
+                    <Text size="xs" fs="italic" c="dimmed">{c.canonical_name}</Text>
+                  )}
+                  <Group gap="xs">
+                    {c.rank && <Badge size="xs" variant="outline">{c.rank}</Badge>}
+                    {c.status && <Badge size="xs" variant="light">{c.status}</Badge>}
+                    {c.confidence != null && (
+                      <Badge size="xs" variant="light" color="grape">
+                        {c.confidence}% match
+                      </Badge>
+                    )}
+                  </Group>
+                  {c.classification && (
+                    <Text size="xs" c="dimmed" lineClamp={1}>
+                      {c.classification}
+                    </Text>
+                  )}
+                  <Anchor
+                    href={`https://www.gbif.org/species/${c.key}`}
+                    target="_blank"
+                    size="xs"
+                  >
+                    gbif.org/species/{c.key} <IconExternalLink size={11} />
+                  </Anchor>
+                </Stack>
+                <Button
+                  size="xs"
+                  variant="light"
+                  color="grape"
+                  loading={enrichGbifByKey.isPending && enrichGbifByKey.variables === c.key}
+                  onClick={() => enrichGbifByKey.mutate(c.key)}
                 >
                   Use this
                 </Button>

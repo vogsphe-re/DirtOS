@@ -7,7 +7,7 @@ use crate::{
         models::{NewSpecies, Pagination, Species, SpeciesFilters, UpdateSpecies},
         species,
     },
-    services::{inaturalist, eol, wikipedia},
+    services::{inaturalist, eol, gbif, wikipedia},
 };
 
 #[tauri::command]
@@ -398,4 +398,115 @@ pub async fn enrich_species_wikipedia_by_slug(
     .await
     .map_err(|e| e.to_string())?
     .ok_or_else(|| format!("Species {species_id} not found after update"))
+}
+
+/// Search GBIF for candidate backbone taxa matching a species.
+/// Uses fuzzy match and free-text search concurrently, deduplicates by usage key.
+#[tauri::command]
+#[specta::specta]
+pub async fn search_gbif_candidates(
+    pool: State<'_, SqlitePool>,
+    species_id: i64,
+) -> Result<Vec<gbif::GbifSearchResult>, String> {
+    let sp = species::get_species(&pool, species_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Species {species_id} not found"))?;
+
+    let client = Client::builder()
+        .use_rustls_tls()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let sci_name: Option<String> = sp.scientific_name.filter(|s| !s.is_empty());
+    let common_name: Option<String> = if sp.common_name.is_empty() { None } else { Some(sp.common_name) };
+
+    if sci_name.is_none() && common_name.is_none() {
+        return Err("This species has no scientific name or common name to search with.".to_string());
+    }
+
+    // Run match (best single hit) and search (broader) concurrently.
+    let (match_result, search_sci, search_common) = tokio::join!(
+        async {
+            match sci_name.as_deref() {
+                Some(name) => gbif::match_species(&client, name).await.ok(),
+                None => match common_name.as_deref() {
+                    Some(name) => gbif::match_species(&client, name).await.ok(),
+                    None => None,
+                },
+            }
+        },
+        async {
+            match sci_name.as_deref() {
+                Some(name) => gbif::search(&client, name, 5).await.unwrap_or_default(),
+                None => Vec::new(),
+            }
+        },
+        async {
+            match common_name.as_deref() {
+                Some(name) => gbif::search(&client, name, 5).await.unwrap_or_default(),
+                None => Vec::new(),
+            }
+        }
+    );
+
+    // Deduplicate by GBIF key, putting the match result first if present.
+    let mut seen = std::collections::HashSet::new();
+    let mut results: Vec<gbif::GbifSearchResult> = Vec::new();
+
+    if let Some(m) = match_result {
+        seen.insert(m.key);
+        results.push(m);
+    }
+    for c in search_sci.into_iter().chain(search_common) {
+        if seen.insert(c.key) {
+            results.push(c);
+        }
+    }
+
+    Ok(results)
+}
+
+/// Enrich a species record with data from a specific GBIF backbone taxon
+/// chosen by the user.
+#[tauri::command]
+#[specta::specta]
+pub async fn enrich_species_gbif_by_key(
+    pool: State<'_, SqlitePool>,
+    species_id: i64,
+    gbif_key: i64,
+) -> Result<Species, String> {
+    let client = Client::builder()
+        .use_rustls_tls()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let detail = gbif::get_detail(&client, gbif_key).await?;
+
+    let native_range = if detail.native_range.is_empty() {
+        None
+    } else {
+        Some(detail.native_range.join("; "))
+    };
+    let establishment_means = if detail.establishment_means.is_empty() {
+        None
+    } else {
+        Some(detail.establishment_means.join(", "))
+    };
+
+    species::update_species_gbif(
+        &pool,
+        species_id,
+        detail.key,
+        Some(detail.scientific_name),
+        detail.family,
+        detail.genus,
+        detail.habitat,
+        native_range,
+        establishment_means,
+        detail.raw_json,
+    )
+    .await
+    .map_err(|e| e.to_string())?
+    .ok_or_else(|| format!("Species {species_id} not found after GBIF update"))
 }

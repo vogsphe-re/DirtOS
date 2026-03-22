@@ -1,6 +1,7 @@
 pub mod backup;
 pub mod eol;
 pub mod export;
+pub mod gbif;
 pub mod export_import;
 pub mod inaturalist;
 pub mod issue_generator;

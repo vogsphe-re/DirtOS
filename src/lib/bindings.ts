@@ -208,6 +208,28 @@ async enrichSpeciesEolById(speciesId: number, eolPageId: number) : Promise<Resul
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Search GBIF for candidate backbone taxa matching a species.
+ */
+async searchGbifCandidates(speciesId: number) : Promise<Result<GbifSearchResult[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("search_gbif_candidates", { speciesId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Enrich a species record with data from a specific GBIF backbone taxon.
+ */
+async enrichSpeciesGbifByKey(speciesId: number, gbifKey: number) : Promise<Result<Species, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("enrich_species_gbif_by_key", { speciesId, gbifKey }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async listIntegrationConfigs() : Promise<Result<IntegrationConfig[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("list_integration_configs") };
@@ -1459,7 +1481,7 @@ export type SensorLimit = { id: number; sensor_id: number; min_value: number | n
 export type SensorReading = { id: number; sensor_id: number; value: number; unit: string | null; recorded_at: string }
 export type SensorType = "moisture" | "light" | "temperature" | "humidity" | "ph" | "ec" | "co2" | "air_quality" | "custom"
 export type SoilTest = { id: number; location_id: number; test_date: string; ph: number | null; nitrogen_ppm: number | null; phosphorus_ppm: number | null; potassium_ppm: number | null; moisture_pct: number | null; organic_matter_pct: number | null; notes: string | null; created_at: string }
-export type Species = { id: number; common_name: string; scientific_name: string | null; family: string | null; genus: string | null; inaturalist_id: number | null; wikipedia_slug: string | null; eol_page_id: number | null; eol_description: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; habitat: string | null; min_temperature_c: number | null; max_temperature_c: number | null; rooting_depth: string | null; uses: string | null; tags: string | null; description: string | null; image_url: string | null; cached_inaturalist_json: string | null; cached_wikipedia_json: string | null; cached_eol_json: string | null; is_user_added: boolean; created_at: string; updated_at: string }
+export type Species = { id: number; common_name: string; scientific_name: string | null; family: string | null; genus: string | null; inaturalist_id: number | null; wikipedia_slug: string | null; eol_page_id: number | null; eol_description: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; habitat: string | null; min_temperature_c: number | null; max_temperature_c: number | null; rooting_depth: string | null; uses: string | null; tags: string | null; description: string | null; image_url: string | null; cached_inaturalist_json: string | null; cached_wikipedia_json: string | null; cached_eol_json: string | null; gbif_key: number | null; gbif_accepted_name: string | null; native_range: string | null; establishment_means: string | null; cached_gbif_json: string | null; is_user_added: boolean; created_at: string; updated_at: string }
 export type SpeciesExternalSource = { id: number; species_id: number; provider: IntegrationProvider; external_id: string | null; source_url: string | null; attribution: string | null; revision_id: string | null; native_range_json: string | null; metadata_json: string | null; retrieved_at: string; last_synced_at: string }
 export type SyncSpeciesResult = { species: Species | null; synced_providers: string[]; skipped_providers: string[]; errors: string[] }
 export type TaxonResult = { id: number; name: string; preferred_common_name: string | null; rank: string | null; default_photo_url: string | null; wikipedia_url: string | null; matched_term: string | null }
@@ -1484,6 +1506,7 @@ export type WeatherData = { current: CurrentWeather; hourly: ForecastItem[]; dai
 export type WikiSummary = { title: string; slug: string; extract: string | null; thumbnail_url: string | null; page_url: string | null; raw_json: string }
 export type WikiSearchResult = { title: string; slug: string; description: string | null; url: string | null }
 export type EolSearchResult = { id: number; title: string; link: string | null; snippet: string | null }
+export type GbifSearchResult = { key: number; scientific_name: string; canonical_name: string | null; rank: string | null; status: string | null; confidence: number | null; classification: string | null }
 
 /** tauri-specta globals **/
 

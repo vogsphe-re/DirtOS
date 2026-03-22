@@ -74,6 +74,8 @@ fn specta_builder() -> Builder<tauri::Wry> {
         commands::enrich_species_wikipedia_by_slug,
         commands::search_eol_candidates,
         commands::enrich_species_eol_by_id,
+        commands::search_gbif_candidates,
+        commands::enrich_species_gbif_by_key,
         // Integrations & extensions
         commands::list_integration_configs,
         commands::upsert_integration_config,

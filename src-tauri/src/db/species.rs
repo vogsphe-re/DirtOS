@@ -314,3 +314,43 @@ pub async fn update_species_eol(
     .await?;
     get_species(pool, id).await
 }
+
+/// Persist GBIF enrichment data on a species row.
+pub async fn update_species_gbif(
+    pool: &SqlitePool,
+    id: i64,
+    gbif_key: i64,
+    gbif_accepted_name: Option<String>,
+    family: Option<String>,
+    genus: Option<String>,
+    habitat: Option<String>,
+    native_range: Option<String>,
+    establishment_means: Option<String>,
+    cached_json: String,
+) -> Result<Option<Species>, sqlx::Error> {
+    sqlx::query(
+        "UPDATE species SET
+            gbif_key             = ?,
+            gbif_accepted_name   = COALESCE(?, gbif_accepted_name),
+            family               = COALESCE(?, family),
+            genus                = COALESCE(?, genus),
+            habitat              = COALESCE(?, habitat),
+            native_range         = COALESCE(?, native_range),
+            establishment_means  = COALESCE(?, establishment_means),
+            cached_gbif_json     = ?,
+            updated_at           = datetime('now')
+         WHERE id = ?",
+    )
+    .bind(gbif_key)
+    .bind(gbif_accepted_name)
+    .bind(family)
+    .bind(genus)
+    .bind(habitat)
+    .bind(native_range)
+    .bind(establishment_means)
+    .bind(cached_json)
+    .bind(id)
+    .execute(pool)
+    .await?;
+    get_species(pool, id).await
+}

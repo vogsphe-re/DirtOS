@@ -11,6 +11,10 @@ export interface Species {
   wikipedia_slug: string | null;
   eol_page_id: number | null;
   eol_description: string | null;
+  gbif_key: number | null;
+  gbif_accepted_name: string | null;
+  native_range: string | null;
+  establishment_means: string | null;
   growth_type: string | null;
   sun_requirement: string | null;
   water_requirement: string | null;
@@ -33,6 +37,7 @@ export interface Species {
   image_url: string | null;
   cached_inaturalist_json: string | null;
   cached_wikipedia_json: string | null;
+  cached_gbif_json: string | null;
   is_user_added: boolean;
   created_at: string;
   updated_at: string;
