@@ -212,8 +212,9 @@ export interface FileRoutesByFullPath {
   '/plants/$speciesId': typeof PlantsSpeciesIdRoute
   '/plants/groups': typeof PlantsGroupsRoute
   '/plants/individuals': typeof PlantsIndividualsRouteWithChildren
-  '/plants/seeds': typeof PlantsSeedsRoute
   '/plants/seedlings': typeof PlantsSeedlingsRoute
+  '/plants/seeds': typeof PlantsSeedsRoute
+  '/plants/trays': typeof PlantsTraysRoute
   '/garden/': typeof GardenIndexRoute
   '/indoor/': typeof IndoorIndexRoute
   '/issues/': typeof IssuesIndexRoute
@@ -236,8 +237,8 @@ export interface FileRoutesByTo {
   '/journal/$entryId': typeof JournalEntryIdRoute
   '/plants/$speciesId': typeof PlantsSpeciesIdRoute
   '/plants/groups': typeof PlantsGroupsRoute
-  '/plants/seeds': typeof PlantsSeedsRoute
   '/plants/seedlings': typeof PlantsSeedlingsRoute
+  '/plants/seeds': typeof PlantsSeedsRoute
   '/plants/trays': typeof PlantsTraysRoute
   '/garden': typeof GardenIndexRoute
   '/indoor': typeof IndoorIndexRoute
@@ -269,8 +270,8 @@ export interface FileRoutesById {
   '/plants/$speciesId': typeof PlantsSpeciesIdRoute
   '/plants/groups': typeof PlantsGroupsRoute
   '/plants/individuals': typeof PlantsIndividualsRouteWithChildren
-  '/plants/seeds': typeof PlantsSeedsRoute
   '/plants/seedlings': typeof PlantsSeedlingsRoute
+  '/plants/seeds': typeof PlantsSeedsRoute
   '/plants/trays': typeof PlantsTraysRoute
   '/garden/': typeof GardenIndexRoute
   '/indoor/': typeof IndoorIndexRoute
@@ -303,8 +304,8 @@ export interface FileRouteTypes {
     | '/plants/$speciesId'
     | '/plants/groups'
     | '/plants/individuals'
-    | '/plants/seeds'
     | '/plants/seedlings'
+    | '/plants/seeds'
     | '/plants/trays'
     | '/garden/'
     | '/indoor/'
@@ -328,8 +329,8 @@ export interface FileRouteTypes {
     | '/journal/$entryId'
     | '/plants/$speciesId'
     | '/plants/groups'
-    | '/plants/seeds'
     | '/plants/seedlings'
+    | '/plants/seeds'
     | '/plants/trays'
     | '/garden'
     | '/indoor'
@@ -360,8 +361,8 @@ export interface FileRouteTypes {
     | '/plants/$speciesId'
     | '/plants/groups'
     | '/plants/individuals'
-    | '/plants/seeds'
     | '/plants/seedlings'
+    | '/plants/seeds'
     | '/plants/trays'
     | '/garden/'
     | '/indoor/'
@@ -516,13 +517,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GardenIndexRouteImport
       parentRoute: typeof GardenRoute
     }
-    '/plants/seedlings': {
-      id: '/plants/seedlings'
-      path: '/seedlings'
-      fullPath: '/plants/seedlings'
-      preLoaderRoute: typeof PlantsSeedlingsRouteImport
-      parentRoute: typeof PlantsRoute
-    }
     '/plants/trays': {
       id: '/plants/trays'
       path: '/trays'
@@ -535,6 +529,13 @@ declare module '@tanstack/react-router' {
       path: '/seeds'
       fullPath: '/plants/seeds'
       preLoaderRoute: typeof PlantsSeedsRouteImport
+      parentRoute: typeof PlantsRoute
+    }
+    '/plants/seedlings': {
+      id: '/plants/seedlings'
+      path: '/seedlings'
+      fullPath: '/plants/seedlings'
+      preLoaderRoute: typeof PlantsSeedlingsRouteImport
       parentRoute: typeof PlantsRoute
     }
     '/plants/individuals': {
@@ -672,8 +673,8 @@ interface PlantsRouteChildren {
   PlantsSpeciesIdRoute: typeof PlantsSpeciesIdRoute
   PlantsGroupsRoute: typeof PlantsGroupsRoute
   PlantsIndividualsRoute: typeof PlantsIndividualsRouteWithChildren
-  PlantsSeedsRoute: typeof PlantsSeedsRoute
   PlantsSeedlingsRoute: typeof PlantsSeedlingsRoute
+  PlantsSeedsRoute: typeof PlantsSeedsRoute
   PlantsTraysRoute: typeof PlantsTraysRoute
   PlantsIndexRoute: typeof PlantsIndexRoute
 }
@@ -682,8 +683,8 @@ const PlantsRouteChildren: PlantsRouteChildren = {
   PlantsSpeciesIdRoute: PlantsSpeciesIdRoute,
   PlantsGroupsRoute: PlantsGroupsRoute,
   PlantsIndividualsRoute: PlantsIndividualsRouteWithChildren,
-  PlantsSeedsRoute: PlantsSeedsRoute,
   PlantsSeedlingsRoute: PlantsSeedlingsRoute,
+  PlantsSeedsRoute: PlantsSeedsRoute,
   PlantsTraysRoute: PlantsTraysRoute,
   PlantsIndexRoute: PlantsIndexRoute,
 }
