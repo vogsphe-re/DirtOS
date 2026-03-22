@@ -24,6 +24,31 @@ body[data-ready="false"] {
   overflow: hidden;
 }
 
+/* Splash screen indeterminate loading bar */
+.dirtos-splash-progress {
+  position: relative;
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--mantine-color-default-border);
+  overflow: hidden;
+}
+
+.dirtos-splash-progress::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  width: 40%;
+  border-radius: 9999px;
+  background: var(--dirtos-accent);
+  animation: dirtos-splash-slide 1.5s ease-in-out infinite;
+}
+
+@keyframes dirtos-splash-slide {
+  0%   { transform: translateX(-150%); }
+  50%  { transform: translateX(200%); }
+  100% { transform: translateX(-150%); }
+}
+
 /* ===================================================================
    Simplified palette — dark & light
    Mantine v8 sets data-mantine-color-scheme on <html>, so we use a

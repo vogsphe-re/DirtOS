@@ -1,25 +1,33 @@
-import { Box, Button, Center, Group, Loader, Skeleton, Stack, Text, Title } from "@mantine/core";
+import { Box, Button, Group, Loader, Skeleton, Stack, Text, Title } from "@mantine/core";
 import { IconRefresh } from "@tabler/icons-react";
+import splashUrl from "../../assets/splash.png";
 
-export function AppSplash({ title, message }: { title: string; message: string }) {
+export function AppSplash({ message }: { title?: string; message: string }) {
   return (
-    <Center mih="100vh" p="xl">
-      <Stack className="dirtos-glass" maw={560} w="100%" p="xl" gap="lg">
-        <Stack gap={6}>
-          <Text fw={700} tt="uppercase" c="dimmed" size="sm">
-            DirtOS
+    <Box
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "var(--mantine-color-body)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Stack align="center" gap="xl" style={{ width: "min(380px, 90vw)" }}>
+        <img
+          src={splashUrl}
+          alt=""
+          style={{ width: "100%", height: "auto" }}
+        />
+        <Stack gap={6} style={{ width: "100%" }}>
+          <div className="dirtos-splash-progress" aria-label="Loading" />
+          <Text size="xs" c="dimmed" ta="center">
+            {message}
           </Text>
-          <Title order={1}>{title}</Title>
-          <Text c="dimmed">{message}</Text>
         </Stack>
-        <Group align="center" gap="sm">
-          <Loader color="green" />
-          <Text size="sm" c="dimmed">
-            Preparing your workspace
-          </Text>
-        </Group>
       </Stack>
-    </Center>
+    </Box>
   );
 }
 
