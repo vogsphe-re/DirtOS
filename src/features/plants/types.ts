@@ -35,9 +35,12 @@ export interface Species {
   tags: string | null;
   description: string | null;
   image_url: string | null;
+  trefle_id: number | null;
   cached_inaturalist_json: string | null;
   cached_wikipedia_json: string | null;
+  cached_eol_json: string | null;
   cached_gbif_json: string | null;
+  cached_trefle_json: string | null;
   is_user_added: boolean;
   created_at: string;
   updated_at: string;

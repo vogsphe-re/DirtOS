@@ -30,7 +30,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { commands } from "../../lib/bindings";
-import type { WikiSearchResult, EolSearchResult, GbifSearchResult } from "../../lib/bindings";
+import type { WikiSearchResult, EolSearchResult, GbifSearchResult, TrefleSearchResult } from "../../lib/bindings";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
 import { AddPlantModal } from "./AddPlantModal";
 import type { Plant, Species } from "./types";
@@ -50,6 +50,8 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
   const [eolCandidates, setEolCandidates] = useState<EolSearchResult[]>([]);
   const [gbifPickerOpen, setGbifPickerOpen] = useState(false);
   const [gbifCandidates, setGbifCandidates] = useState<GbifSearchResult[]>([]);
+  const [treflePickerOpen, setTreflePickerOpen] = useState(false);
+  const [trefleCandidates, setTrefleCandidates] = useState<TrefleSearchResult[]>([]);
 
   const { data: species, isLoading, isError } = useQuery({
     queryKey: ["species", speciesId],
@@ -205,6 +207,46 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
       notifications.show({ title: "GBIF error", message: err.message, color: "red" }),
   });
 
+  const searchTrefleCandidates = useMutation({
+    mutationFn: async () => {
+      const res = await commands.searchTrefleCandidates(speciesId);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data;
+    },
+    onSuccess: (candidates) => {
+      if (candidates.length === 0) {
+        notifications.show({
+          title: "No results",
+          message: "No Trefle plants found for this species.",
+          color: "orange",
+        });
+      } else if (candidates.length === 1) {
+        enrichTrefleById.mutate(candidates[0].id);
+      } else {
+        setTrefleCandidates(candidates);
+        setTreflePickerOpen(true);
+      }
+    },
+    onError: (err: Error) =>
+      notifications.show({ title: "Trefle search error", message: err.message, color: "red" }),
+  });
+
+  const enrichTrefleById = useMutation({
+    mutationFn: async (trefleId: number) => {
+      const res = await commands.enrichSpeciesTrefleById(speciesId, trefleId);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data;
+    },
+    onSuccess: () => {
+      setTreflePickerOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["species", speciesId] });
+      queryClient.invalidateQueries({ queryKey: ["species"] });
+      notifications.show({ title: "Enriched", message: "Trefle plant data applied.", color: "green" });
+    },
+    onError: (err: Error) =>
+      notifications.show({ title: "Trefle error", message: err.message, color: "red" }),
+  });
+
   if (isLoading) return <Loader m="xl" />;
   if (isError || !species)
     return <Text c="red" p="md">Species not found.</Text>;
@@ -318,6 +360,16 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
               onClick={() => searchGbifCandidates.mutate()}
             >
               Enrich from GBIF
+            </Button>
+            <Button
+              size="xs"
+              variant="light"
+              color="green"
+              leftSection={<IconLeaf size={14} />}
+              loading={searchTrefleCandidates.isPending || enrichTrefleById.isPending}
+              onClick={() => searchTrefleCandidates.mutate()}
+            >
+              Enrich from Trefle
             </Button>
           </Group>
         </Stack>
@@ -649,6 +701,56 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
                   color="grape"
                   loading={enrichGbifByKey.isPending && enrichGbifByKey.variables === c.key}
                   onClick={() => enrichGbifByKey.mutate(c.key)}
+                >
+                  Use this
+                </Button>
+              </Group>
+            </Card>
+          ))}
+        </Stack>
+      </Modal>
+
+      {/* Trefle plant picker */}
+      <Modal
+        opened={treflePickerOpen}
+        onClose={() => setTreflePickerOpen(false)}
+        title="Select Trefle plant"
+        size="lg"
+      >
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">
+            Multiple Trefle plants matched. Choose the one that best describes this species.
+          </Text>
+          <Divider />
+          {trefleCandidates.map((c) => (
+            <Card key={c.id} withBorder padding="sm">
+              <Group justify="space-between" align="flex-start" wrap="nowrap">
+                <Stack gap={2} flex={1}>
+                  <Text fw={500} size="sm" fs="italic">{c.scientific_name}</Text>
+                  {c.common_name && (
+                    <Text size="xs" c="dimmed">{c.common_name}</Text>
+                  )}
+                  <Group gap="xs">
+                    {c.family && <Badge size="xs" variant="outline">{c.family}</Badge>}
+                    {c.genus && <Badge size="xs" variant="light">{c.genus}</Badge>}
+                  </Group>
+                  <Anchor
+                    href={`https://trefle.io/api/v1/plants/${c.id}`}
+                    target="_blank"
+                    size="xs"
+                  >
+                    trefle.io/plants/{c.id} <IconExternalLink size={11} />
+                  </Anchor>
+                </Stack>
+                {c.image_url && (
+                  <Image src={c.image_url} w={50} h={50} radius="sm" fit="cover" />
+                )}
+                <Button
+                  size="xs"
+                  variant="light"
+                  color="green"
+                  loading={enrichTrefleById.isPending && enrichTrefleById.variables === c.id}
+                  onClick={() => enrichTrefleById.mutate(c.id)}
                 >
                   Use this
                 </Button>

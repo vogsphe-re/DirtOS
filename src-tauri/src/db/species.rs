@@ -354,3 +354,63 @@ pub async fn update_species_gbif(
     .await?;
     get_species(pool, id).await
 }
+
+pub async fn update_species_trefle(
+    pool: &SqlitePool,
+    id: i64,
+    trefle_id: i64,
+    family: Option<String>,
+    genus: Option<String>,
+    image_url: Option<String>,
+    growth_type: Option<String>,
+    sun_requirement: Option<String>,
+    water_requirement: Option<String>,
+    soil_ph_min: Option<f64>,
+    soil_ph_max: Option<f64>,
+    spacing_cm: Option<f64>,
+    days_to_harvest_min: Option<i64>,
+    days_to_harvest_max: Option<i64>,
+    hardiness_zone_min: Option<String>,
+    hardiness_zone_max: Option<String>,
+    cached_json: String,
+) -> Result<Option<Species>, sqlx::Error> {
+    sqlx::query(
+        "UPDATE species SET
+            trefle_id             = ?,
+            family                = COALESCE(?, family),
+            genus                 = COALESCE(?, genus),
+            image_url             = COALESCE(?, image_url),
+            growth_type           = COALESCE(?, growth_type),
+            sun_requirement       = COALESCE(?, sun_requirement),
+            water_requirement     = COALESCE(?, water_requirement),
+            soil_ph_min           = COALESCE(?, soil_ph_min),
+            soil_ph_max           = COALESCE(?, soil_ph_max),
+            spacing_cm            = COALESCE(?, spacing_cm),
+            days_to_harvest_min   = COALESCE(?, days_to_harvest_min),
+            days_to_harvest_max   = COALESCE(?, days_to_harvest_max),
+            hardiness_zone_min    = COALESCE(?, hardiness_zone_min),
+            hardiness_zone_max    = COALESCE(?, hardiness_zone_max),
+            cached_trefle_json    = ?,
+            updated_at            = datetime('now')
+         WHERE id = ?",
+    )
+    .bind(trefle_id)
+    .bind(family)
+    .bind(genus)
+    .bind(image_url)
+    .bind(growth_type)
+    .bind(sun_requirement)
+    .bind(water_requirement)
+    .bind(soil_ph_min)
+    .bind(soil_ph_max)
+    .bind(spacing_cm)
+    .bind(days_to_harvest_min)
+    .bind(days_to_harvest_max)
+    .bind(hardiness_zone_min)
+    .bind(hardiness_zone_max)
+    .bind(cached_json)
+    .bind(id)
+    .execute(pool)
+    .await?;
+    get_species(pool, id).await
+}

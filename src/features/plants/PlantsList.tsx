@@ -1,4 +1,5 @@
 import {
+  ActionIcon,
   Badge,
   Button,
   Group,
@@ -12,9 +13,10 @@ import {
   Textarea,
   TextInput,
   Title,
+  Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconPlus } from "@tabler/icons-react";
+import { IconEdit, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -37,6 +39,20 @@ export function PlantsList() {
       if (res.status === "error") throw new Error(res.error);
       return res.data as Plant[];
     },
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await (commands as any).deletePlant(id);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data as boolean;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["plants-all"] });
+      notifications.show({ message: "Plant deleted.", color: "orange" });
+    },
+    onError: (err: Error) =>
+      notifications.show({ title: "Error", message: err.message, color: "red" }),
   });
 
   const filtered = statusFilter
@@ -67,6 +83,35 @@ export function PlantsList() {
         <Text size="sm" c="dimmed">
           Env #{p.environment_id}
         </Text>
+      </Table.Td>
+      <Table.Td onClick={(e) => e.stopPropagation()}>
+        <Group gap={4}>
+          <Tooltip label="Edit">
+            <ActionIcon
+              size="sm"
+              variant="subtle"
+              onClick={() =>
+                navigate({ to: "/plants/individuals/$plantId", params: { plantId: String(p.id) } })
+              }
+            >
+              <IconEdit size={14} />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label="Delete">
+            <ActionIcon
+              size="sm"
+              variant="subtle"
+              color="red"
+              loading={deleteMut.isPending}
+              onClick={() => {
+                if (confirm(`Delete plant "${p.name}"? This will also remove associated data.`))
+                  deleteMut.mutate(p.id);
+              }}
+            >
+              <IconTrash size={14} />
+            </ActionIcon>
+          </Tooltip>
+        </Group>
       </Table.Td>
     </Table.Tr>
   ));
@@ -107,18 +152,19 @@ export function PlantsList() {
             <Table.Th>Status</Table.Th>
             <Table.Th>Planted</Table.Th>
             <Table.Th>Environment</Table.Th>
+            <Table.Th w={80}>Actions</Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
           {isLoading ? (
             <Table.Tr>
-              <Table.Td colSpan={4}>
+              <Table.Td colSpan={5}>
                 <Text ta="center" c="dimmed" py="lg">Loading…</Text>
               </Table.Td>
             </Table.Tr>
           ) : rows.length === 0 ? (
             <Table.Tr>
-              <Table.Td colSpan={4}>
+              <Table.Td colSpan={5}>
                 <Text ta="center" c="dimmed" py="lg">No plants found.</Text>
               </Table.Td>
             </Table.Tr>

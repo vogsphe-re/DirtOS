@@ -4,10 +4,11 @@ use tauri::State;
 
 use crate::{
     db::{
+        self,
         models::{NewSpecies, Pagination, Species, SpeciesFilters, UpdateSpecies},
         species,
     },
-    services::{inaturalist, eol, gbif, wikipedia},
+    services::{inaturalist, eol, gbif, trefle, wikipedia},
 };
 
 #[tauri::command]
@@ -509,4 +510,104 @@ pub async fn enrich_species_gbif_by_key(
     .await
     .map_err(|e| e.to_string())?
     .ok_or_else(|| format!("Species {species_id} not found after GBIF update"))
+}
+
+/// Search Trefle for candidate plants matching a species.
+/// Uses the stored Trefle API token from app_settings.
+#[tauri::command]
+#[specta::specta]
+pub async fn search_trefle_candidates(
+    pool: State<'_, SqlitePool>,
+    species_id: i64,
+) -> Result<Vec<trefle::TrefleSearchResult>, String> {
+    let token = db::weather::get_setting(&pool, "trefle_api_key")
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "Trefle API token not configured. Set it in Settings.".to_string())?;
+
+    let sp = species::get_species(&pool, species_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Species {species_id} not found"))?;
+
+    let client = Client::builder()
+        .use_rustls_tls()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let sci_name: Option<String> = sp.scientific_name.filter(|s| !s.is_empty());
+    let common_name: Option<String> = if sp.common_name.is_empty() { None } else { Some(sp.common_name) };
+
+    if sci_name.is_none() && common_name.is_none() {
+        return Err("This species has no scientific name or common name to search with.".to_string());
+    }
+
+    let (sci_results, common_results) = tokio::join!(
+        async {
+            match sci_name.as_deref() {
+                Some(name) => trefle::search(&client, name, &token, 5).await.unwrap_or_default(),
+                None => Vec::new(),
+            }
+        },
+        async {
+            match common_name.as_deref() {
+                Some(name) => trefle::search(&client, name, &token, 5).await.unwrap_or_default(),
+                None => Vec::new(),
+            }
+        }
+    );
+
+    let mut seen = std::collections::HashSet::new();
+    let mut results: Vec<trefle::TrefleSearchResult> = Vec::new();
+    for c in sci_results.into_iter().chain(common_results) {
+        if seen.insert(c.id) {
+            results.push(c);
+        }
+    }
+
+    Ok(results)
+}
+
+/// Enrich a species record with data from a specific Trefle plant chosen by the user.
+#[tauri::command]
+#[specta::specta]
+pub async fn enrich_species_trefle_by_id(
+    pool: State<'_, SqlitePool>,
+    species_id: i64,
+    trefle_id: i64,
+) -> Result<Species, String> {
+    let token = db::weather::get_setting(&pool, "trefle_api_key")
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "Trefle API token not configured. Set it in Settings.".to_string())?;
+
+    let client = Client::builder()
+        .use_rustls_tls()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let detail = trefle::get_detail(&client, trefle_id, &token).await?;
+
+    species::update_species_trefle(
+        &pool,
+        species_id,
+        detail.id,
+        detail.family,
+        detail.genus,
+        detail.image_url,
+        detail.growth_type,
+        detail.sun_requirement,
+        detail.water_requirement,
+        detail.soil_ph_min,
+        detail.soil_ph_max,
+        detail.spacing_cm,
+        detail.days_to_harvest_min,
+        detail.days_to_harvest_max,
+        detail.hardiness_zone_min,
+        detail.hardiness_zone_max,
+        detail.raw_json,
+    )
+    .await
+    .map_err(|e| e.to_string())?
+    .ok_or_else(|| format!("Species {species_id} not found after Trefle update"))
 }

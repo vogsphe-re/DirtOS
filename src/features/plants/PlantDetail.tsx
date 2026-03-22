@@ -275,15 +275,30 @@ function PlantEditForm({
     planted_date: plant.planted_date ?? "",
     germinated_date: plant.germinated_date ?? "",
     transplanted_date: plant.transplanted_date ?? "",
+    removed_date: plant.removed_date ?? "",
     purchase_source: plant.purchase_source ?? "",
+    purchase_date: plant.purchase_date ?? "",
     purchase_price: plant.purchase_price != null ? String(plant.purchase_price) : "",
     notes: plant.notes ?? "",
+  });
+
+  const [speciesId, setSpeciesId] = useState<string | null>(
+    plant.species_id ? String(plant.species_id) : null,
+  );
+
+  const { data: speciesList = [] } = useQuery({
+    queryKey: ["species-all-edit"],
+    queryFn: async () => {
+      const res = await (commands as any).listSpecies(null, null, null, null, 500, 0);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data as Species[];
+    },
   });
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       const res = await (commands as any).updatePlant(plant.id, {
-        species_id: null,
+        species_id: speciesId ? parseInt(speciesId) : null,
         location_id: null,
         status: null,
         name: values.name.trim() || null,
@@ -291,11 +306,11 @@ function PlantEditForm({
         planted_date: values.planted_date || null,
         germinated_date: values.germinated_date || null,
         transplanted_date: values.transplanted_date || null,
-        removed_date: null,
+        removed_date: values.removed_date || null,
         parent_plant_id: null,
         seed_lot_id: null,
         purchase_source: values.purchase_source.trim() || null,
-        purchase_date: null,
+        purchase_date: values.purchase_date || null,
         purchase_price: values.purchase_price ? parseFloat(values.purchase_price) : null,
         notes: values.notes.trim() || null,
       });
@@ -318,10 +333,23 @@ function PlantEditForm({
       <SimpleGrid cols={2} spacing="sm">
         <TextInput label="Name" required {...f("name")} />
         <TextInput label="Label / tag" {...f("label")} />
+        <Select
+          label="Species"
+          searchable
+          clearable
+          data={speciesList.map((sp) => ({
+            value: String(sp.id),
+            label: sp.common_name + (sp.scientific_name ? ` (${sp.scientific_name})` : ""),
+          }))}
+          value={speciesId}
+          onChange={setSpeciesId}
+        />
         <TextInput label="Planted date" type="date" {...f("planted_date")} />
         <TextInput label="Germinated date" type="date" {...f("germinated_date")} />
         <TextInput label="Transplanted date" type="date" {...f("transplanted_date")} />
+        <TextInput label="Removed date" type="date" {...f("removed_date")} />
         <TextInput label="Purchase source" {...f("purchase_source")} />
+        <TextInput label="Purchase date" type="date" {...f("purchase_date")} />
         <TextInput label="Purchase price" type="number" {...f("purchase_price")} />
       </SimpleGrid>
       <Textarea label="Notes" autosize minRows={2} {...f("notes")} />

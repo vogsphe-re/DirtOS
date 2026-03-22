@@ -13,6 +13,7 @@ pub mod recommendations;
 pub mod schedule_suggestions;
 pub mod scheduler;
 pub mod sensors;
+pub mod trefle;
 pub mod weather;
 pub mod weather_alerts;
 pub mod wikipedia;
