@@ -151,13 +151,6 @@ struct EolVernacularName {
     language: Option<String>,
 }
 
-/// Response from the EoL TraitBank Cypher API.
-#[derive(Debug, Deserialize)]
-struct CypherResponse {
-    columns: Vec<String>,
-    data: Vec<Vec<serde_json::Value>>,
-}
-
 // ---------------------------------------------------------------------------
 // Public API functions
 // ---------------------------------------------------------------------------
@@ -282,180 +275,201 @@ pub async fn get_page(client: &Client, page_id: i64) -> Result<EolDetail, String
     Ok(EolDetail { page_id, description, image_url, page_url, raw_json, tags })
 }
 
-/// Fetch Growing Info traits for a page from EoL's TraitBank Cypher API.
+/// Scrape Growing Info traits from the EoL public species page.
 ///
-/// Queries for growth habit, light/moisture requirements, and hardiness zone
-/// data.  Returns empty defaults silently on any error — trait availability
-/// varies by species and the TraitBank API is best-effort.
+/// Parses the `<ul class='sample-traits'>` block and the auto-generated brief
+/// summary paragraph that EoL renders server-side on every page.
+/// Returns empty defaults silently on any network or parse error.
 pub async fn get_traits(client: &Client, page_id: i64) -> EolTraits {
-    get_traits_inner(client, page_id).await.unwrap_or_default()
+    scrape_traits(client, page_id).await.unwrap_or_default()
 }
 
 // ---------------------------------------------------------------------------
 // Private helpers
 // ---------------------------------------------------------------------------
 
-async fn get_traits_inner(client: &Client, page_id: i64) -> Result<EolTraits, String> {
-    // Cypher property notation uses {}, which must be {{ }} escaped in format!.
-    let query = format!(
-        "MATCH (t:Trait)<-[:trait]-(p:Page{{page_id:{page_id}}}) \
-         OPTIONAL MATCH (t)-[:predicate]->(pred:Term) \
-         OPTIONAL MATCH (t)-[:object_term]->(obj:Term) \
-         RETURN pred.name, t.measurement, t.units_name, obj.name LIMIT 200"
-    );
-
+async fn scrape_traits(client: &Client, page_id: i64) -> Result<EolTraits, String> {
+    let url = format!("https://eol.org/pages/{page_id}");
     let resp = client
-        .get("https://eol.org/service/cypher")
-        .query(&[("query", query.as_str())])
-        .header("User-Agent", USER_AGENT)
-        .header("Accept", "application/json")
-        // Short timeout — silently skip traits if TraitBank is slow.
-        .timeout(Duration::from_secs(8))
+        .get(&url)
+        .header("User-Agent", "Mozilla/5.0 (X11; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0")
+        .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+        .header("Accept-Language", "en-US,en;q=0.5")
+        .timeout(Duration::from_secs(20))
         .send()
         .await
         .map_err(|e| e.to_string())?;
 
     if !resp.status().is_success() {
-        return Err(format!("EoL cypher API returned {}", resp.status()));
+        return Err(format!("EoL page scrape returned {}", resp.status()));
     }
 
-    let cypher: CypherResponse = resp.json().await.map_err(|e| e.to_string())?;
+    let html = resp.text().await.map_err(|e| e.to_string())?;
+    Ok(parse_traits_from_html(&html))
+}
 
-    // Resolve column positions by name for safety.
-    let pred_idx  = cypher.columns.iter().position(|c| c == "pred.name").unwrap_or(0);
-    let meas_idx  = cypher.columns.iter().position(|c| c == "t.measurement").unwrap_or(1);
-    let units_idx = cypher.columns.iter().position(|c| c == "t.units_name").unwrap_or(2);
-    let obj_idx   = cypher.columns.iter().position(|c| c == "obj.name").unwrap_or(3);
-
+/// Parse `EolTraits` from the HTML of an EoL species page.
+///
+/// Extracts the `<ul class='sample-traits'>` key/value pairs.
+/// Each `<li>` contains one `sample-trait-key` div and one `sample-trait-val` div.
+fn parse_traits_from_html(html: &str) -> EolTraits {
     let mut traits = EolTraits::default();
     let mut uses_set: std::collections::BTreeSet<String> = Default::default();
 
-    for row in &cypher.data {
-        let pred = row.get(pred_idx)
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_lowercase();
+    // Locate the sample-traits list.
+    let list_start = match html.find("class='sample-traits'") {
+        Some(pos) => pos,
+        None => return traits,
+    };
+    // Work within the bounds of </ul> that closes the list.
+    let list_end = html[list_start..].find("</ul>")
+        .map(|p| list_start + p)
+        .unwrap_or(html.len());
+    let list_html = &html[list_start..list_end];
 
-        let measurement = row.get(meas_idx).and_then(|v| if v.is_null() { None } else { v.as_str() });
-        let units       = row.get(units_idx).and_then(|v| if v.is_null() { None } else { v.as_str() });
-        let obj_name    = row.get(obj_idx) .and_then(|v| if v.is_null() { None } else { v.as_str() });
-        let value = obj_name.or(measurement);
+    // Split on <li> boundaries.
+    for item in list_html.split("<li>").skip(1) {
+        let key = extract_between(item, "class='sample-trait-key", "</div>")
+            .or_else(|| extract_between(item, "class=\"sample-trait-key", "</div>"));
+        let val = extract_between(item, "class='sample-trait-val", "</div>")
+            .or_else(|| extract_between(item, "class=\"sample-trait-val", "</div>"));
 
-        match pred.as_str() {
-            // ----- Growth form -----
-            "growth habit" | "growth form" | "plant growth form" | "habit of plant" => {
-                if traits.growth_type.is_none() {
-                    traits.growth_type = value.map(normalize_growth_type);
-                }
+        if let (Some(raw_key), Some(raw_val)) = (key, val) {
+            let pred = strip_html_tags(&raw_key).to_lowercase();
+            let value = strip_html_tags(&raw_val);
+            let value = value.trim();
+            if pred.is_empty() || value.is_empty() {
+                continue;
             }
-            // ----- Light / shade -----
-            "shade tolerance" => {
-                if traits.sun_requirement.is_none() {
-                    traits.sun_requirement = value.map(shade_tolerance_to_sun_req);
-                }
-            }
-            "light requirement" | "light preference" | "sun/shade preference" | "sun exposure" => {
-                if traits.sun_requirement.is_none() {
-                    traits.sun_requirement = value.map(str::to_owned);
-                }
-            }
-            // ----- Moisture -----
-            "moisture use" | "water use" | "water requirement" | "moisture requirement" => {
-                if traits.water_requirement.is_none() {
-                    traits.water_requirement = value.map(str::to_owned);
-                }
-            }
-            "drought tolerance" => {
-                if traits.water_requirement.is_none() {
-                    traits.water_requirement = value.map(drought_to_water_req);
-                }
-            }
-            // ----- Soil pH -----
-            p if (p.contains("ph") || p.contains("soil acidity"))
-                && (p.contains("min") || p.contains("lower") || p.contains("minimum")) =>
-            {
-                if traits.soil_ph_min.is_none() {
-                    traits.soil_ph_min = measurement.and_then(|s| s.parse().ok());
-                }
-            }
-            p if (p.contains("ph") || p.contains("soil acidity"))
-                && (p.contains("max") || p.contains("upper") || p.contains("maximum")) =>
-            {
-                if traits.soil_ph_max.is_none() {
-                    traits.soil_ph_max = measurement.and_then(|s| s.parse().ok());
-                }
-            }
-            // ----- Hardiness zone -----
-            p if p.contains("cold hardiness") || p.contains("hardiness zone") => {
-                if p.contains("min") {
-                    if traits.hardiness_zone_min.is_none() {
-                        traits.hardiness_zone_min = value.map(|v| format!("USDA {v}"));
-                    }
-                } else if p.contains("max") {
-                    if traits.hardiness_zone_max.is_none() {
-                        traits.hardiness_zone_max = value.map(|v| format!("USDA {v}"));
-                    }
-                } else if traits.hardiness_zone_min.is_none() {
-                    traits.hardiness_zone_min = value.map(|v| format!("USDA {v}"));
-                }
-            }
-            // ----- Habitat -----
-            "habitat" | "habitat type" | "ecological niche" | "biome" | "biogeographic realm" => {
-                if traits.habitat.is_none() {
-                    traits.habitat = value.map(str::to_owned);
-                }
-            }
-            // ----- Temperature -----
-            p if p.contains("temperature")
-                && (p.contains("min") || p.contains("lower") || p.contains("cold")) =>
-            {
-                if traits.min_temperature_c.is_none() {
-                    traits.min_temperature_c =
-                        measurement.and_then(|s| s.parse::<f64>().ok()).map(|v| to_celsius(v, units));
-                }
-            }
-            p if p.contains("temperature")
-                && (p.contains("max") || p.contains("upper") || p.contains("heat")) =>
-            {
-                if traits.max_temperature_c.is_none() {
-                    traits.max_temperature_c =
-                        measurement.and_then(|s| s.parse::<f64>().ok()).map(|v| to_celsius(v, units));
-                }
-            }
-            p if p.contains("temperature") || p.contains("optimum temperature") => {
-                // Unqualified temperature: store as min if both are absent.
-                if traits.min_temperature_c.is_none() && traits.max_temperature_c.is_none() {
-                    let c = measurement.and_then(|s| s.parse::<f64>().ok()).map(|v| to_celsius(v, units));
-                    traits.min_temperature_c = c;
-                }
-            }
-            // ----- Rooting depth -----
-            p if p.contains("rooting depth") || p.contains("root depth") || p.contains("depth of root") => {
-                if traits.rooting_depth.is_none() {
-                    let val = value.map(str::to_owned);
-                    let unit_suffix = units.map(|u| format!(" {u}")).unwrap_or_default();
-                    traits.rooting_depth = val.map(|v| {
-                        if unit_suffix.is_empty() { v } else { format!("{v}{unit_suffix}") }
-                    });
-                }
-            }
-            // ----- Uses -----
-            p if p.contains("used for") || p == "use" || p.contains("economic use")
-                || p.contains("folk use") || p.contains("traditional use") =>
-            {
-                if let Some(v) = value {
-                    uses_set.insert(v.to_lowercase());
-                }
-            }
-            _ => {}
+            apply_trait(&mut traits, &mut uses_set, &pred, value);
         }
     }
 
     if !uses_set.is_empty() {
         traits.uses = uses_set.into_iter().collect();
     }
+    traits
+}
 
-    Ok(traits)
+/// Pull the content between the first `>` after `marker` and `end_tag`.
+fn extract_between<'a>(html: &'a str, marker: &str, end_tag: &str) -> Option<String> {
+    let start = html.find(marker)?;
+    let content_start = html[start..].find('>')? + start + 1;
+    let content_end = html[content_start..].find(end_tag)? + content_start;
+    Some(html[content_start..content_end].to_owned())
+}
+
+/// Apply a single predicate/value pair to the traits struct.
+fn apply_trait(
+    traits: &mut EolTraits,
+    uses_set: &mut std::collections::BTreeSet<String>,
+    pred: &str,
+    value: &str,
+) {
+    match pred {
+        // ----- Growth form -----
+        "growth habit" | "growth form" | "plant growth form" | "habit of plant" => {
+            if traits.growth_type.is_none() {
+                traits.growth_type = Some(normalize_growth_type(value));
+            }
+        }
+        // ----- Light / shade -----
+        "shade tolerance" => {
+            if traits.sun_requirement.is_none() {
+                traits.sun_requirement = Some(shade_tolerance_to_sun_req(value));
+            }
+        }
+        p if p.contains("light") || p.contains("sun") => {
+            if traits.sun_requirement.is_none() {
+                traits.sun_requirement = Some(value.to_owned());
+            }
+        }
+        // ----- Moisture / water -----
+        p if p.contains("moisture") || p.contains("water use") || p.contains("water requirement") => {
+            if traits.water_requirement.is_none() {
+                traits.water_requirement = Some(value.to_owned());
+            }
+        }
+        "drought tolerance" => {
+            if traits.water_requirement.is_none() {
+                traits.water_requirement = Some(drought_to_water_req(value));
+            }
+        }
+        // ----- Soil pH -----
+        // EoL shows "optimal growth pH" as a single value like "6.8"
+        p if p.contains("ph") || p.contains("soil acidity") => {
+            let parsed: Option<f64> = value.split_whitespace().next().and_then(|s| s.parse().ok());
+            if p.contains("min") || p.contains("lower") || p.contains("minimum") {
+                if traits.soil_ph_min.is_none() { traits.soil_ph_min = parsed; }
+            } else if p.contains("max") || p.contains("upper") || p.contains("maximum") {
+                if traits.soil_ph_max.is_none() { traits.soil_ph_max = parsed; }
+            } else {
+                // "optimal growth pH" — use as both min and max to display a single value.
+                if traits.soil_ph_min.is_none() { traits.soil_ph_min = parsed; }
+                if traits.soil_ph_max.is_none() { traits.soil_ph_max = parsed; }
+            }
+        }
+        // ----- Hardiness zone -----
+        p if p.contains("cold hardiness") || p.contains("hardiness zone") => {
+            let formatted = format!("USDA {value}");
+            if p.contains("min") {
+                if traits.hardiness_zone_min.is_none() { traits.hardiness_zone_min = Some(formatted); }
+            } else if p.contains("max") {
+                if traits.hardiness_zone_max.is_none() { traits.hardiness_zone_max = Some(formatted); }
+            } else if traits.hardiness_zone_min.is_none() {
+                traits.hardiness_zone_min = Some(formatted);
+            }
+        }
+        // ----- Habitat -----
+        p if p == "habitat" || p.contains("habitat type") || p.contains("ecological niche")
+            || p.contains("biome") =>
+        {
+            if traits.habitat.is_none() {
+                traits.habitat = Some(value.to_owned());
+            }
+        }
+        // ----- Temperature -----
+        // EoL displays "optimal growth temperature" as e.g. "27 degrees celsius"
+        p if p.contains("temperature") => {
+            let celsius = parse_temperature_str(value);
+            if p.contains("min") || p.contains("lower") || p.contains("cold") {
+                if traits.min_temperature_c.is_none() { traits.min_temperature_c = celsius; }
+            } else if p.contains("max") || p.contains("upper") || p.contains("heat") {
+                if traits.max_temperature_c.is_none() { traits.max_temperature_c = celsius; }
+            } else if traits.min_temperature_c.is_none() && traits.max_temperature_c.is_none() {
+                // Optimal / unqualified: show as single value via min.
+                traits.min_temperature_c = celsius;
+            }
+        }
+        // ----- Rooting depth -----
+        p if p.contains("rooting depth") || p.contains("root depth") || p.contains("depth of root") => {
+            if traits.rooting_depth.is_none() {
+                traits.rooting_depth = Some(value.to_owned());
+            }
+        }
+        // ----- Uses -----
+        p if p.contains("used for") || p == "use" || p.contains("economic use")
+            || p.contains("folk use") || p.contains("traditional use") =>
+        {
+            uses_set.insert(value.to_lowercase());
+        }
+        _ => {}
+    }
+}
+
+/// Parse a human-readable temperature string like "27 degrees celsius" or "300 K" to °C.
+fn parse_temperature_str(s: &str) -> Option<f64> {
+    // Extract the leading numeric part.
+    let num_str: String = s.chars().take_while(|c| c.is_ascii_digit() || *c == '.' || *c == '-').collect();
+    let num: f64 = num_str.parse().ok()?;
+    let lower = s.to_lowercase();
+    if lower.contains('k') && !lower.contains("kind") {
+        Some(num - 273.15)
+    } else if lower.contains('f') && !lower.contains("for") {
+        Some((num - 32.0) * 5.0 / 9.0)
+    } else {
+        Some(num) // degrees celsius or unitless
+    }
 }
 
 /// Fetch ancestor taxonomy labels from the EoL v1 hierarchy_entries API.
@@ -527,15 +541,6 @@ fn drought_to_water_req(drought_tolerance: &str) -> String {
         "medium" => "moderate".to_string(),
         "high"   => "low".to_string(),
         other    => other.to_string(),
-    }
-}
-
-/// Convert a temperature value to °C, based on the units string from TraitBank.
-fn to_celsius(value: f64, units: Option<&str>) -> f64 {
-    match units.unwrap_or("").to_uppercase().trim_matches(|c: char| !c.is_alphabetic()) {
-        "K" | "KELVIN"     => value - 273.15,
-        "F" | "°F" | "FAHRENHEIT" => (value - 32.0) * 5.0 / 9.0,
-        _                  => value, // assume °C
     }
 }
 
