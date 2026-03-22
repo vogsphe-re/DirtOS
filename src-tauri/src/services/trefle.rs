@@ -126,14 +126,10 @@ struct TrefleMainSpecies {
 #[derive(Debug, Deserialize)]
 struct TrefleGrowth {
     light: Option<f64>,
-    atmospheric_humidity: Option<f64>,
-    minimum_precipitation: Option<TrefleMeasurement>,
-    maximum_precipitation: Option<TrefleMeasurement>,
     soil_humidity: Option<f64>,
     ph_minimum: Option<f64>,
     ph_maximum: Option<f64>,
     minimum_temperature: Option<TrefleMeasurement>,
-    maximum_temperature: Option<TrefleMeasurement>,
     days_to_harvest: Option<f64>,
     spread: Option<TrefleMeasurement>,
 }
@@ -143,18 +139,12 @@ struct TrefleSpecifications {
     ligneous_type: Option<String>,
     growth_form: Option<String>,
     growth_habit: Option<String>,
-    growth_rate: Option<String>,
-    average_height: Option<TrefleMeasurement>,
-    maximum_height: Option<TrefleMeasurement>,
-    toxicity: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 struct TrefleMeasurement {
     cm: Option<f64>,
-    mm: Option<f64>,
     deg_c: Option<f64>,
-    deg_f: Option<f64>,
 }
 
 // ---------------------------------------------------------------------------
