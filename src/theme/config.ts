@@ -76,20 +76,20 @@ export const gruvbox = {
 export const gruvboxResolver: CSSVariablesResolver = () => ({
   variables: {},
   light: {
-    "--mantine-color-body": gruvbox.light.bg0,
+    "--mantine-color-body": "rgba(251, 241, 199, 0.88)",
     "--mantine-color-text": gruvbox.light.fg1,
     "--mantine-color-dimmed": gruvbox.light.fg4,
     "--mantine-color-default-border": gruvbox.light.bg1,
-    "--mantine-color-default": gruvbox.light.bg0,
+    "--mantine-color-default": "rgba(251, 241, 199, 0.88)",
     "--mantine-color-default-hover": gruvbox.light.bg0_s,
     "--mantine-color-default-color": gruvbox.light.fg1,
   },
   dark: {
-    "--mantine-color-body": gruvbox.dark.bg0_h,
+    "--mantine-color-body": "rgba(29, 32, 33, 0.85)",
     "--mantine-color-text": gruvbox.dark.fg1,
     "--mantine-color-dimmed": gruvbox.dark.fg4,
     "--mantine-color-default-border": gruvbox.dark.bg1,
-    "--mantine-color-default": gruvbox.dark.bg0,
+    "--mantine-color-default": "rgba(40, 40, 40, 0.88)",
     "--mantine-color-default-hover": gruvbox.dark.bg0_s,
     "--mantine-color-default-color": gruvbox.dark.fg1,
   },
@@ -289,6 +289,19 @@ export const dirtTheme = createTheme({
         radius: "xl",
         variant: "default",
       },
+      styles: () => ({
+        root: {
+          transition: "transform 120ms ease, box-shadow 120ms ease",
+          "&:hover:not([data-disabled])": {
+            transform: "translateY(-2px)",
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.18)",
+          },
+          "&:active:not([data-disabled])": {
+            transform: "translateY(0)",
+            boxShadow: "none",
+          },
+        },
+      }),
     },
     Table: {
       styles: () => ({

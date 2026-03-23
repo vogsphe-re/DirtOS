@@ -8,6 +8,16 @@ import { routeTree } from "./routeTree.gen";
 import { useAppStore } from "./stores/appStore";
 import { dirtTheme, gruvboxResolver } from "./theme/config";
 
+import bg01 from "../assets/background/bg01.jpg";
+import bg02 from "../assets/background/bg02.jpg";
+import bg03 from "../assets/background/bg03.jpg";
+import bg04 from "../assets/background/bg04.jpg";
+import bg05 from "../assets/background/bg05.jpg";
+import bg06 from "../assets/background/bg06.jpg";
+
+const BG_IMAGES = [bg01, bg02, bg03, bg04, bg05, bg06];
+const sessionBg = BG_IMAGES[Math.floor(Math.random() * BG_IMAGES.length)];
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -53,6 +63,21 @@ function ThemedApp() {
 
   return (
     <MantineProvider theme={dirtTheme} forceColorScheme={colorScheme} cssVariablesResolver={gruvboxResolver}>
+      <div
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: -1,
+          backgroundImage: `url(${sessionBg})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          opacity: 0.18,
+          filter: "blur(6px)",
+          transform: "scale(1.04)",
+          pointerEvents: "none",
+        }}
+      />
       <ErrorBoundary>
         <Notifications />
         <QueryClientProvider client={queryClient}>

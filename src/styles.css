@@ -16,7 +16,7 @@ body,
 
 body {
   font-family: Inter, "Segoe UI", sans-serif;
-  background: var(--mantine-color-body);
+  background: transparent;
   color: var(--mantine-color-text);
 }
 
@@ -57,22 +57,22 @@ body[data-ready="false"] {
 
 /* ---------- DARK MODE ---------- */
 [data-mantine-color-scheme="dark"] {
-  --dirtos-bg: #1d2021;
-  --dirtos-bg-alt: #282828;
+  --dirtos-bg: rgba(29, 32, 33, 0.85);
+  --dirtos-bg-alt: rgba(40, 40, 40, 0.90);
   --dirtos-fg: #fbf1c7;
   --dirtos-fg-muted: #bdae93;
   --dirtos-contrast: #d65d0e;
   --dirtos-accent: #83a598;
 
-  --app-shell-panel: #1d2021;
-  --app-shell-border: rgba(168, 153, 132, 0.18);
+  --app-shell-panel: rgba(29, 32, 33, 0.90);
+  --app-shell-border: rgba(168, 153, 132, 0.22);
 
   /* Mantine internal overrides */
-  --mantine-color-body: #1d2021;
+  --mantine-color-body: rgba(29, 32, 33, 0.85);
   --mantine-color-default-border: #3c3836;
   --mantine-color-text: #fbf1c7;
   --mantine-color-dimmed: #7dae93;
-  --mantine-color-default: #282828;
+  --mantine-color-default: rgba(40, 40, 40, 0.88);
   --mantine-color-default-hover: #83a598;
   --mantine-color-default-color: #fbf1c7;
   --mantine-color-green: #458588;
@@ -81,21 +81,21 @@ body[data-ready="false"] {
 
 /* ---------- LIGHT MODE ---------- */
 [data-mantine-color-scheme="light"] {
-  --dirtos-bg: #fbf1c7;
-  --dirtos-bg-alt: #f9f5d7;
+  --dirtos-bg: rgba(251, 241, 199, 0.88);
+  --dirtos-bg-alt: rgba(249, 245, 215, 0.92);
   --dirtos-fg: #3c3836;
   --dirtos-fg-muted: #665c54;
   --dirtos-contrast: #d65d0e;
   --dirtos-accent: #458588;
 
-  --app-shell-panel: #f9f5d7;
-  --app-shell-border: rgba(124, 111, 100, 0.18);
+  --app-shell-panel: rgba(249, 245, 215, 0.92);
+  --app-shell-border: rgba(124, 111, 100, 0.22);
 
-  --mantine-color-body: #fbf1c7;
+  --mantine-color-body: rgba(251, 241, 199, 0.88);
   --mantine-color-default-border: #ebdbb2;
   --mantine-color-text: #3c3836;
   --mantine-color-dimmed: #665c54;
-  --mantine-color-default: #fbf1c7;
+  --mantine-color-default: rgba(251, 241, 199, 0.88);
   --mantine-color-default-hover: #83a598;
   --mantine-color-default-color: #3c3836;
 }
