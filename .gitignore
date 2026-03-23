@@ -49,3 +49,4 @@ tsconfig.tsbuildinfo
 *.old
 docs/.dev
 docs/.dev/*
+assets/logo

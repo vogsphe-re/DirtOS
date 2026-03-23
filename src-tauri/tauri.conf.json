@@ -31,8 +31,7 @@
     "resources": [
       "../assets/logo-dark.png",
       "../assets/logo-light.png",
-      "../assets/theme-dark.png",
-      "../assets/theme-light.png"
+      "../assets/splash.png"
     ],
     "icon": [
       "icons/32x32.png",
