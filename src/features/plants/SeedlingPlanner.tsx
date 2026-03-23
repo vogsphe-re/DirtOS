@@ -78,7 +78,7 @@ function SeedlingCard({ plant, species, observations, onLogObs, onTransplant }: 
           </Text>
           {ready && (
             <Tooltip label="Ready to transplant">
-              <Badge color="green" size="xs" variant="dot">
+              <Badge color="blue" size="xs" variant="dot">
                 Ready
               </Badge>
             </Tooltip>
@@ -398,7 +398,7 @@ export function SeedlingPlanner() {
               Cancel
             </Button>
             <Button
-              color="green"
+              color="blue"
               size="xs"
               loading={transplantMutation.isPending}
               onClick={() => transplantTarget && transplantMutation.mutate(transplantTarget.id)}

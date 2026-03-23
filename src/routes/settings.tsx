@@ -542,7 +542,7 @@ function EnvironmentCard({ env, isActive, onActivate, onSave, onDelete, busy }: 
       <Group justify="space-between" mb={editing ? "sm" : 0}>
         <Group gap="sm">
           <Text fw={500}>{env.name}</Text>
-          {isActive && <Badge size="xs" color="green">Active</Badge>}
+          {isActive && <Badge size="xs" color="blue">Active</Badge>}
         </Group>
         <Group gap={4}>
           {!isActive && (

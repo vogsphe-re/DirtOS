@@ -16,7 +16,7 @@ function AboutPage() {
             DirtOS is a local-first garden operations workspace for planning, monitoring, scheduling, and documenting the full lifecycle of your growing environments.
           </Text>
         </Stack>
-        <Badge size="lg" variant="light" color="green">
+        <Badge size="lg" variant="light" color="blue-outline">
           v{pkg.version}
         </Badge>
       </Group>

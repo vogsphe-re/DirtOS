@@ -134,7 +134,7 @@ export function GenealogyView({ plant }: GenealogyViewProps) {
         <Group gap="xs">
           <IconSeedling size={16} />
           <Text size="sm" fw={700}>{plant.name} (this plant)</Text>
-          <Badge size="xs" variant="light" color="green">{plant.status}</Badge>
+          <Badge size="xs" variant="light" color="green-outline">{plant.status}</Badge>
         </Group>
       </Card>
 

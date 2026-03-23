@@ -458,7 +458,7 @@ function SeedStoreCard({
             <ActionIcon
               size="sm"
               variant="subtle"
-              color="green"
+              color="green-outline"
               onClick={onSow}
               disabled={outOfStock}
             >

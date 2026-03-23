@@ -840,7 +840,7 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
                 <Button
                   size="xs"
                   variant="light"
-                  color="green"
+                  color="blue-outline"
                   loading={previewTrefle.isPending && previewTrefle.variables === c.id}
                   onClick={() => previewTrefle.mutate(c.id)}
                 >

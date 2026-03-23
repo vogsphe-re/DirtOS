@@ -258,7 +258,7 @@ function GridCell({ tray, row, col, cell, plant, species, latestObs, onAssign, o
           <Group gap={2} wrap="nowrap">
             {ready && (
               <Tooltip label="Ready to transplant">
-                <Badge color="green" size="xs" variant="dot">OK</Badge>
+                <Badge color="blue" size="xs" variant="dot">OK</Badge>
               </Tooltip>
             )}
             <Tooltip label="Remove from cell">
@@ -292,7 +292,7 @@ function GridCell({ tray, row, col, cell, plant, species, latestObs, onAssign, o
 
         {ready && (
           <Tooltip label="Transplant to garden">
-            <Button size="compact-xs" variant="light" color="green" onClick={onTransplant} fullWidth>
+            <Button size="compact-xs" variant="light" color="blue" onClick={onTransplant} fullWidth>
               <IconArrowRight size={12} />
             </Button>
           </Tooltip>
@@ -499,7 +499,7 @@ function TrayGridView({ tray, onBack }: TrayGridViewProps) {
           <Group justify="flex-end">
             <Button variant="default" size="xs" onClick={() => setTransplantTarget(null)}>Cancel</Button>
             <Button
-              color="green"
+              color="blue"
               size="xs"
               loading={transplantMutation.isPending}
               onClick={() => transplantTarget && transplantMutation.mutate(transplantTarget.id)}
