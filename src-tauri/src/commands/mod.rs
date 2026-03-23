@@ -42,3 +42,5 @@ pub use seed_store::*;
 pub use seedling_trays::*;
 pub use sensors::*;
 pub use weather::*;
+pub mod demo;
+pub use demo::*;

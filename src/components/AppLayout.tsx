@@ -5,6 +5,7 @@ import {
   Burger,
   Button,
   Card,
+  Divider,
   Group,
   Modal,
   Select,
@@ -65,6 +66,26 @@ function SetupWizard({ onCreated }: { onCreated: (env: Environment) => void }) {
     }
   };
 
+  const handleLoadDemo = async () => {
+    setBusy(true);
+    try {
+      const seedResult = await commands.seedDemoGarden();
+      if (seedResult.status !== "ok") throw new Error(seedResult.error);
+      const envsResult = await commands.listEnvironments();
+      if (envsResult.status !== "ok") throw new Error(envsResult.error);
+      const demoEnv = (envsResult.data as Environment[]).find(
+        (e) => e.name === "Demo Garden"
+      );
+      if (!demoEnv) throw new Error("Demo environment not found after seeding");
+      onCreated(demoEnv);
+      close();
+    } catch (e) {
+      notifications.show({ color: "red", title: "Error loading demo", message: String(e) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Modal
       opened={opened}
@@ -92,6 +113,19 @@ function SetupWizard({ onCreated }: { onCreated: (env: Environment) => void }) {
         <Button onClick={handleCreate} loading={busy} fullWidth mt={4}>
           Create environment
         </Button>
+        <Divider label="or" labelPosition="center" />
+        <Button
+          onClick={handleLoadDemo}
+          loading={busy}
+          fullWidth
+          variant="light"
+          color="green"
+        >
+          🌱 Load sample demo garden
+        </Button>
+        <Text size="xs" c="dimmed" ta="center">
+          Populates a full example garden with plants, harvests, issues, schedules, sensors, and more.
+        </Text>
       </Stack>
     </Modal>
   );

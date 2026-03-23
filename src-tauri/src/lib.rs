@@ -263,6 +263,8 @@ fn specta_builder() -> Builder<tauri::Wry> {
         commands::create_dashboard,
         commands::update_dashboard,
         commands::delete_dashboard,
+        // Demo
+        commands::seed_demo_garden,
     ])
 }
 
