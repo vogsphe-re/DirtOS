@@ -374,6 +374,8 @@ pub async fn update_species_trefle(
     days_to_harvest_max: Option<i64>,
     hardiness_zone_min: Option<String>,
     hardiness_zone_max: Option<String>,
+    min_temperature_c: Option<f64>,
+    max_temperature_c: Option<f64>,
     cached_json: String,
 ) -> Result<Option<Species>, sqlx::Error> {
     sqlx::query(
@@ -392,6 +394,8 @@ pub async fn update_species_trefle(
             days_to_harvest_max   = COALESCE(?, days_to_harvest_max),
             hardiness_zone_min    = COALESCE(?, hardiness_zone_min),
             hardiness_zone_max    = COALESCE(?, hardiness_zone_max),
+            min_temperature_c     = COALESCE(?, min_temperature_c),
+            max_temperature_c     = COALESCE(?, max_temperature_c),
             cached_trefle_json    = ?,
             updated_at            = datetime('now')
          WHERE id = ?",
@@ -410,6 +414,8 @@ pub async fn update_species_trefle(
     .bind(days_to_harvest_max)
     .bind(hardiness_zone_min)
     .bind(hardiness_zone_max)
+    .bind(min_temperature_c)
+    .bind(max_temperature_c)
     .bind(cached_json)
     .bind(id)
     .execute(pool)

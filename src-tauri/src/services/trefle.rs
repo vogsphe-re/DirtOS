@@ -56,6 +56,8 @@ pub struct TrefleDetail {
     pub days_to_harvest_max: Option<i64>,
     pub hardiness_zone_min: Option<String>,
     pub hardiness_zone_max: Option<String>,
+    pub min_temperature_c: Option<f64>,
+    pub max_temperature_c: Option<f64>,
     pub raw_json: String,
 }
 
@@ -130,6 +132,7 @@ struct TrefleGrowth {
     ph_minimum: Option<f64>,
     ph_maximum: Option<f64>,
     minimum_temperature: Option<TrefleMeasurement>,
+    maximum_temperature: Option<TrefleMeasurement>,
     days_to_harvest: Option<f64>,
     spread: Option<TrefleMeasurement>,
 }
@@ -274,11 +277,16 @@ pub async fn get_detail(
 
     let days_to_harvest = growth.and_then(|g| g.days_to_harvest).map(|d| d as i64);
 
-    // Hardiness zone from min temperature.
-    let hardiness_zone_min = growth
+    // Temperature range from Trefle growth data.
+    let min_temperature_c = growth
         .and_then(|g| g.minimum_temperature.as_ref())
-        .and_then(|t| t.deg_c)
-        .map(|c| celsius_to_hardiness_zone(c));
+        .and_then(|t| t.deg_c);
+    let max_temperature_c = growth
+        .and_then(|g| g.maximum_temperature.as_ref())
+        .and_then(|t| t.deg_c);
+
+    // Hardiness zone derived from min temperature.
+    let hardiness_zone_min = min_temperature_c.map(|c| celsius_to_hardiness_zone(c));
 
     Ok(TrefleDetail {
         id: data.id,
@@ -298,6 +306,8 @@ pub async fn get_detail(
         days_to_harvest_max: None,
         hardiness_zone_min,
         hardiness_zone_max: None,
+        min_temperature_c,
+        max_temperature_c,
         raw_json,
     })
 }

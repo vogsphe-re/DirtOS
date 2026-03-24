@@ -23,6 +23,9 @@ struct SeedSpecies {
     days_to_harvest_max: Option<i64>,
     hardiness_zone_min: Option<String>,
     hardiness_zone_max: Option<String>,
+    min_temperature_c: Option<f64>,
+    max_temperature_c: Option<f64>,
+    image_url: Option<String>,
     description: Option<String>,
 }
 
@@ -96,8 +99,9 @@ async fn seed_species(pool: &SqlitePool) -> Result<(), sqlx::Error> {
                 days_to_germination_min, days_to_germination_max,
                 days_to_harvest_min, days_to_harvest_max,
                 hardiness_zone_min, hardiness_zone_max,
+                min_temperature_c, max_temperature_c, image_url,
                 description, is_user_added
-             ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)",
+             ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)",
         )
         .bind(&s.common_name)
         .bind(&s.scientific_name)
@@ -115,6 +119,9 @@ async fn seed_species(pool: &SqlitePool) -> Result<(), sqlx::Error> {
         .bind(s.days_to_harvest_max)
         .bind(&s.hardiness_zone_min)
         .bind(&s.hardiness_zone_max)
+        .bind(s.min_temperature_c)
+        .bind(s.max_temperature_c)
+        .bind(&s.image_url)
         .bind(&s.description)
         .execute(pool)
         .await?;

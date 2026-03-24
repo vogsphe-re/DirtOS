@@ -247,13 +247,13 @@ pub async fn search_eol_candidates(
     let (sci_result, common_result) = tokio::join!(
         async {
             match sci_query.as_deref() {
-                Some(name) => eol::search(&client, name, 5).await,
+                Some(name) => eol::search(&client, name, 13).await,
                 None => Ok(Vec::new()),
             }
         },
         async {
             match common_query.as_deref() {
-                Some(name) => eol::search(&client, name, 5).await,
+                Some(name) => eol::search(&client, name, 13).await,
                 None => Ok(Vec::new()),
             }
         }
@@ -364,7 +364,7 @@ pub async fn search_wikipedia_candidates(
     let mut results: Vec<wikipedia::WikiSearchResult> = Vec::new();
 
     for query in queries {
-        if let Ok(candidates) = wikipedia::search_candidates(&client, &query, 6).await {
+        if let Ok(candidates) = wikipedia::search_candidates(&client, &query, 13).await {
             for c in candidates {
                 if seen.insert(c.slug.clone()) {
                     results.push(c);
@@ -442,13 +442,13 @@ pub async fn search_gbif_candidates(
         },
         async {
             match sci_name.as_deref() {
-                Some(name) => gbif::search(&client, name, 5).await.unwrap_or_default(),
+                Some(name) => gbif::search(&client, name, 13).await.unwrap_or_default(),
                 None => Vec::new(),
             }
         },
         async {
             match common_name.as_deref() {
-                Some(name) => gbif::search(&client, name, 5).await.unwrap_or_default(),
+                Some(name) => gbif::search(&client, name, 13).await.unwrap_or_default(),
                 None => Vec::new(),
             }
         }
@@ -548,13 +548,13 @@ pub async fn search_trefle_candidates(
     let (sci_results, common_results) = tokio::join!(
         async {
             match sci_name.as_deref() {
-                Some(name) => trefle::search(&client, name, &token, 5).await.unwrap_or_default(),
+                Some(name) => trefle::search(&client, name, &token, 13).await.unwrap_or_default(),
                 None => Vec::new(),
             }
         },
         async {
             match common_name.as_deref() {
-                Some(name) => trefle::search(&client, name, &token, 5).await.unwrap_or_default(),
+                Some(name) => trefle::search(&client, name, &token, 13).await.unwrap_or_default(),
                 None => Vec::new(),
             }
         }
@@ -608,6 +608,8 @@ pub async fn enrich_species_trefle_by_id(
         detail.days_to_harvest_max,
         detail.hardiness_zone_min,
         detail.hardiness_zone_max,
+        detail.min_temperature_c,
+        detail.max_temperature_c,
         detail.raw_json,
     )
     .await
@@ -903,6 +905,8 @@ pub async fn preview_enrich_trefle(
         field_num("days_to_harvest_max", "Days to harvest (max)", sp.days_to_harvest_max, detail.days_to_harvest_max),
         field("hardiness_zone_min", "Hardiness zone min", sp.hardiness_zone_min.as_deref(), detail.hardiness_zone_min.clone()),
         field("hardiness_zone_max", "Hardiness zone max", sp.hardiness_zone_max.as_deref(), detail.hardiness_zone_max.clone()),
+        field_num("min_temperature_c", "Min. temperature (°C)", sp.min_temperature_c, detail.min_temperature_c),
+        field_num("max_temperature_c", "Max. temperature (°C)", sp.max_temperature_c, detail.max_temperature_c),
     ];
     fields.retain(|f| f.new_value.is_some());
 
@@ -1037,6 +1041,8 @@ pub async fn auto_enrich_trefle(
                 detail.days_to_harvest_max,
                 detail.hardiness_zone_min,
                 detail.hardiness_zone_max,
+                detail.min_temperature_c,
+                detail.max_temperature_c,
                 detail.raw_json,
             )
             .await;

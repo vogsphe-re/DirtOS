@@ -48,6 +48,28 @@ import { AddPlantModal } from "./AddPlantModal";
 import type { Plant, Species } from "./types";
 import { PLANT_STATUS_COLORS, PLANT_STATUS_LABELS } from "./types";
 
+/** Map a minimum survival temperature (°C) to the approximate USDA hardiness zone. */
+function deriveHardinessZone(tempC: number): string {
+  if (tempC < -45.6) return "1";
+  if (tempC < -40.0) return "2";
+  if (tempC < -34.4) return "3";
+  if (tempC < -28.9) return "4";
+  if (tempC < -23.3) return "5";
+  if (tempC < -17.8) return "6";
+  if (tempC < -12.2) return "7";
+  if (tempC < -6.7)  return "8";
+  if (tempC < -1.1)  return "9";
+  if (tempC < 4.4)   return "10";
+  if (tempC < 10.0)  return "11";
+  if (tempC < 15.6)  return "12";
+  return "13";
+}
+
+/** Count non-null, non-empty fields in a candidate result object for completeness scoring. */
+function countFields(obj: object): number {
+  return Object.values(obj).filter((v) => v != null && v !== "").length;
+}
+
 interface SpeciesDetailProps {
   speciesId: number;
 }
@@ -64,6 +86,10 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
   const [gbifCandidates, setGbifCandidates] = useState<GbifSearchResult[]>([]);
   const [treflePickerOpen, setTreflePickerOpen] = useState(false);
   const [trefleCandidates, setTrefleCandidates] = useState<TrefleSearchResult[]>([]);
+  const [showAllWiki, setShowAllWiki] = useState(false);
+  const [showAllEol, setShowAllEol] = useState(false);
+  const [showAllGbif, setShowAllGbif] = useState(false);
+  const [showAllTrefle, setShowAllTrefle] = useState(false);
 
   // Edit / Delete state
   const [editing, setEditing] = useState(false);
@@ -127,6 +153,7 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
         // Single result — show preview instead of auto-enriching
         previewWiki.mutate(candidates[0].slug);
       } else {
+        setShowAllWiki(false);
         setWikiCandidates(candidates);
         setWikiPickerOpen(true);
       }
@@ -170,6 +197,7 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
       } else if (candidates.length === 1) {
         previewEol.mutate(candidates[0].id);
       } else {
+        setShowAllEol(false);
         setEolCandidates(candidates);
         setEolPickerOpen(true);
       }
@@ -213,6 +241,7 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
       } else if (candidates.length === 1) {
         previewGbif.mutate(candidates[0].key);
       } else {
+        setShowAllGbif(false);
         setGbifCandidates(candidates);
         setGbifPickerOpen(true);
       }
@@ -256,6 +285,7 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
       } else if (candidates.length === 1) {
         previewTrefle.mutate(candidates[0].id);
       } else {
+        setShowAllTrefle(false);
         setTrefleCandidates(candidates);
         setTreflePickerOpen(true);
       }
@@ -549,13 +579,6 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
         {/* Growing Info */}
         <Tabs.Panel value="growing" pt="md">
           <Stack gap="md">
-            {species.eol_description && (
-              <Stack gap={4}>
-                <Text size="sm" fw={600} c="dimmed">Summary (Encyclopedia of Life)</Text>
-                <Text size="sm">{species.eol_description}</Text>
-                <Divider />
-              </Stack>
-            )}
             <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
               <InfoItem label="Growth form" value={species.growth_type} />
               <InfoItem label="Sun requirement" value={species.sun_requirement} />
@@ -570,21 +593,27 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
                 }
               />
               <InfoItem
-                label="Temperature (°C)"
-                value={
-                  species.min_temperature_c != null
-                    ? `${species.min_temperature_c.toFixed(1)}${species.max_temperature_c != null ? `–${species.max_temperature_c.toFixed(1)}` : ""}`
-                    : species.max_temperature_c != null
-                      ? `≤ ${species.max_temperature_c.toFixed(1)}`
-                      : null
-                }
+                label="Min. temperature (°C)"
+                value={species.min_temperature_c != null ? species.min_temperature_c.toFixed(1) : null}
               />
-              <InfoItem label="Hardiness zone min" value={species.hardiness_zone_min} />
-              <InfoItem label="Hardiness zone max" value={species.hardiness_zone_max} />
+              <InfoItem
+                label="Max. temperature (°C)"
+                value={species.max_temperature_c != null ? species.max_temperature_c.toFixed(1) : null}
+              />
+              {(() => {
+                const zMin = species.hardiness_zone_min
+                  ?? (species.min_temperature_c != null
+                    ? `${deriveHardinessZone(species.min_temperature_c)} (est.)`
+                    : null);
+                const zMax = species.hardiness_zone_max;
+                if (!zMin && !zMax) return null;
+                const value = zMin && zMax ? `${zMin} – ${zMax}` : (zMin ?? zMax);
+                return <InfoItem label="Hardiness zone" value={value} />;
+              })()}
               <InfoItem label="Rooting depth" value={species.rooting_depth} />
               <InfoItem label="Uses" value={species.uses} />
               <InfoItem
-                label="Spacing (cm)"
+                label="Spread (cm)"
                 value={species.spacing_cm?.toString()}
               />
               <InfoItem
@@ -672,7 +701,10 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
             Multiple Wikipedia articles matched. Choose the one that best describes this species.
           </Text>
           <Divider />
-          {wikiCandidates.map((c) => (
+          {(showAllWiki
+            ? wikiCandidates
+            : [...wikiCandidates].sort((a, b) => countFields(b) - countFields(a)).slice(0, 5)
+          ).map((c) => (
             <Card key={c.slug} withBorder padding="sm">
               <Group justify="space-between" align="flex-start" wrap="nowrap">
                 <Stack gap={2} flex={1}>
@@ -699,6 +731,11 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
               </Group>
             </Card>
           ))}
+          {!showAllWiki && wikiCandidates.length > 5 && (
+            <Button variant="subtle" size="xs" fullWidth onClick={() => setShowAllWiki(true)}>
+              Search more ({wikiCandidates.length} results)
+            </Button>
+          )}
         </Stack>
       </Modal>
 
@@ -714,7 +751,11 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
             Multiple EoL pages matched. Choose the one that best describes this species.
           </Text>
           <Divider />
-          {eolCandidates.map((c) => (
+          <Divider />
+          {(showAllEol
+            ? eolCandidates
+            : [...eolCandidates].sort((a, b) => countFields(b) - countFields(a)).slice(0, 5)
+          ).map((c) => (
             <Card key={c.id} withBorder padding="sm">
               <Group justify="space-between" align="flex-start" wrap="nowrap">
                 <Stack gap={2} flex={1}>
@@ -742,6 +783,11 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
               </Group>
             </Card>
           ))}
+          {!showAllEol && eolCandidates.length > 5 && (
+            <Button variant="subtle" size="xs" fullWidth onClick={() => setShowAllEol(true)}>
+              Search more ({eolCandidates.length} results)
+            </Button>
+          )}
         </Stack>
       </Modal>
 
@@ -757,7 +803,10 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
             Multiple GBIF taxa matched. Choose the one that best describes this species.
           </Text>
           <Divider />
-          {gbifCandidates.map((c) => (
+          {(showAllGbif
+            ? gbifCandidates
+            : [...gbifCandidates].sort((a, b) => countFields(b) - countFields(a)).slice(0, 5)
+          ).map((c) => (
             <Card key={c.key} withBorder padding="sm">
               <Group justify="space-between" align="flex-start" wrap="nowrap">
                 <Stack gap={2} flex={1}>
@@ -799,6 +848,11 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
               </Group>
             </Card>
           ))}
+          {!showAllGbif && gbifCandidates.length > 5 && (
+            <Button variant="subtle" size="xs" fullWidth onClick={() => setShowAllGbif(true)}>
+              Search more ({gbifCandidates.length} results)
+            </Button>
+          )}
         </Stack>
       </Modal>
 
@@ -814,7 +868,10 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
             Multiple Trefle plants matched. Choose the one that best describes this species.
           </Text>
           <Divider />
-          {trefleCandidates.map((c) => (
+          {(showAllTrefle
+            ? trefleCandidates
+            : [...trefleCandidates].sort((a, b) => countFields(b) - countFields(a)).slice(0, 5)
+          ).map((c) => (
             <Card key={c.id} withBorder padding="sm">
               <Group justify="space-between" align="flex-start" wrap="nowrap">
                 <Stack gap={2} flex={1}>
@@ -849,6 +906,11 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
               </Group>
             </Card>
           ))}
+          {!showAllTrefle && trefleCandidates.length > 5 && (
+            <Button variant="subtle" size="xs" fullWidth onClick={() => setShowAllTrefle(true)}>
+              Search more ({trefleCandidates.length} results)
+            </Button>
+          )}
         </Stack>
       </Modal>
 
