@@ -31,11 +31,29 @@ export function useCanvasPersistence() {
       try {
         const result = await commands.loadCanvas(environmentId);
         if (result.status !== 'ok') throw new Error(result.error);
-        if (result.data) {
-          const parsed = JSON.parse(result.data);
-          if (parsed.objects) setObjects(parsed.objects);
-          if (parsed.gridConfig) updateGridConfig(parsed.gridConfig);
+
+        const objects: ReturnType<typeof useCanvasStore.getState>['objects'] = result.data
+          ? (JSON.parse(result.data).objects ?? [])
+          : [];
+        const gridCfg = result.data ? JSON.parse(result.data).gridConfig : undefined;
+
+        // Restore plant assignments from the DB so the canvas reflects the
+        // persisted state even if the canvas JSON blob is out of date.
+        const assignResult = await commands.getPlantsForCanvas(environmentId);
+        if (assignResult.status === 'ok') {
+          const plantByObjectId = new Map(
+            assignResult.data
+              .filter((p) => p.canvas_object_id != null)
+              .map((p) => [p.canvas_object_id!, p.id] as [string, number]),
+          );
+          for (const obj of objects) {
+            const pId = plantByObjectId.get(obj.id);
+            if (pId != null) obj.assignedPlantId = pId;
+          }
         }
+
+        setObjects(objects);
+        if (gridCfg) updateGridConfig(gridCfg);
         setDirty(false);
       } catch (e) {
         notifications.show({

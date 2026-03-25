@@ -229,3 +229,46 @@ pub async fn delete_seedling_observation(
         .await
         .map_err(|e| e.to_string())
 }
+
+// ---------------------------------------------------------------------------
+// Canvas plant assignment
+// ---------------------------------------------------------------------------
+
+/// Assign an existing plant to a canvas space object, linking them in the DB.
+/// Optionally also sets location_id if the space has a DB location record.
+#[tauri::command]
+#[specta::specta]
+pub async fn assign_plant_to_canvas_object(
+    pool: State<'_, SqlitePool>,
+    plant_id: i64,
+    canvas_object_id: String,
+    location_id: Option<i64>,
+) -> Result<Plant, String> {
+    plants::assign_plant_to_canvas_object(&pool, plant_id, &canvas_object_id, location_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Remove a plant's canvas object assignment without deleting the plant.
+#[tauri::command]
+#[specta::specta]
+pub async fn unassign_plant_from_canvas_object(
+    pool: State<'_, SqlitePool>,
+    plant_id: i64,
+) -> Result<Plant, String> {
+    plants::unassign_plant_from_canvas_object(&pool, plant_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Return all plants in an environment that are currently assigned to a canvas object.
+#[tauri::command]
+#[specta::specta]
+pub async fn get_plants_for_canvas(
+    pool: State<'_, SqlitePool>,
+    environment_id: i64,
+) -> Result<Vec<Plant>, String> {
+    plants::get_plants_for_canvas(&pool, environment_id)
+        .await
+        .map_err(|e| e.to_string())
+}

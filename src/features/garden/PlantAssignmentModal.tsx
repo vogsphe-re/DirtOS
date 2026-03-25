@@ -32,7 +32,7 @@ interface PlantAssignmentModalProps {
 
 export function PlantAssignmentModal({
   opened,
-  spaceId: _spaceId,
+  spaceId,
   spaceLabel,
   currentPlantId,
   onClose,
@@ -90,12 +90,14 @@ export function PlantAssignmentModal({
         label: null,
         planted_date: null,
         notes: null,
+        canvas_object_id: spaceId,
       });
       if (res.status === "error") throw new Error(res.error);
       return res.data as Plant;
     },
     onSuccess: (plant) => {
       queryClient.invalidateQueries({ queryKey: ["plants-all"] });
+      queryClient.invalidateQueries({ queryKey: ["canvas-plants"] });
       notifications.show({ message: `${plant.name} created and assigned.`, color: "green" });
       onAssigned(plant.id);
       setNewName("");
@@ -105,15 +107,37 @@ export function PlantAssignmentModal({
       notifications.show({ title: "Error", message: err.message, color: "red" }),
   });
 
-  const assignExisting = () => {
-    if (pickedPlantId) {
-      onAssigned(parseInt(pickedPlantId));
-    }
-  };
+  const doAssignExisting = useMutation({
+    mutationFn: async () => {
+      if (!pickedPlantId) throw new Error("No plant selected");
+      const plantId = parseInt(pickedPlantId);
+      const res = await commands.assignPlantToCanvasObject(plantId, spaceId, null);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data as Plant;
+    },
+    onSuccess: (plant) => {
+      queryClient.invalidateQueries({ queryKey: ["plants-all"] });
+      queryClient.invalidateQueries({ queryKey: ["canvas-plants"] });
+      onAssigned(plant.id);
+    },
+    onError: (err: Error) =>
+      notifications.show({ title: "Error", message: err.message, color: "red" }),
+  });
 
-  const clearAssignment = () => {
-    onAssigned(null);
-  };
+  const doClearAssignment = useMutation({
+    mutationFn: async () => {
+      if (!currentPlantId) return;
+      const res = await commands.unassignPlantFromCanvasObject(currentPlantId);
+      if (res.status === "error") throw new Error(res.error);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["plants-all"] });
+      queryClient.invalidateQueries({ queryKey: ["canvas-plants"] });
+      onAssigned(null);
+    },
+    onError: (err: Error) =>
+      notifications.show({ title: "Error", message: err.message, color: "red" }),
+  });
 
   const spaceTitle = spaceLabel ? `"${spaceLabel}"` : "this space";
 
@@ -160,14 +184,15 @@ export function PlantAssignmentModal({
             )}
             <Group justify="space-between" mt="xs">
               {currentPlantId && (
-                <Button variant="subtle" color="red" size="xs" onClick={clearAssignment}>
+                <Button variant="subtle" color="red" size="xs" onClick={() => doClearAssignment.mutate()} loading={doClearAssignment.isPending}>
                   Remove assignment
                 </Button>
               )}
               <Button
                 ml="auto"
                 disabled={!pickedPlantId}
-                onClick={assignExisting}
+                loading={doAssignExisting.isPending}
+                onClick={() => doAssignExisting.mutate()}
               >
                 Assign
               </Button>

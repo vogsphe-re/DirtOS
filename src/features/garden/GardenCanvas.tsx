@@ -13,10 +13,14 @@ import {
   Transformer,
 } from 'react-konva';
 import { Box, Text as MText, useComputedColorScheme } from '@mantine/core';
+import { useQuery } from '@tanstack/react-query';
 import { useCanvasStore } from './canvasStore';
 import { useCanvasHistory } from './hooks/useCanvasHistory';
 import { useCanvasPersistence } from './hooks/useCanvasPersistence';
+import { PlantAssignmentModal } from './PlantAssignmentModal';
 import { CanvasObject, GridConfig, LAYER_ORDER, OBJECT_DEFAULTS, ObjectType } from './types';
+import { commands } from '../../lib/bindings';
+import type { Plant } from '../plants/types';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -247,6 +251,39 @@ function ObjectLabel({ obj, fill }: { obj: CanvasObject; fill: string }) {
 }
 
 // ---------------------------------------------------------------------------
+// PlantBadge — shows the assigned plant name inside a canvas space object
+// ---------------------------------------------------------------------------
+
+function PlantBadge({ obj, plantName }: { obj: CanvasObject; plantName: string }) {
+  const x = obj.x + 3;
+  const y = obj.y + (obj.label ? 18 : 3);
+  const maxWidth = Math.max(20, (obj.width ?? 100) - 6);
+  return (
+    <>
+      <Rect
+        x={x - 1}
+        y={y - 1}
+        width={Math.min(plantName.length * 6 + 6, maxWidth)}
+        height={13}
+        fill="rgba(44,130,60,0.88)"
+        cornerRadius={2}
+        listening={false}
+      />
+      <Text
+        x={x}
+        y={y}
+        text={plantName}
+        fontSize={9}
+        fill="#fff"
+        width={maxWidth}
+        ellipsis
+        listening={false}
+      />
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Drawing state
 // ---------------------------------------------------------------------------
 
@@ -283,6 +320,11 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
   const [previewObj, setPreviewObj] = useState<CanvasObject | null>(null);
   const [isPanMode, setIsPanMode] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0, stageX: 0, stageY: 0 });
+  const [assignModalSpace, setAssignModalSpace] = useState<{
+    id: string;
+    label?: string;
+    assignedPlantId?: number | null;
+  } | null>(null);
 
   const objects = useCanvasStore((s) => s.objects);
   const activeTool = useCanvasStore((s) => s.activeTool);
@@ -302,6 +344,26 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
 
   const { pushSnapshot, undo, redo } = useCanvasHistory();
   const { saveCanvas, loadCanvas } = useCanvasPersistence();
+
+  // Canvas plant assignments — keyed by canvas object UUID
+  const { data: canvasPlants = [], refetch: refetchCanvasPlants } = useQuery({
+    queryKey: ['canvas-plants', environmentId],
+    queryFn: async () => {
+      if (environmentId == null) return [] as Plant[];
+      const res = await commands.getPlantsForCanvas(environmentId);
+      if (res.status === 'error') throw new Error(res.error);
+      return res.data as Plant[];
+    },
+    enabled: environmentId != null,
+  });
+
+  const plantByCanvasId = useMemo(() => {
+    const map = new Map<string, Plant>();
+    for (const p of canvasPlants) {
+      if (p.canvas_object_id) map.set(p.canvas_object_id, p);
+    }
+    return map;
+  }, [canvasPlants]);
 
   // Resize observer
   useEffect(() => {
@@ -550,10 +612,20 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
     if (activeTool !== 'select') return;
     if (obj.type === 'plot') {
       useCanvasStore.getState().setEditingPlotId(obj.id);
-    } else if (obj.type === 'space' && obj.parentId) {
-      useCanvasStore.getState().setEditingPlotId(obj.parentId);
+    } else if (obj.type === 'space') {
+      if (obj.parentId && editingPlotId !== obj.parentId) {
+        // Enter the parent plot's editing mode first
+        useCanvasStore.getState().setEditingPlotId(obj.parentId);
+      } else {
+        // Already in editing mode — open plant assignment modal
+        setAssignModalSpace({
+          id: obj.id,
+          label: obj.label || undefined,
+          assignedPlantId: plantByCanvasId.get(obj.id)?.id ?? obj.assignedPlantId,
+        });
+      }
     }
-  }, [activeTool]);
+  }, [activeTool, editingPlotId, plantByCanvasId]);
 
   const cursorStyle =
     activeTool === 'select' ? 'default'
@@ -641,6 +713,12 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
                 .map((o) => (
                   <ObjectLabel key={`lbl-${o.id}`} obj={o} fill={labelFill} />
                 ))}
+              {byLayer[layerName]
+                .filter((o) => o.type === 'space' && plantByCanvasId.has(o.id))
+                .map((o) => {
+                  const plant = plantByCanvasId.get(o.id)!;
+                  return <PlantBadge key={`pb-${o.id}`} obj={o} plantName={plant.name} />;
+                })}
             </Group>
           ))}
 
@@ -687,6 +765,22 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
         >
           <MText size="xs">Unsaved · Ctrl+S to save</MText>
         </Box>
+      )}
+
+      {assignModalSpace && (
+        <PlantAssignmentModal
+          opened
+          spaceId={assignModalSpace.id}
+          spaceLabel={assignModalSpace.label}
+          currentPlantId={assignModalSpace.assignedPlantId}
+          onClose={() => setAssignModalSpace(null)}
+          onAssigned={(plantId) => {
+            updateObject(assignModalSpace.id, { assignedPlantId: plantId ?? undefined });
+            setDirty(true);
+            void refetchCanvasPlants();
+            setAssignModalSpace(null);
+          }}
+        />
       )}
     </Box>
   );

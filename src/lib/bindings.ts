@@ -701,6 +701,40 @@ async transitionPlantStatus(plantId: number, newStatus: PlantStatus) : Promise<R
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Assign an existing plant to a canvas space object, linking them in the DB.
+ * Optionally also sets location_id if the space has a DB location record.
+ */
+async assignPlantToCanvasObject(plantId: number, canvasObjectId: string, locationId: number | null) : Promise<Result<Plant, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("assign_plant_to_canvas_object", { plantId, canvasObjectId, locationId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Remove a plant's canvas object assignment without deleting the plant.
+ */
+async unassignPlantFromCanvasObject(plantId: number) : Promise<Result<Plant, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("unassign_plant_from_canvas_object", { plantId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Return all plants in an environment that are currently assigned to a canvas object.
+ */
+async getPlantsForCanvas(environmentId: number) : Promise<Result<Plant[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_plants_for_canvas", { environmentId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async listSeedlingObservations(plantId: number) : Promise<Result<SeedlingObservation[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("list_seedling_observations", { plantId }) };
@@ -1615,6 +1649,11 @@ async deleteDashboard(id: number) : Promise<Result<boolean, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Seed a comprehensive demonstration garden with sample data across every
+ * feature area. Idempotent: returns the existing environment's id if an
+ * environment named "Demo Garden" already exists.
+ */
 async seedDemoGarden() : Promise<Result<number, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("seed_demo_garden") };
@@ -1811,7 +1850,7 @@ export type NewIssue = { environment_id: number | null; plant_id: number | null;
 export type NewIssueLabel = { name: string; color: string | null; icon: string | null }
 export type NewJournalEntry = { environment_id: number | null; plant_id: number | null; location_id: number | null; title: string; body: string | null; conditions_json: string | null }
 export type NewLocation = { environment_id: number; parent_id: number | null; location_type: LocationType; name: string; label: string | null; position_x: number | null; position_y: number | null; width: number | null; height: number | null; canvas_data_json: string | null; notes: string | null }
-export type NewPlant = { species_id: number | null; location_id: number | null; environment_id: number; status: PlantStatus | null; name: string; label: string | null; planted_date: string | null; notes: string | null }
+export type NewPlant = { species_id: number | null; location_id: number | null; environment_id: number; status: PlantStatus | null; name: string; label: string | null; planted_date: string | null; notes: string | null; canvas_object_id?: string | null }
 export type NewPlantGroup = { environment_id: number; name: string; description: string | null; group_type: string | null; color: string | null }
 export type NewSchedule = { environment_id: number | null; plant_id: number | null; location_id: number | null; schedule_type: ScheduleType; title: string; cron_expression: string | null; next_run_at: string | null; is_active: boolean | null; additive_id: number | null; notes: string | null }
 export type NewSeason = { environment_id: number; name: string; start_date: string; end_date: string; notes: string | null }
@@ -1822,7 +1861,7 @@ export type NewSensor = { environment_id: number | null; location_id: number | n
 export type NewSoilTest = { location_id: number; test_date: string; ph: number | null; nitrogen_ppm: number | null; phosphorus_ppm: number | null; potassium_ppm: number | null; moisture_pct: number | null; organic_matter_pct: number | null; notes: string | null }
 export type NewSpecies = { common_name: string; scientific_name: string | null; family: string | null; genus: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; description: string | null; image_url: string | null; is_user_added: boolean | null }
 export type OSMPlaceResult = { display_name: string; latitude: number; longitude: number; osm_type: string | null; osm_id: number | null }
-export type Plant = { id: number; species_id: number | null; location_id: number | null; environment_id: number; status: PlantStatus; name: string; label: string | null; planted_date: string | null; germinated_date: string | null; transplanted_date: string | null; removed_date: string | null; parent_plant_id: number | null; seed_lot_id: number | null; purchase_source: string | null; purchase_date: string | null; purchase_price: number | null; notes: string | null; created_at: string; updated_at: string }
+export type Plant = { id: number; species_id: number | null; location_id: number | null; environment_id: number; status: PlantStatus; name: string; label: string | null; asset_id: string | null; planted_date: string | null; germinated_date: string | null; transplanted_date: string | null; removed_date: string | null; parent_plant_id: number | null; seed_lot_id: number | null; purchase_source: string | null; purchase_date: string | null; purchase_price: number | null; notes: string | null; canvas_object_id: string | null; created_at: string; updated_at: string }
 export type PlantGroup = { id: number; environment_id: number; name: string; description: string | null; group_type: string | null; filter_criteria_json: string | null; color: string | null; created_at: string; updated_at: string }
 export type PlantStatus = "planned" | "seedling" | "active" | "harvested" | "removed" | "dead"
 export type Recommendation = { category: string; title: string; description: string; confidence: number; action_suggestion: string | null; plant_id: number | null; species_id: number | null }

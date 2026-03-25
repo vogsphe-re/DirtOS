@@ -226,6 +226,7 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
                 label: label.map(str::to_string),
                 planted_date: Some(planted.to_string()),
                 notes: notes.map(str::to_string),
+                canvas_object_id: None,
             },
             Some(asset_id),
         )

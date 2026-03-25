@@ -379,6 +379,7 @@ pub struct Plant {
     pub purchase_date: Option<String>,
     pub purchase_price: Option<f64>,
     pub notes: Option<String>,
+    pub canvas_object_id: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -393,6 +394,8 @@ pub struct NewPlant {
     pub label: Option<String>,
     pub planted_date: Option<String>,
     pub notes: Option<String>,
+    #[serde(default)]
+    pub canvas_object_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]

@@ -135,6 +135,10 @@ fn specta_builder() -> Builder<tauri::Wry> {
         commands::delete_plant,
         commands::change_plant_status,
         commands::transition_plant_status,
+        // Canvas plant assignment
+        commands::assign_plant_to_canvas_object,
+        commands::unassign_plant_from_canvas_object,
+        commands::get_plants_for_canvas,
         // Seedling observations
         commands::list_seedling_observations,
         commands::create_seedling_observation,

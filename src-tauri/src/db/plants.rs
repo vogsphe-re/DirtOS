@@ -66,8 +66,8 @@ pub async fn create_plant(
     let result = sqlx::query(
         "INSERT INTO plants
             (species_id, location_id, environment_id, status, name, label, asset_id,
-             planted_date, notes)
-         VALUES (?,?,?,?,?,?,?,?,?)",
+             planted_date, notes, canvas_object_id)
+         VALUES (?,?,?,?,?,?,?,?,?,?)",
     )
     .bind(input.species_id)
     .bind(input.location_id)
@@ -78,6 +78,7 @@ pub async fn create_plant(
     .bind(&asset_id)
     .bind(&input.planted_date)
     .bind(&input.notes)
+    .bind(&input.canvas_object_id)
     .execute(pool)
     .await?;
 
@@ -230,6 +231,61 @@ pub async fn transition_plant_status(
     get_plant(pool, id)
         .await?
         .ok_or(sqlx::Error::RowNotFound)
+}
+
+/// Assign a plant to a canvas object UUID, optionally also setting location_id.
+pub async fn assign_plant_to_canvas_object(
+    pool: &SqlitePool,
+    plant_id: i64,
+    canvas_object_id: &str,
+    location_id: Option<i64>,
+) -> Result<Plant, sqlx::Error> {
+    sqlx::query(
+        "UPDATE plants
+         SET canvas_object_id = ?,
+             location_id = COALESCE(?, location_id),
+             updated_at = datetime('now')
+         WHERE id = ?",
+    )
+    .bind(canvas_object_id)
+    .bind(location_id)
+    .bind(plant_id)
+    .execute(pool)
+    .await?;
+
+    get_plant(pool, plant_id)
+        .await?
+        .ok_or(sqlx::Error::RowNotFound)
+}
+
+/// Remove a plant's canvas object assignment (does not clear location_id).
+pub async fn unassign_plant_from_canvas_object(
+    pool: &SqlitePool,
+    plant_id: i64,
+) -> Result<Plant, sqlx::Error> {
+    sqlx::query(
+        "UPDATE plants SET canvas_object_id = NULL, updated_at = datetime('now') WHERE id = ?",
+    )
+    .bind(plant_id)
+    .execute(pool)
+    .await?;
+
+    get_plant(pool, plant_id)
+        .await?
+        .ok_or(sqlx::Error::RowNotFound)
+}
+
+/// Return all plants in an environment that are assigned to a canvas object.
+pub async fn get_plants_for_canvas(
+    pool: &SqlitePool,
+    environment_id: i64,
+) -> Result<Vec<Plant>, sqlx::Error> {
+    sqlx::query_as::<_, Plant>(
+        "SELECT * FROM plants WHERE environment_id = ? AND canvas_object_id IS NOT NULL",
+    )
+    .bind(environment_id)
+    .fetch_all(pool)
+    .await
 }
 
 pub async fn change_plant_status(

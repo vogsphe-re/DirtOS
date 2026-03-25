@@ -73,6 +73,7 @@ export interface Plant {
   purchase_date: string | null;
   purchase_price: number | null;
   notes: string | null;
+  canvas_object_id: string | null;
   created_at: string;
   updated_at: string;
 }
