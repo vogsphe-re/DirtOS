@@ -1,5 +1,5 @@
 import { ActionIcon, Box, Button, Group, Text, Tooltip } from '@mantine/core';
-import { IconArrowLeft, IconPlus } from '@tabler/icons-react';
+import { IconArrowLeft, IconPlant, IconPlus } from '@tabler/icons-react';
 import { useCanvasStore } from './canvasStore';
 import { OBJECT_DEFAULTS } from './types';
 
@@ -7,6 +7,7 @@ import { OBJECT_DEFAULTS } from './types';
 export function SpaceEditor() {
   const editingPlotId = useCanvasStore((s) => s.editingPlotId);
   const objects = useCanvasStore((s) => s.objects);
+  const selectedId = useCanvasStore((s) => s.selectedId);
   const setEditingPlotId = useCanvasStore((s) => s.setEditingPlotId);
   const addObject = useCanvasStore((s) => s.addObject);
   const setActiveTool = useCanvasStore((s) => s.setActiveTool);
@@ -17,6 +18,9 @@ export function SpaceEditor() {
   if (!editingPlotId || !plot) return null;
 
   const spaces = objects.filter((o) => o.type === 'space' && o.parentId === editingPlotId);
+  const selectedSpace = objects.find(
+    (o) => o.id === selectedId && o.type === 'space' && o.parentId === editingPlotId,
+  );
 
   const addSpace = () => {
     const id = crypto.randomUUID();
@@ -79,10 +83,23 @@ export function SpaceEditor() {
       </Text>
 
       <Text size="xs" c="dimmed">
-        {spaces.length} space{spaces.length !== 1 ? 's' : ''} · double-click to exit
+        {spaces.length} space{spaces.length !== 1 ? 's' : ''} · double-click a space to assign a plant
       </Text>
 
       <Group ml="auto" gap={6}>
+        {selectedSpace && (
+          <Tooltip label={`Assign a plant to "${selectedSpace.label || 'this space'}"`}>
+            <Button
+              size="xs"
+              variant="light"
+              color="green"
+              leftSection={<IconPlant size={12} />}
+              onClick={() => useCanvasStore.getState().setPendingPlantAssignId(selectedSpace.id)}
+            >
+              Assign Plant
+            </Button>
+          </Tooltip>
+        )}
         <Button
           size="xs"
           variant="light"

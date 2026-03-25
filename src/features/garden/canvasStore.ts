@@ -22,6 +22,8 @@ interface CanvasStore {
   gridConfig: GridConfig;
   /** When set, canvas is in space-editing mode for this plot id */
   editingPlotId: string | null;
+  /** When set, GardenCanvas should open the plant-assignment modal for this space id */
+  pendingPlantAssignId: string | null;
   stageX: number;
   stageY: number;
   stageScale: number;
@@ -37,6 +39,7 @@ interface CanvasStore {
   toggleLayer: (layer: LayerName) => void;
   updateGridConfig: (config: Partial<GridConfig>) => void;
   setEditingPlotId: (id: string | null) => void;
+  setPendingPlantAssignId: (id: string | null) => void;
   setStageTransform: (x: number, y: number, scale: number) => void;
   setStageNode: (stageNode: Konva.Stage | null) => void;
   setDirty: (dirty: boolean) => void;
@@ -49,6 +52,7 @@ export const useCanvasStore = create<CanvasStore>()((set) => ({
   layerVisibility: DEFAULT_LAYER_VISIBILITY,
   gridConfig: DEFAULT_GRID,
   editingPlotId: null,
+  pendingPlantAssignId: null,
   stageX: 0,
   stageY: 0,
   stageScale: 1,
@@ -75,6 +79,7 @@ export const useCanvasStore = create<CanvasStore>()((set) => ({
   updateGridConfig: (config) =>
     set((s) => ({ gridConfig: { ...s.gridConfig, ...config } })),
   setEditingPlotId: (editingPlotId) => set({ editingPlotId }),
+  setPendingPlantAssignId: (pendingPlantAssignId) => set({ pendingPlantAssignId }),
   setStageTransform: (stageX, stageY, stageScale) => set({ stageX, stageY, stageScale }),
   setStageNode: (stageNode) => set({ stageNode }),
   setDirty: (isDirty) => set({ isDirty }),

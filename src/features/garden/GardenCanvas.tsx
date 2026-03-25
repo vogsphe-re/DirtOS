@@ -332,6 +332,7 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
   const layerVisibility = useCanvasStore((s) => s.layerVisibility);
   const gridConfig = useCanvasStore((s) => s.gridConfig);
   const editingPlotId = useCanvasStore((s) => s.editingPlotId);
+  const pendingPlantAssignId = useCanvasStore((s) => s.pendingPlantAssignId);
   const stageX = useCanvasStore((s) => s.stageX);
   const stageY = useCanvasStore((s) => s.stageY);
   const stageScale = useCanvasStore((s) => s.stageScale);
@@ -377,6 +378,21 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  // Open the plant-assignment modal when SpaceEditor's "Assign Plant" button is clicked
+  useEffect(() => {
+    if (!pendingPlantAssignId) return;
+    const obj = useCanvasStore.getState().objects.find((o) => o.id === pendingPlantAssignId);
+    if (obj) {
+      setAssignModalSpace({
+        id: obj.id,
+        label: obj.label || undefined,
+        assignedPlantId: plantByCanvasId.get(obj.id)?.id ?? obj.assignedPlantId,
+      });
+    }
+    useCanvasStore.getState().setPendingPlantAssignId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingPlantAssignId]);
 
   // Load canvas when environment changes
   useEffect(() => {
@@ -613,19 +629,18 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
     if (obj.type === 'plot') {
       useCanvasStore.getState().setEditingPlotId(obj.id);
     } else if (obj.type === 'space') {
-      if (obj.parentId && editingPlotId !== obj.parentId) {
-        // Enter the parent plot's editing mode first
+      // Enter the parent plot's editing mode if not already there
+      if (obj.parentId) {
         useCanvasStore.getState().setEditingPlotId(obj.parentId);
-      } else {
-        // Already in editing mode — open plant assignment modal
-        setAssignModalSpace({
-          id: obj.id,
-          label: obj.label || undefined,
-          assignedPlantId: plantByCanvasId.get(obj.id)?.id ?? obj.assignedPlantId,
-        });
       }
+      // Always open the plant assignment modal
+      setAssignModalSpace({
+        id: obj.id,
+        label: obj.label || undefined,
+        assignedPlantId: plantByCanvasId.get(obj.id)?.id ?? obj.assignedPlantId,
+      });
     }
-  }, [activeTool, editingPlotId, plantByCanvasId]);
+  }, [activeTool, plantByCanvasId]);
 
   const cursorStyle =
     activeTool === 'select' ? 'default'
