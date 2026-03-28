@@ -14,8 +14,14 @@ import bg03 from "../assets/background/bg03.jpg";
 import bg04 from "../assets/background/bg04.jpg";
 import bg05 from "../assets/background/bg05.jpg";
 import bg06 from "../assets/background/bg06.jpg";
+import bg07 from "../assets/background/bg07.jpg";
+import bg08 from "../assets/background/bg08.jpg";
+import bg09 from "../assets/background/bg09.jpg";
+import bg10 from "../assets/background/bg10.jpg";
+import bg11 from "../assets/background/bg11.jpg";
+import bg12 from "../assets/background/bg12.jpg";
 
-const BG_IMAGES = [bg01, bg02, bg03, bg04, bg05, bg06];
+const BG_IMAGES = [bg01, bg02, bg03, bg04, bg05, bg06, bg07, bg08, bg09, bg10, bg11, bg12];
 const sessionBg = BG_IMAGES[Math.floor(Math.random() * BG_IMAGES.length)];
 
 const queryClient = new QueryClient({
