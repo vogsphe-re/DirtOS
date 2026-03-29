@@ -75,11 +75,11 @@ function ThemedApp() {
           position: "fixed",
           inset: 0,
           zIndex: -1,
-          backgroundImage: `url(${sessionBg})`,
+          backgroundImage: `url(${sessionBg})`, // Random background image for the session
           backgroundSize: "cover",
           backgroundPosition: "center",
-          opacity: 0.18,
-          filter: "blur(6px)",
+          opacity: 0.4,  // Subtle opacity for the background image
+          filter: "blur(2px)", // Slight blur for a softer look
           transform: "scale(1.04)",
           pointerEvents: "none",
         }}
