@@ -1,4 +1,4 @@
-import { Badge, Box, Button, Card, Checkbox, Group, Modal, NumberInput, SegmentedControl, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
+import { Accordion, Badge, Box, Button, Card, Checkbox, Group, Modal, NumberInput, SegmentedControl, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
 import { useMemo, useState } from "react";
 import {
   AREA_GENERATION_PRESETS,
@@ -34,6 +34,70 @@ const PRESET_CATEGORY_LABELS: Record<AreaGenerationPresetCategory, string> = {
   nursery: "Nursery",
 };
 
+type PresetFilter = "all" | AreaGenerationPresetCategory;
+
+const CATEGORY_STYLES: Record<AreaGenerationPresetCategory | "custom", {
+  soil: string;
+  lane: string;
+  fill: string;
+  stroke: string;
+  accent: string;
+  badge: string;
+  shape: "rect" | "circle";
+  radiusFactor: number;
+}> = {
+  beds: {
+    soil: "linear-gradient(180deg, rgba(143,113,61,0.22), rgba(95,71,43,0.10))",
+    lane: "rgba(214, 192, 148, 0.48)",
+    fill: "rgba(108, 147, 82, 0.74)",
+    stroke: "rgba(62, 98, 45, 0.9)",
+    accent: "#6c9352",
+    badge: "lime",
+    shape: "rect",
+    radiusFactor: 0.08,
+  },
+  blocks: {
+    soil: "linear-gradient(180deg, rgba(120,95,56,0.22), rgba(74,56,33,0.12))",
+    lane: "rgba(228, 206, 156, 0.42)",
+    fill: "rgba(78, 125, 78, 0.78)",
+    stroke: "rgba(38, 78, 47, 0.92)",
+    accent: "#4e7d4e",
+    badge: "green",
+    shape: "rect",
+    radiusFactor: 0.03,
+  },
+  orchard: {
+    soil: "linear-gradient(180deg, rgba(122,104,63,0.22), rgba(79,61,36,0.12))",
+    lane: "rgba(206, 188, 136, 0.45)",
+    fill: "rgba(74, 121, 66, 0.78)",
+    stroke: "rgba(40, 87, 39, 0.92)",
+    accent: "#4a7942",
+    badge: "teal",
+    shape: "circle",
+    radiusFactor: 0.45,
+  },
+  nursery: {
+    soil: "linear-gradient(180deg, rgba(87,108,97,0.22), rgba(58,72,64,0.12))",
+    lane: "rgba(176, 198, 190, 0.34)",
+    fill: "rgba(96, 154, 137, 0.76)",
+    stroke: "rgba(48, 103, 90, 0.92)",
+    accent: "#609a89",
+    badge: "cyan",
+    shape: "rect",
+    radiusFactor: 0.01,
+  },
+  custom: {
+    soil: "linear-gradient(180deg, rgba(116,102,84,0.18), rgba(76,65,52,0.08))",
+    lane: "rgba(198, 182, 150, 0.38)",
+    fill: "rgba(95, 138, 89, 0.65)",
+    stroke: "rgba(50, 93, 58, 0.85)",
+    accent: "#5f8a59",
+    badge: "gray",
+    shape: "rect",
+    radiusFactor: 0.08,
+  },
+};
+
 function formatMeasurement(value: number): string {
   if (!Number.isFinite(value)) return "0";
   if (value >= 10) return value.toFixed(1).replace(/\.0$/, "");
@@ -54,7 +118,8 @@ function getLaneStarts(count: number, cellSizePx: number, pathwayPx: number, pat
   return starts;
 }
 
-function LayoutDiagram({ layout }: { layout: RectGridLayout }) {
+function LayoutDiagram({ layout, category = "custom" }: { layout: RectGridLayout; category?: AreaGenerationPresetCategory | "custom" }) {
+  const style = CATEGORY_STYLES[category];
   const maxRows = Math.min(layout.rows, 6);
   const maxColumns = Math.min(layout.columns, 8);
   const visibleWidth = getGridSpan(maxColumns, layout.cellWidthPx, layout.pathwayXPx, layout.pathwayEveryColumns);
@@ -70,14 +135,14 @@ function LayoutDiagram({ layout }: { layout: RectGridLayout }) {
         borderRadius: 10,
         overflow: "hidden",
         border: "1px solid var(--mantine-color-default-border)",
-        background: "linear-gradient(180deg, rgba(143,113,61,0.18), rgba(95,71,43,0.08))",
+        background: style.soil,
       }}
     >
       <svg viewBox={`0 0 ${viewWidth} ${viewHeight}`} width="100%" height="92" preserveAspectRatio="xMidYMid meet">
         <rect x="0" y="0" width={viewWidth} height={viewHeight} fill="rgba(143,113,61,0.16)" />
         {verticalLaneStarts.map((x, index) => (
           <g key={`v-lane-${index}`}>
-            <rect x={x} y={0} width={layout.pathwayXPx} height={viewHeight} fill="rgba(210, 184, 132, 0.42)" />
+            <rect x={x} y={0} width={layout.pathwayXPx} height={viewHeight} fill={style.lane} />
             {layout.pathwayXPx >= 16 && (
               <text
                 x={x + layout.pathwayXPx / 2}
@@ -94,7 +159,7 @@ function LayoutDiagram({ layout }: { layout: RectGridLayout }) {
         ))}
         {horizontalLaneStarts.map((y, index) => (
           <g key={`h-lane-${index}`}>
-            <rect x={0} y={y} width={viewWidth} height={layout.pathwayYPx} fill="rgba(210, 184, 132, 0.42)" />
+            <rect x={0} y={y} width={viewWidth} height={layout.pathwayYPx} fill={style.lane} />
             {layout.pathwayYPx >= 14 && (
               <text
                 x={viewWidth / 2}
@@ -109,19 +174,39 @@ function LayoutDiagram({ layout }: { layout: RectGridLayout }) {
           </g>
         ))}
         {Array.from({ length: maxRows }, (_, rowIndex) =>
-          Array.from({ length: maxColumns }, (_, columnIndex) => (
-            <rect
-              key={`${rowIndex}-${columnIndex}`}
-              x={getGridCellOffset(columnIndex, layout.cellWidthPx, layout.pathwayXPx, layout.pathwayEveryColumns)}
-              y={getGridCellOffset(rowIndex, layout.cellHeightPx, layout.pathwayYPx, layout.pathwayEveryRows)}
-              width={layout.cellWidthPx}
-              height={layout.cellHeightPx}
-              rx={Math.min(layout.cellWidthPx, layout.cellHeightPx) * 0.08}
-              fill="rgba(95, 138, 89, 0.65)"
-              stroke="rgba(50, 93, 58, 0.85)"
-              strokeWidth={Math.max(layout.cellWidthPx, layout.cellHeightPx) * 0.02}
-            />
-          )),
+          Array.from({ length: maxColumns }, (_, columnIndex) => {
+            const x = getGridCellOffset(columnIndex, layout.cellWidthPx, layout.pathwayXPx, layout.pathwayEveryColumns);
+            const y = getGridCellOffset(rowIndex, layout.cellHeightPx, layout.pathwayYPx, layout.pathwayEveryRows);
+            const strokeWidth = Math.max(layout.cellWidthPx, layout.cellHeightPx) * 0.02;
+
+            if (style.shape === "circle") {
+              return (
+                <circle
+                  key={`${rowIndex}-${columnIndex}`}
+                  cx={x + layout.cellWidthPx / 2}
+                  cy={y + layout.cellHeightPx / 2}
+                  r={Math.min(layout.cellWidthPx, layout.cellHeightPx) * style.radiusFactor}
+                  fill={style.fill}
+                  stroke={style.stroke}
+                  strokeWidth={strokeWidth}
+                />
+              );
+            }
+
+            return (
+              <rect
+                key={`${rowIndex}-${columnIndex}`}
+                x={x}
+                y={y}
+                width={layout.cellWidthPx}
+                height={layout.cellHeightPx}
+                rx={Math.min(layout.cellWidthPx, layout.cellHeightPx) * style.radiusFactor}
+                fill={style.fill}
+                stroke={style.stroke}
+                strokeWidth={strokeWidth}
+              />
+            );
+          }),
         )}
       </svg>
     </Box>
@@ -164,11 +249,11 @@ function PresetCard({
       }}
     >
       <Stack gap="xs">
-        {sampleLayout ? <LayoutDiagram layout={sampleLayout} /> : <Box h={92} />}
+        {sampleLayout ? <LayoutDiagram layout={sampleLayout} category={preset.category} /> : <Box h={92} />}
         <Group justify="space-between" align="flex-start" gap="xs">
           <Text fw={600} size="sm">{preset.label}</Text>
           <Group gap={4}>
-            <Badge size="xs" variant="light" color="gray">{PRESET_CATEGORY_LABELS[preset.category]}</Badge>
+            <Badge size="xs" variant="light" color={CATEGORY_STYLES[preset.category].badge}>{PRESET_CATEGORY_LABELS[preset.category]}</Badge>
             {preset.isPathwayAware && <Badge size="xs" variant="light" color="olive">Pathways</Badge>}
           </Group>
         </Group>
@@ -216,6 +301,7 @@ export function AreaGeneratorModal({
   presetOptions = AREA_GENERATION_PRESETS,
 }: AreaGeneratorModalProps) {
   const [presetId, setPresetId] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<PresetFilter>("all");
   const [settings, setSettings] = useState<AreaGenerationSettings>(DEFAULT_SETTINGS);
   const [labelPrefix, setLabelPrefix] = useState(defaultLabelPrefix);
   const [replaceExistingSpaces, setReplaceExistingSpaces] = useState(true);
@@ -255,7 +341,13 @@ export function AreaGeneratorModal({
       plantingDensity: preset.values.plantingDensity ?? current.plantingDensity,
       rows: preset.values.rows ?? current.rows,
       columns: preset.values.columns ?? current.columns,
+      pathwayWidthXUnits: preset.values.pathwayWidthXUnits ?? current.pathwayWidthXUnits,
+      pathwayWidthYUnits: preset.values.pathwayWidthYUnits ?? current.pathwayWidthYUnits,
+      pathwayEveryColumns: preset.values.pathwayEveryColumns ?? current.pathwayEveryColumns,
+      pathwayEveryRows: preset.values.pathwayEveryRows ?? current.pathwayEveryRows,
     }));
+
+    setActiveFilter(preset.category);
 
     if (preset.values.labelPrefix) {
       setLabelPrefix(preset.values.labelPrefix);
@@ -272,9 +364,12 @@ export function AreaGeneratorModal({
         category,
         presets: presetOptions.filter((preset) => preset.category === category),
       }))
+      .filter((entry) => activeFilter === "all" || entry.category === activeFilter)
       .filter((entry) => entry.presets.length > 0),
-    [presetOptions],
+    [activeFilter, presetOptions],
   );
+
+  const previewCategory: AreaGenerationPresetCategory | "custom" = selectedPreset?.category ?? (activeFilter === "all" ? "custom" : activeFilter);
 
   return (
     <Modal opened={opened} onClose={onClose} title={title} size="sm">
@@ -292,24 +387,42 @@ export function AreaGeneratorModal({
               </Button>
             )}
           </Group>
-          {groupedPresets.map(({ category, presets }) => (
-            <Stack key={category} gap="xs">
-              <Group justify="space-between" align="center">
-                <Text size="xs" fw={700} tt="uppercase" c="dimmed">{PRESET_CATEGORY_LABELS[category]}</Text>
-                <Badge size="xs" variant="dot" color="gray">{presets.length}</Badge>
-              </Group>
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-                {presets.map((preset) => (
-                  <PresetCard
-                    key={preset.id}
-                    preset={preset}
-                    selected={preset.id === presetId}
-                    onSelect={() => applyPreset(preset.id)}
-                  />
-                ))}
-              </SimpleGrid>
-            </Stack>
-          ))}
+          <SegmentedControl
+            fullWidth
+            value={activeFilter}
+            onChange={(value) => setActiveFilter(value as PresetFilter)}
+            data={[
+              { label: "All", value: "all" },
+              { label: "Beds", value: "beds" },
+              { label: "Blocks", value: "blocks" },
+              { label: "Orchard", value: "orchard" },
+              { label: "Nursery", value: "nursery" },
+            ]}
+          />
+          <Accordion multiple defaultValue={groupedPresets.map((entry) => entry.category)}>
+            {groupedPresets.map(({ category, presets }) => (
+              <Accordion.Item key={category} value={category}>
+                <Accordion.Control>
+                  <Group justify="space-between" align="center" w="100%" pr="sm">
+                    <Text size="xs" fw={700} tt="uppercase" c="dimmed">{PRESET_CATEGORY_LABELS[category]}</Text>
+                    <Badge size="xs" variant="dot" color={CATEGORY_STYLES[category].badge}>{presets.length}</Badge>
+                  </Group>
+                </Accordion.Control>
+                <Accordion.Panel>
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+                    {presets.map((preset) => (
+                      <PresetCard
+                        key={preset.id}
+                        preset={preset}
+                        selected={preset.id === presetId}
+                        onSelect={() => applyPreset(preset.id)}
+                      />
+                    ))}
+                  </SimpleGrid>
+                </Accordion.Panel>
+              </Accordion.Item>
+            ))}
+          </Accordion>
           {selectedPreset && (
             <Text size="xs" c="dimmed">
               Selected preset: {PRESET_CATEGORY_LABELS[selectedPreset.category]} / {selectedPreset.label}
@@ -429,7 +542,7 @@ export function AreaGeneratorModal({
 
         {preview.layout ? (
           <Stack gap="xs">
-            <LayoutDiagram layout={preview.layout} />
+            <LayoutDiagram layout={preview.layout} category={previewCategory} />
             <Text size="xs" c="dimmed">
               Preview: {preview.layout.rows} rows x {preview.layout.columns} columns · each area is about {formatMeasurement(preview.layout.cellWidthPx / pixelsPerUnit)} x {formatMeasurement(preview.layout.cellHeightPx / pixelsPerUnit)} {unit}
               {(preview.layout.pathwayXPx > 0 || preview.layout.pathwayYPx > 0)

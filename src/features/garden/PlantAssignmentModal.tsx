@@ -24,6 +24,8 @@ interface PlantAssignmentModalProps {
   spaceId: string;
   /** canvas-level label for the space, shown in title */
   spaceLabel?: string;
+  /** semantic label shown in the dialog title */
+  targetKindLabel?: string;
   /** If already assigned, the current plant id */
   currentPlantId?: number | null;
   onClose: () => void;
@@ -34,6 +36,7 @@ export function PlantAssignmentModal({
   opened,
   spaceId,
   spaceLabel,
+  targetKindLabel = "space",
   currentPlantId,
   onClose,
   onAssigned,
@@ -148,13 +151,13 @@ export function PlantAssignmentModal({
       notifications.show({ title: "Error", message: err.message, color: "red" }),
   });
 
-  const spaceTitle = spaceLabel ? `"${spaceLabel}"` : "this space";
+  const targetTitle = spaceLabel ? `"${spaceLabel}"` : `this ${targetKindLabel}`;
 
   return (
     <Modal
       opened={opened}
       onClose={onClose}
-      title={`Assign plant to ${spaceTitle}`}
+      title={`Assign plant to ${targetTitle}`}
       scrollAreaComponent={ScrollArea.Autosize}
     >
       <Tabs defaultValue="existing">

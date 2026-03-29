@@ -19,7 +19,9 @@ export default defineConfig(() => ({
           if (id.includes("node_modules")) {
             if (id.includes("/react-dom/") || (id.includes("/react/") && !id.includes("/react-three/") && !id.includes("/react-konva"))) return "vendor-react";
             if (id.includes("/@mantine/")) return "vendor-mantine";
-            if (id.includes("/three/") || id.includes("/@react-three/")) return "vendor-three";
+            if (id.includes("/three/")) return "vendor-three-core";
+            if (id.includes("/@react-three/fiber/") || id.includes("/@react-three/drei/")) return "vendor-three-react";
+            if (id.includes("/suncalc/")) return "vendor-garden3d-utils";
             if (id.includes("/recharts/")) return "vendor-charts";
             if (id.includes("/konva/") || id.includes("/react-konva/")) return "vendor-canvas";
             if (id.includes("/@tanstack/")) return "vendor-router";

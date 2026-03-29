@@ -1,22 +1,38 @@
-import { Box, Paper, Stack, Text } from '@mantine/core';
+import { Box, Loader, Paper, Stack, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, Grid, Html, OrbitControls, Sky, useGLTF } from '@react-three/drei';
-import { useCallback, useMemo, useState } from 'react';
+import { IconAlertTriangle } from '@tabler/icons-react';
+import { Suspense, lazy, useCallback, useMemo, useState } from 'react';
 import * as THREE from 'three';
 import { commands } from '../../lib/bindings';
 import type { Plant, Species } from '../../lib/bindings';
 import { useCanvasStore } from '../garden/canvasStore';
 import type { CanvasObject } from '../garden/types';
-import { ModelImporter } from './ModelImporter';
-import { SunController, type SunState } from './SunController';
-import { SunlightAnalysis, type SpaceExposure } from './SunlightAnalysis';
+import { RenderErrorBoundary } from './RenderErrorBoundary';
+import type { SunState } from './SunController';
+import type { SpaceExposure } from './SunlightAnalysis';
 import { convertCanvasToPrimitives, splitSunOccluders, type GardenPrimitive } from './objectConverters';
 
 interface GardenSceneProps {
   environmentId: number | null;
 }
+
+const LazyModelImporter = lazy(async () => {
+  const mod = await import('./ModelImporter');
+  return { default: mod.ModelImporter };
+});
+
+const LazySunController = lazy(async () => {
+  const mod = await import('./SunController');
+  return { default: mod.SunController };
+});
+
+const LazySunlightAnalysis = lazy(async () => {
+  const mod = await import('./SunlightAnalysis');
+  return { default: mod.SunlightAnalysis };
+});
 
 function CameraIntro() {
   const { camera } = useThree();
@@ -67,6 +83,27 @@ function ImportedModelPrimitive({ primitive }: { primitive: GardenPrimitive }) {
   );
 }
 
+function ModelLoadFallback({ primitive, message }: { primitive: GardenPrimitive; message: string }) {
+  const markerSize = Math.max(18, 26 * (primitive.modelScale ?? 1));
+
+  return (
+    <group position={primitive.position} rotation={primitive.rotation}>
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={[markerSize, markerSize, markerSize]} />
+        <meshStandardMaterial color='#d97706' transparent opacity={0.82} />
+      </mesh>
+      <Html center distanceFactor={14} position={[0, markerSize * 0.9, 0]}>
+        <Paper px={8} py={6} withBorder shadow='sm'>
+          <Stack gap={3}>
+            <Text size='xs' fw={600}>Model failed to load</Text>
+            <Text size='xs' c='dimmed'>{message}</Text>
+          </Stack>
+        </Paper>
+      </Html>
+    </group>
+  );
+}
+
 function PrimitiveMesh({
   primitive,
   exposure,
@@ -78,7 +115,15 @@ function PrimitiveMesh({
   const opacity = exposure ? 0.45 : primitive.opacity;
 
   if (primitive.kind === 'model') {
-    return <ImportedModelPrimitive primitive={primitive} />;
+    return (
+      <RenderErrorBoundary
+        resetKeys={[primitive.id, primitive.modelPath ?? '', primitive.modelScale ?? 1]}
+        onError={(error) => console.warn('Garden 3D model failed', primitive.modelPath, error)}
+        fallback={(error) => <ModelLoadFallback primitive={primitive} message={error.message || 'Invalid GLTF/GLB asset'} />}
+      >
+        <ImportedModelPrimitive primitive={primitive} />
+      </RenderErrorBoundary>
+    );
   }
 
   if (primitive.kind === 'plane' && primitive.size) {
@@ -203,7 +248,10 @@ export function GardenScene({ environmentId }: GardenSceneProps) {
     return map;
   }, [allSpecies]);
 
-  const { primitives, spacePoints } = useMemo(() => convertCanvasToPrimitives(objects as CanvasObject[]), [objects]);
+  const { primitives, spacePoints } = useMemo(
+    () => convertCanvasToPrimitives(objects as CanvasObject[], { plantsById, speciesById }),
+    [objects, plantsById, speciesById],
+  );
   const { occluders, visible } = useMemo(() => splitSunOccluders(primitives), [primitives]);
 
   const bounds = useMemo(() => {
@@ -268,14 +316,16 @@ export function GardenScene({ environmentId }: GardenSceneProps) {
           shadow-camera-bottom={-600}
         />
 
-        <Sky
-          distance={2500}
-          sunPosition={sunState ? [sunState.direction[0], Math.max(0.05, sunState.direction[1]), sunState.direction[2]] : [0.35, 0.8, 0.2]}
-          inclination={0}
-          azimuth={0.25}
-        />
+        <Suspense fallback={null}>
+          <Sky
+            distance={2500}
+            sunPosition={sunState ? [sunState.direction[0], Math.max(0.05, sunState.direction[1]), sunState.direction[2]] : [0.35, 0.8, 0.2]}
+            inclination={0}
+            azimuth={0.25}
+          />
 
-        <Environment preset='city' />
+          <Environment preset='city' />
+        </Suspense>
 
         <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[bounds.width, bounds.depth]} />
@@ -293,17 +343,19 @@ export function GardenScene({ environmentId }: GardenSceneProps) {
           infiniteGrid
         />
 
-        {visible.map((primitive) => (
-          <PrimitiveMesh
-            key={primitive.id}
-            primitive={primitive}
-            exposure={
-              primitive.sourceType === 'space'
-                ? exposures[primitive.sourceObjectId]
-                : undefined
-            }
-          />
-        ))}
+        <Suspense fallback={null}>
+          {visible.map((primitive) => (
+            <PrimitiveMesh
+              key={primitive.id}
+              primitive={primitive}
+              exposure={
+                primitive.sourceType === 'space'
+                  ? exposures[primitive.sourceObjectId]
+                  : undefined
+              }
+            />
+          ))}
+        </Suspense>
 
         <OrbitControls
           enableDamping
@@ -329,26 +381,35 @@ export function GardenScene({ environmentId }: GardenSceneProps) {
         }}
       >
         <Stack gap={8}>
-          <SunController
-            latitude={lat}
-            longitude={lon}
-            onSunChange={(next) => {
-              setSunState(next);
-              setAnalysisDate(next.timestamp);
-            }}
-          />
+          <Suspense
+            fallback={
+              <Stack gap={6}>
+                <Loader size='xs' color='green' />
+                <Text size='xs' c='dimmed'>Loading 3D tools…</Text>
+              </Stack>
+            }
+          >
+            <LazySunController
+              latitude={lat}
+              longitude={lon}
+              onSunChange={(next) => {
+                setSunState(next);
+                setAnalysisDate(next.timestamp);
+              }}
+            />
 
-          <SunlightAnalysis
-            date={analysisDate}
-            latitude={lat}
-            longitude={lon}
-            spaces={spacePoints}
-            occluders={occluders}
-            getSunRequirement={getSunRequirement}
-            onComputed={setExposures}
-          />
+            <LazySunlightAnalysis
+              date={analysisDate}
+              latitude={lat}
+              longitude={lon}
+              spaces={spacePoints}
+              occluders={occluders}
+              getSunRequirement={getSunRequirement}
+              onComputed={setExposures}
+            />
 
-          <ModelImporter />
+            <LazyModelImporter />
+          </Suspense>
 
           {sunlightWarnings.length > 0 && (
             <Stack gap={2}>
@@ -360,6 +421,11 @@ export function GardenScene({ environmentId }: GardenSceneProps) {
               ))}
             </Stack>
           )}
+
+          <Text size='xs' c='dimmed' style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <IconAlertTriangle size={12} />
+            Bad model imports now fall back to a local placeholder instead of taking down the full 3D preview.
+          </Text>
         </Stack>
       </Paper>
     </Box>

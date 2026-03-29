@@ -1,12 +1,12 @@
-import { ActionIcon, Box, Button, Group, Text, Tooltip } from '@mantine/core';
+import { ActionIcon, Box, Button, Group, Loader, Paper, Stack, Text, Tooltip } from '@mantine/core';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile, writeTextFile } from '@tauri-apps/plugin-fs';
-import { IconCode, IconDeviceFloppy, IconLayoutSidebar, IconPhoto, IconZoomIn, IconZoomOut, IconZoomReset } from '@tabler/icons-react';
-import { useCallback, useEffect, useState } from 'react';
+import { IconCode, IconDeviceFloppy, IconLayoutSidebar, IconPhoto, IconReload, IconZoomIn, IconZoomOut, IconZoomReset } from '@tabler/icons-react';
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import { notifications } from '@mantine/notifications';
 import { useNavigate } from '@tanstack/react-router';
 import { useAppStore } from '../../stores/appStore';
-import { GardenScene } from '../garden3d/GardenScene';
+import { RenderErrorBoundary } from '../garden3d/RenderErrorBoundary';
 import { ViewToggle, type GardenViewMode } from '../garden3d/ViewToggle';
 import { GardenCanvas } from './GardenCanvas';
 import { exportCanvasPng, exportCanvasSvg } from './exportCanvas';
@@ -20,6 +20,11 @@ import { useCanvasStore } from './canvasStore';
 import { useCanvasPersistence } from './hooks/useCanvasPersistence';
 
 const RIGHT_PANEL_KEY = 'garden-right-panel';
+
+const LazyGardenScene = lazy(async () => {
+  const mod = await import('../garden3d/GardenScene');
+  return { default: mod.GardenScene };
+});
 
 function readRightPanel(): boolean {
   try {
@@ -48,6 +53,7 @@ export function GardenPage({ locationId: _locationId }: GardenPageProps) {
 
   const [showRight, setShowRight] = useState(readRightPanel);
   const [viewMode, setViewMode] = useState<GardenViewMode>('2d');
+  const [sceneReloadKey, setSceneReloadKey] = useState(0);
 
   useEffect(() => {
     localStorage.setItem(RIGHT_PANEL_KEY, JSON.stringify(showRight));
@@ -192,7 +198,67 @@ export function GardenPage({ locationId: _locationId }: GardenPageProps) {
               animation: 'garden3d-fade 180ms ease-out',
             }}
           >
-            <GardenScene environmentId={activeEnvironmentId} />
+            <RenderErrorBoundary
+              resetKeys={[activeEnvironmentId, sceneReloadKey]}
+              onError={(error) => console.error('Garden 3D preview failed', error)}
+              fallback={(error) => (
+                <Box
+                  style={{
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 20,
+                    background: 'linear-gradient(180deg, rgba(216,227,205,0.7) 0%, rgba(242,236,223,0.9) 100%)',
+                  }}
+                >
+                  <Paper withBorder shadow='lg' radius='md' p='lg' maw={480}>
+                    <Stack gap='sm'>
+                      <Text fw={700}>3D Preview Unavailable</Text>
+                      <Text size='sm' c='dimmed'>
+                        DirtOS isolated a rendering failure inside the local 3D scene so the rest of Garden Canvas stays usable.
+                      </Text>
+                      <Text size='sm' c='dimmed'>
+                        {error.message || 'Unexpected 3D rendering error'}
+                      </Text>
+                      <Group justify='space-between'>
+                        <Text size='xs' c='dimmed'>
+                          Imported models can fail independently without taking down the whole editor.
+                        </Text>
+                        <Button
+                          size='xs'
+                          leftSection={<IconReload size={14} />}
+                          onClick={() => setSceneReloadKey((value) => value + 1)}
+                        >
+                          Reload 3D preview
+                        </Button>
+                      </Group>
+                    </Stack>
+                  </Paper>
+                </Box>
+              )}
+            >
+              <Suspense
+                fallback={
+                  <Box
+                    style={{
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'linear-gradient(180deg, rgba(216,227,205,0.7) 0%, rgba(242,236,223,0.9) 100%)',
+                    }}
+                  >
+                    <Stack align='center' gap='xs'>
+                      <Loader color='green' size='sm' />
+                      <Text size='sm' c='dimmed'>Loading 3D preview…</Text>
+                    </Stack>
+                  </Box>
+                }
+              >
+                <LazyGardenScene key={`${activeEnvironmentId ?? 'none'}-${sceneReloadKey}`} environmentId={activeEnvironmentId} />
+              </Suspense>
+            </RenderErrorBoundary>
           </Box>
         )}
         {showRight && viewMode === '2d' && (

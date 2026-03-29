@@ -85,7 +85,8 @@ function isObjectVisible(
 }
 
 const POLYLINE_TOOLS = new Set<string>(['path', 'fence', 'irrigation']);
-const CIRCLE_TOOLS = new Set<string>(['potted-plant', 'tree']);
+const CIRCLE_TOOLS = new Set<string>(['plant', 'potted-plant', 'tree']);
+const PLANT_ASSIGNABLE_TYPES = new Set<ObjectType>(['space', 'plant', 'potted-plant', 'tree']);
 
 // ---------------------------------------------------------------------------
 // Grid
@@ -323,6 +324,7 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
   const [assignModalSpace, setAssignModalSpace] = useState<{
     id: string;
     label?: string;
+    targetKindLabel?: string;
     assignedPlantId?: number | null;
   } | null>(null);
 
@@ -387,6 +389,7 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
       setAssignModalSpace({
         id: obj.id,
         label: obj.label || undefined,
+        targetKindLabel: obj.type === 'space' ? 'space' : obj.type.replace('-', ' '),
         assignedPlantId: plantByCanvasId.get(obj.id)?.id ?? obj.assignedPlantId,
       });
     }
@@ -628,15 +631,16 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
     if (activeTool !== 'select') return;
     if (obj.type === 'plot') {
       useCanvasStore.getState().setEditingPlotId(obj.id);
-    } else if (obj.type === 'space') {
+    } else if (PLANT_ASSIGNABLE_TYPES.has(obj.type)) {
       // Enter the parent plot's editing mode if not already there
-      if (obj.parentId) {
+      if (obj.type === 'space' && obj.parentId) {
         useCanvasStore.getState().setEditingPlotId(obj.parentId);
       }
       // Always open the plant assignment modal
       setAssignModalSpace({
         id: obj.id,
         label: obj.label || undefined,
+        targetKindLabel: obj.type === 'space' ? 'space' : obj.type.replace('-', ' '),
         assignedPlantId: plantByCanvasId.get(obj.id)?.id ?? obj.assignedPlantId,
       });
     }
@@ -729,7 +733,7 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
                   <ObjectLabel key={`lbl-${o.id}`} obj={o} fill={labelFill} />
                 ))}
               {byLayer[layerName]
-                .filter((o) => o.type === 'space' && plantByCanvasId.has(o.id))
+                .filter((o) => PLANT_ASSIGNABLE_TYPES.has(o.type) && plantByCanvasId.has(o.id))
                 .map((o) => {
                   const plant = plantByCanvasId.get(o.id)!;
                   return <PlantBadge key={`pb-${o.id}`} obj={o} plantName={plant.name} />;
@@ -787,6 +791,7 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
           opened
           spaceId={assignModalSpace.id}
           spaceLabel={assignModalSpace.label}
+          targetKindLabel={assignModalSpace.targetKindLabel}
           currentPlantId={assignModalSpace.assignedPlantId}
           onClose={() => setAssignModalSpace(null)}
           onAssigned={(plantId) => {

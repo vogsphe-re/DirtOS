@@ -636,6 +636,7 @@ export function OutdoorPlotManager() {
           opened
           spaceId={assigningSpace.id}
           spaceLabel={assigningSpace.label || undefined}
+          targetKindLabel="space"
           currentPlantId={canvasPlantsBySpace.get(assigningSpace.id)?.[0]?.id ?? null}
           onClose={() => setAssigningSpaceId(null)}
           onAssigned={() => {

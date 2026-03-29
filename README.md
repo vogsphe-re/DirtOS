@@ -1,5 +1,7 @@
 # DirtOS
 
+![DirtOS Splash](assets/splash.png)
+
 > DirtOS is a unified application for home gardening that facilitates planning, lifecycles, monitoring, and management of gardens of all shapes/sizes.
 
 ## Features

@@ -6,6 +6,7 @@ export type ToolType =
   | 'select'
   | 'plot'
   | 'space'
+  | 'plant'
   | 'path'
   | 'fence'
   | 'raised-bed'
@@ -20,6 +21,7 @@ export type ToolType =
 export type ObjectType =
   | 'plot'
   | 'space'
+  | 'plant'
   | 'path'
   | 'fence'
   | 'raised-bed'
@@ -113,6 +115,7 @@ export const OBJECT_DEFAULTS: Record<
 > = {
   plot: { fill: 'rgba(144,238,144,0.12)', stroke: '#2d7a2d', strokeWidth: 2, layer: 'plots' },
   space: { fill: 'rgba(173,216,230,0.2)', stroke: '#4a9ebe', strokeWidth: 1, layer: 'spaces' },
+  plant: { fill: 'rgba(93, 156, 89, 0.78)', stroke: '#356b36', strokeWidth: 2, layer: 'plants' },
   path: { fill: 'transparent', stroke: '#a0522d', strokeWidth: 3, layer: 'paths' },
   fence: { fill: 'transparent', stroke: '#8b7355', strokeWidth: 2, layer: 'paths' },
   'raised-bed': { fill: 'rgba(205,133,63,0.3)', stroke: '#a0522d', strokeWidth: 3, layer: 'structures' },
