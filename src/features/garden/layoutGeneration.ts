@@ -3,6 +3,7 @@ import { OBJECT_DEFAULTS, type CanvasObject } from "./types";
 const DEFAULT_MAX_OBJECTS = 2500;
 
 export type AreaGenerationMode = "dimensions" | "density" | "grid";
+export type AreaGenerationPresetCategory = "beds" | "blocks" | "orchard" | "nursery";
 
 export interface RectGridLayout {
   rows: number;
@@ -34,6 +35,7 @@ export interface AreaGenerationSettings {
 
 export interface AreaGenerationPreset {
   id: string;
+  category: AreaGenerationPresetCategory;
   label: string;
   description: string;
   isPathwayAware?: boolean;
@@ -92,12 +94,14 @@ interface AreaLayoutInput extends AreaGenerationSettings {
 export const AREA_GENERATION_PRESETS: AreaGenerationPreset[] = [
   {
     id: "square-foot",
+    category: "beds",
     label: "Square-Foot Layout",
     description: "One-by-one planting squares suited to square-foot gardening and compact raised beds.",
     values: { mode: "dimensions", areaWidthUnits: 1, areaHeightUnits: 1, labelPrefix: "Square" },
   },
   {
     id: "raised-bed",
+    category: "beds",
     label: "Raised Bed",
     description: "A 2 x 8 bed split with a central service lane to make tending and harvesting easier.",
     isPathwayAware: true,
@@ -112,6 +116,7 @@ export const AREA_GENERATION_PRESETS: AreaGenerationPreset[] = [
   },
   {
     id: "market-garden",
+    category: "blocks",
     label: "Market Garden",
     description: "Four productive bed rows with narrow walking lanes reserved between each row block.",
     isPathwayAware: true,
@@ -126,6 +131,7 @@ export const AREA_GENERATION_PRESETS: AreaGenerationPreset[] = [
   },
   {
     id: "orchard-rows",
+    category: "orchard",
     label: "Orchard Rows",
     description: "Tree or berry rows with wider maintenance alleys between each planted row.",
     isPathwayAware: true,
@@ -136,6 +142,21 @@ export const AREA_GENERATION_PRESETS: AreaGenerationPreset[] = [
       pathwayWidthYUnits: 1.5,
       pathwayEveryRows: 1,
       labelPrefix: "Row",
+    },
+  },
+  {
+    id: "nursery-flat",
+    category: "nursery",
+    label: "Nursery Flat",
+    description: "Compact propagation blocks with narrow work lanes suited to nursery staging and hardening areas.",
+    isPathwayAware: true,
+    values: {
+      mode: "grid",
+      rows: 5,
+      columns: 10,
+      pathwayWidthYUnits: 0.5,
+      pathwayEveryRows: 2,
+      labelPrefix: "Flat",
     },
   },
 ];

@@ -6,6 +6,7 @@ import {
   getGridCellOffset,
   getGridSpan,
   type AreaGenerationMode,
+  type AreaGenerationPresetCategory,
   type AreaGenerationPreset,
   type AreaGenerationSettings,
   type RectGridLayout,
@@ -24,10 +25,33 @@ const DEFAULT_SETTINGS: AreaGenerationSettings = {
   pathwayEveryRows: 0,
 };
 
+const PRESET_CATEGORY_ORDER: AreaGenerationPresetCategory[] = ["beds", "blocks", "orchard", "nursery"];
+
+const PRESET_CATEGORY_LABELS: Record<AreaGenerationPresetCategory, string> = {
+  beds: "Beds",
+  blocks: "Blocks",
+  orchard: "Orchard",
+  nursery: "Nursery",
+};
+
 function formatMeasurement(value: number): string {
   if (!Number.isFinite(value)) return "0";
   if (value >= 10) return value.toFixed(1).replace(/\.0$/, "");
   return value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+function getLaneStarts(count: number, cellSizePx: number, pathwayPx: number, pathwayEvery: number): number[] {
+  if (pathwayPx <= 0 || pathwayEvery <= 0) {
+    return [];
+  }
+
+  const starts: number[] = [];
+
+  for (let marker = pathwayEvery; marker < count; marker += pathwayEvery) {
+    starts.push(getGridSpan(marker, cellSizePx, pathwayPx, pathwayEvery));
+  }
+
+  return starts;
 }
 
 function LayoutDiagram({ layout }: { layout: RectGridLayout }) {
@@ -37,6 +61,8 @@ function LayoutDiagram({ layout }: { layout: RectGridLayout }) {
   const visibleHeight = getGridSpan(maxRows, layout.cellHeightPx, layout.pathwayYPx, layout.pathwayEveryRows);
   const viewWidth = Math.max(visibleWidth, 1);
   const viewHeight = Math.max(visibleHeight, 1);
+  const verticalLaneStarts = getLaneStarts(maxColumns, layout.cellWidthPx, layout.pathwayXPx, layout.pathwayEveryColumns);
+  const horizontalLaneStarts = getLaneStarts(maxRows, layout.cellHeightPx, layout.pathwayYPx, layout.pathwayEveryRows);
 
   return (
     <Box
@@ -49,6 +75,39 @@ function LayoutDiagram({ layout }: { layout: RectGridLayout }) {
     >
       <svg viewBox={`0 0 ${viewWidth} ${viewHeight}`} width="100%" height="92" preserveAspectRatio="xMidYMid meet">
         <rect x="0" y="0" width={viewWidth} height={viewHeight} fill="rgba(143,113,61,0.16)" />
+        {verticalLaneStarts.map((x, index) => (
+          <g key={`v-lane-${index}`}>
+            <rect x={x} y={0} width={layout.pathwayXPx} height={viewHeight} fill="rgba(210, 184, 132, 0.42)" />
+            {layout.pathwayXPx >= 16 && (
+              <text
+                x={x + layout.pathwayXPx / 2}
+                y={viewHeight / 2}
+                textAnchor="middle"
+                fontSize={Math.max(6, Math.min(10, layout.pathwayXPx * 0.35))}
+                fill="rgba(93, 69, 33, 0.85)"
+                transform={`rotate(-90 ${x + layout.pathwayXPx / 2} ${viewHeight / 2})`}
+              >
+                lane
+              </text>
+            )}
+          </g>
+        ))}
+        {horizontalLaneStarts.map((y, index) => (
+          <g key={`h-lane-${index}`}>
+            <rect x={0} y={y} width={viewWidth} height={layout.pathwayYPx} fill="rgba(210, 184, 132, 0.42)" />
+            {layout.pathwayYPx >= 14 && (
+              <text
+                x={viewWidth / 2}
+                y={y + layout.pathwayYPx / 2 + 3}
+                textAnchor="middle"
+                fontSize={Math.max(6, Math.min(10, layout.pathwayYPx * 0.45))}
+                fill="rgba(93, 69, 33, 0.85)"
+              >
+                lane
+              </text>
+            )}
+          </g>
+        ))}
         {Array.from({ length: maxRows }, (_, rowIndex) =>
           Array.from({ length: maxColumns }, (_, columnIndex) => (
             <rect
@@ -108,7 +167,10 @@ function PresetCard({
         {sampleLayout ? <LayoutDiagram layout={sampleLayout} /> : <Box h={92} />}
         <Group justify="space-between" align="flex-start" gap="xs">
           <Text fw={600} size="sm">{preset.label}</Text>
-          {preset.isPathwayAware && <Badge size="xs" variant="light" color="olive">Pathways</Badge>}
+          <Group gap={4}>
+            <Badge size="xs" variant="light" color="gray">{PRESET_CATEGORY_LABELS[preset.category]}</Badge>
+            {preset.isPathwayAware && <Badge size="xs" variant="light" color="olive">Pathways</Badge>}
+          </Group>
         </Group>
         <Text size="xs" c="dimmed">{preset.description}</Text>
       </Stack>
@@ -204,12 +266,23 @@ export function AreaGeneratorModal({
     setSettings((current) => ({ ...current, ...updates }));
   };
 
+  const groupedPresets = useMemo(
+    () => PRESET_CATEGORY_ORDER
+      .map((category) => ({
+        category,
+        presets: presetOptions.filter((preset) => preset.category === category),
+      }))
+      .filter((entry) => entry.presets.length > 0),
+    [presetOptions],
+  );
+
   return (
     <Modal opened={opened} onClose={onClose} title={title} size="sm">
       <Stack gap="sm">
         <Text size="sm" c="dimmed">
           {description}
         </Text>
+
         <Stack gap="xs">
           <Group justify="space-between" align="center">
             <Text size="sm" fw={600}>Templates</Text>
@@ -219,22 +292,31 @@ export function AreaGeneratorModal({
               </Button>
             )}
           </Group>
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-            {presetOptions.map((preset) => (
-              <PresetCard
-                key={preset.id}
-                preset={preset}
-                selected={preset.id === presetId}
-                onSelect={() => applyPreset(preset.id)}
-              />
-            ))}
-          </SimpleGrid>
+          {groupedPresets.map(({ category, presets }) => (
+            <Stack key={category} gap="xs">
+              <Group justify="space-between" align="center">
+                <Text size="xs" fw={700} tt="uppercase" c="dimmed">{PRESET_CATEGORY_LABELS[category]}</Text>
+                <Badge size="xs" variant="dot" color="gray">{presets.length}</Badge>
+              </Group>
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+                {presets.map((preset) => (
+                  <PresetCard
+                    key={preset.id}
+                    preset={preset}
+                    selected={preset.id === presetId}
+                    onSelect={() => applyPreset(preset.id)}
+                  />
+                ))}
+              </SimpleGrid>
+            </Stack>
+          ))}
           {selectedPreset && (
             <Text size="xs" c="dimmed">
-              Selected preset: {selectedPreset.label}
+              Selected preset: {PRESET_CATEGORY_LABELS[selectedPreset.category]} / {selectedPreset.label}
             </Text>
           )}
         </Stack>
+
         <SegmentedControl
           fullWidth
           value={settings.mode}
@@ -245,6 +327,7 @@ export function AreaGeneratorModal({
             { label: "Rows x Cols", value: "grid" },
           ]}
         />
+
         {settings.mode === "dimensions" && (
           <Group grow>
             <NumberInput
@@ -265,6 +348,7 @@ export function AreaGeneratorModal({
             />
           </Group>
         )}
+
         {settings.mode === "density" && (
           <NumberInput
             label={`Planting density (areas per square ${unit})`}
@@ -275,6 +359,7 @@ export function AreaGeneratorModal({
             required
           />
         )}
+
         {settings.mode === "grid" && (
           <Group grow>
             <NumberInput
@@ -295,6 +380,7 @@ export function AreaGeneratorModal({
             />
           </Group>
         )}
+
         <Stack gap="xs">
           <Text size="sm" fw={600}>Walking lanes</Text>
           <Group grow>
@@ -333,12 +419,14 @@ export function AreaGeneratorModal({
             Set lane width to 0 to disable a direction. Example: width 1 after every 4 columns reserves a 1-{unit} walking lane after each group of 4 planting areas.
           </Text>
         </Stack>
+
         <TextInput
           label="Space label prefix"
           value={labelPrefix}
           onChange={(event) => setLabelPrefix(event.currentTarget.value)}
           placeholder={defaultLabelPrefix}
         />
+
         {preview.layout ? (
           <Stack gap="xs">
             <LayoutDiagram layout={preview.layout} />
@@ -355,6 +443,7 @@ export function AreaGeneratorModal({
         ) : preview.error ? (
           <Text size="xs" c="red">{preview.error}</Text>
         ) : null}
+
         {allowReplaceExisting && (
           <>
             <Checkbox
@@ -367,6 +456,7 @@ export function AreaGeneratorModal({
             </Text>
           </>
         )}
+
         <Group justify="flex-end">
           <Button variant="default" onClick={onClose}>Cancel</Button>
           <Button
