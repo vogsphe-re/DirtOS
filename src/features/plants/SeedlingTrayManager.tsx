@@ -19,7 +19,6 @@ import {
 import { notifications } from "@mantine/notifications";
 import {
   IconGridDots,
-  IconPlant,
   IconPlus,
   IconSeeding,
   IconTrash,
@@ -197,9 +196,6 @@ function AssignCellModal({ opened, onClose, tray, row, col, plants, species }: A
 // ---------------------------------------------------------------------------
 
 interface GridCellProps {
-  tray: SeedlingTray;
-  row: number;
-  col: number;
   cell: SeedlingTrayCell | undefined;
   plant: Plant | undefined;
   species: Species | undefined;
@@ -209,7 +205,7 @@ interface GridCellProps {
   onTransplant: () => void;
 }
 
-function GridCell({ tray, row, col, cell, plant, species, latestObs, onAssign, onClear, onTransplant }: GridCellProps) {
+function GridCell({ cell, plant, species, latestObs, onAssign, onClear, onTransplant }: GridCellProps) {
   const navigate = useNavigate();
   const ready = latestObs
     ? (latestObs.height_cm ?? 0) >= 5 && (latestObs.leaf_node_count ?? 0) >= 2
@@ -271,7 +267,7 @@ function GridCell({ tray, row, col, cell, plant, species, latestObs, onAssign, o
 
         {species && (
           <Text
-            size={10}
+            size="xs"
             c="dimmed"
             lineClamp={1}
             style={{ cursor: "pointer", textDecoration: "underline" }}
@@ -283,11 +279,11 @@ function GridCell({ tray, row, col, cell, plant, species, latestObs, onAssign, o
 
         {latestObs ? (
           <Group gap={4}>
-            {latestObs.height_cm != null && <Text size={10}>📏 {latestObs.height_cm}cm</Text>}
-            {latestObs.leaf_node_count != null && <Text size={10}>🌿 {latestObs.leaf_node_count}</Text>}
+            {latestObs.height_cm != null && <Text size="xs">📏 {latestObs.height_cm}cm</Text>}
+            {latestObs.leaf_node_count != null && <Text size="xs">🌿 {latestObs.leaf_node_count}</Text>}
           </Group>
         ) : (
-          <Text size={10} c="dimmed">No data</Text>
+          <Text size="xs" c="dimmed">No data</Text>
         )}
 
         {ready && (
@@ -426,9 +422,6 @@ function TrayGridView({ tray, onBack }: TrayGridViewProps) {
       gridCells.push(
         <GridCell
           key={`${r}-${c}`}
-          tray={tray}
-          row={r}
-          col={c}
           cell={cell}
           plant={plant}
           species={sp}

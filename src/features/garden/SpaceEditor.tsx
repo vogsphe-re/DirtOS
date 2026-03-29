@@ -2,7 +2,7 @@ import { ActionIcon, Box, Button, Group, Text, Tooltip } from '@mantine/core';
 import { IconArrowLeft, IconLayoutGridAdd, IconPlant, IconPlus } from '@tabler/icons-react';
 import { useState } from 'react';
 import { AreaGeneratorModal } from './AreaGeneratorModal';
-import { buildRectGridObjects } from './layoutGeneration';
+import { buildRectGridObjects, type RectGridLayout } from './layoutGeneration';
 import { useCanvasStore } from './canvasStore';
 import { OBJECT_DEFAULTS } from './types';
 
@@ -57,7 +57,7 @@ export function SpaceEditor() {
     labelPrefix,
     replaceExistingSpaces,
   }: {
-    layout: { rows: number; columns: number; cellWidthPx: number; cellHeightPx: number };
+    layout: RectGridLayout;
     labelPrefix: string;
     replaceExistingSpaces: boolean;
   }) => {
@@ -70,6 +70,10 @@ export function SpaceEditor() {
       cellWidthPx: layout.cellWidthPx,
       cellHeightPx: layout.cellHeightPx,
       labelPrefix,
+      gapXPx: layout.pathwayXPx,
+      gapYPx: layout.pathwayYPx,
+      gapEveryColumns: layout.pathwayEveryColumns,
+      gapEveryRows: layout.pathwayEveryRows,
       parentId: editingPlotId,
     });
 

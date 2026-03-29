@@ -23,7 +23,7 @@ import type { Species } from "../plants/types";
 import { PLANT_STATUS_COLORS, PLANT_STATUS_LABELS } from "../plants/types";
 import { AreaGeneratorModal } from "./AreaGeneratorModal";
 import { useCanvasStore } from "./canvasStore";
-import { buildRectGridObjects } from "./layoutGeneration";
+import { buildRectGridObjects, type RectGridLayout } from "./layoutGeneration";
 import { PlantAssignmentModal } from "./PlantAssignmentModal";
 import { useCanvasPersistence } from "./hooks/useCanvasPersistence";
 import type { CanvasObject } from "./types";
@@ -355,7 +355,7 @@ export function OutdoorPlotManager() {
       labelPrefix,
       replaceExistingSpaces,
     }: {
-      layout: { rows: number; columns: number; cellWidthPx: number; cellHeightPx: number };
+      layout: RectGridLayout;
       labelPrefix: string;
       replaceExistingSpaces: boolean;
     }) => {
@@ -385,6 +385,10 @@ export function OutdoorPlotManager() {
         cellWidthPx: layout.cellWidthPx,
         cellHeightPx: layout.cellHeightPx,
         labelPrefix,
+        gapXPx: layout.pathwayXPx,
+        gapYPx: layout.pathwayYPx,
+        gapEveryColumns: layout.pathwayEveryColumns,
+        gapEveryRows: layout.pathwayEveryRows,
         parentId: activePlot.id,
       });
 

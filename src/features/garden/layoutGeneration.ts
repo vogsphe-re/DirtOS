@@ -10,6 +10,12 @@ export interface RectGridLayout {
   cellWidthPx: number;
   cellHeightPx: number;
   generatedCount: number;
+  pathwayXPx: number;
+  pathwayYPx: number;
+  pathwayEveryColumns: number;
+  pathwayEveryRows: number;
+  contentWidthPx: number;
+  contentHeightPx: number;
   actualDensityPerSquareUnit?: number;
 }
 
@@ -20,12 +26,17 @@ export interface AreaGenerationSettings {
   plantingDensity: number;
   rows: number;
   columns: number;
+  pathwayWidthXUnits: number;
+  pathwayWidthYUnits: number;
+  pathwayEveryColumns: number;
+  pathwayEveryRows: number;
 }
 
 export interface AreaGenerationPreset {
   id: string;
   label: string;
   description: string;
+  isPathwayAware?: boolean;
   values: Partial<AreaGenerationSettings> & { mode: AreaGenerationMode; labelPrefix?: string };
 }
 
@@ -66,6 +77,8 @@ interface BuildRectGridObjectsInput {
   labelPrefix: string;
   gapXPx?: number;
   gapYPx?: number;
+  gapEveryColumns?: number;
+  gapEveryRows?: number;
   parentId?: string;
 }
 
@@ -86,22 +99,104 @@ export const AREA_GENERATION_PRESETS: AreaGenerationPreset[] = [
   {
     id: "raised-bed",
     label: "Raised Bed",
-    description: "A 2 x 8 cell split that works well for standard rectangular raised beds.",
-    values: { mode: "grid", rows: 2, columns: 8, labelPrefix: "Bed" },
+    description: "A 2 x 8 bed split with a central service lane to make tending and harvesting easier.",
+    isPathwayAware: true,
+    values: {
+      mode: "grid",
+      rows: 2,
+      columns: 8,
+      pathwayWidthXUnits: 1,
+      pathwayEveryColumns: 4,
+      labelPrefix: "Bed",
+    },
   },
   {
     id: "market-garden",
     label: "Market Garden",
-    description: "A dense block layout for intensive bed planning and quick crop block assignment.",
-    values: { mode: "grid", rows: 4, columns: 12, labelPrefix: "Block" },
+    description: "Four productive bed rows with narrow walking lanes reserved between each row block.",
+    isPathwayAware: true,
+    values: {
+      mode: "grid",
+      rows: 4,
+      columns: 12,
+      pathwayWidthYUnits: 0.75,
+      pathwayEveryRows: 1,
+      labelPrefix: "Block",
+    },
   },
   {
     id: "orchard-rows",
     label: "Orchard Rows",
-    description: "A long row-oriented pattern for trees, berries, and perennial row systems.",
-    values: { mode: "grid", rows: 2, columns: 6, labelPrefix: "Row" },
+    description: "Tree or berry rows with wider maintenance alleys between each planted row.",
+    isPathwayAware: true,
+    values: {
+      mode: "grid",
+      rows: 3,
+      columns: 6,
+      pathwayWidthYUnits: 1.5,
+      pathwayEveryRows: 1,
+      labelPrefix: "Row",
+    },
   },
 ];
+
+function countInsertedPathways(count: number, every: number): number {
+  if (!Number.isInteger(every) || every <= 0 || count <= 1) {
+    return 0;
+  }
+
+  return Math.floor((count - 1) / every);
+}
+
+function requireNonNegativeNumber(value: number, label: string): number {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`${label} cannot be negative.`);
+  }
+
+  return value;
+}
+
+function normalizePathwayEvery(value: number): number {
+  return Number.isInteger(value) && value > 0 ? value : 0;
+}
+
+export function getGridCellOffset(index: number, cellSizePx: number, pathwayPx = 0, pathwayEvery = 0): number {
+  return index * cellSizePx + countInsertedPathways(index + 1, pathwayEvery) * pathwayPx;
+}
+
+export function getGridSpan(count: number, cellSizePx: number, pathwayPx = 0, pathwayEvery = 0): number {
+  return count * cellSizePx + countInsertedPathways(count, pathwayEvery) * pathwayPx;
+}
+
+function withLayoutMeta(
+  layout: Omit<RectGridLayout, "contentWidthPx" | "contentHeightPx" | "pathwayXPx" | "pathwayYPx" | "pathwayEveryColumns" | "pathwayEveryRows">,
+  pathwayXPx: number,
+  pathwayYPx: number,
+  pathwayEveryColumns: number,
+  pathwayEveryRows: number,
+): RectGridLayout {
+  return {
+    ...layout,
+    pathwayXPx,
+    pathwayYPx,
+    pathwayEveryColumns,
+    pathwayEveryRows,
+    contentWidthPx: getGridSpan(layout.columns, layout.cellWidthPx, pathwayXPx, pathwayEveryColumns),
+    contentHeightPx: getGridSpan(layout.rows, layout.cellHeightPx, pathwayYPx, pathwayEveryRows),
+  };
+}
+
+function fitCountWithPathways(availablePx: number, cellPx: number, pathwayPx: number, pathwayEvery: number): number {
+  let count = 0;
+
+  while (true) {
+    const nextSpan = getGridSpan(count + 1, cellPx, pathwayPx, pathwayEvery);
+    if (nextSpan > availablePx + 0.0001) {
+      return count;
+    }
+    count += 1;
+  }
+}
 
 function requirePositiveNumber(value: number, label: string): number {
   if (!Number.isFinite(value) || value <= 0) {
@@ -165,31 +260,47 @@ export function createGridFromCellDimensions({
   cellWidthUnits,
   cellHeightUnits,
   pixelsPerUnit,
+  pathwayWidthXUnits = 0,
+  pathwayWidthYUnits = 0,
+  pathwayEveryColumns = 0,
+  pathwayEveryRows = 0,
   maxObjects = DEFAULT_MAX_OBJECTS,
-}: GridFromDimensionsInput): RectGridLayout {
+}: GridFromDimensionsInput & Partial<Pick<AreaGenerationSettings, "pathwayWidthXUnits" | "pathwayWidthYUnits" | "pathwayEveryColumns" | "pathwayEveryRows">>): RectGridLayout {
   requirePositiveNumber(containerWidthPx, "Container width");
   requirePositiveNumber(containerHeightPx, "Container height");
   requirePositiveNumber(cellWidthUnits, "Cell width");
   requirePositiveNumber(cellHeightUnits, "Cell height");
   requirePositiveNumber(pixelsPerUnit, "Pixels per unit");
+  requireNonNegativeNumber(pathwayWidthXUnits, "Horizontal pathway width");
+  requireNonNegativeNumber(pathwayWidthYUnits, "Vertical pathway width");
 
   const cellWidthPx = cellWidthUnits * pixelsPerUnit;
   const cellHeightPx = cellHeightUnits * pixelsPerUnit;
-  const columns = Math.floor(containerWidthPx / cellWidthPx);
-  const rows = Math.floor(containerHeightPx / cellHeightPx);
+  const pathwayXPx = pathwayWidthXUnits * pixelsPerUnit;
+  const pathwayYPx = pathwayWidthYUnits * pixelsPerUnit;
+  const normalizedEveryColumns = pathwayXPx > 0 ? normalizePathwayEvery(pathwayEveryColumns) : 0;
+  const normalizedEveryRows = pathwayYPx > 0 ? normalizePathwayEvery(pathwayEveryRows) : 0;
+  const columns = fitCountWithPathways(containerWidthPx, cellWidthPx, pathwayXPx, normalizedEveryColumns);
+  const rows = fitCountWithPathways(containerHeightPx, cellHeightPx, pathwayYPx, normalizedEveryRows);
 
   if (columns < 1 || rows < 1) {
     throw new Error("The requested area size does not fit inside the selected plot.");
   }
 
-  return {
-    rows,
-    columns,
-    cellWidthPx,
-    cellHeightPx,
-    generatedCount: ensureObjectCount(rows, columns, maxObjects),
-    actualDensityPerSquareUnit: computeActualDensity(rows, columns, containerWidthPx, containerHeightPx, pixelsPerUnit),
-  };
+  return withLayoutMeta(
+    {
+      rows,
+      columns,
+      cellWidthPx,
+      cellHeightPx,
+      generatedCount: ensureObjectCount(rows, columns, maxObjects),
+      actualDensityPerSquareUnit: computeActualDensity(rows, columns, containerWidthPx, containerHeightPx, pixelsPerUnit),
+    },
+    pathwayXPx,
+    pathwayYPx,
+    normalizedEveryColumns,
+    normalizedEveryRows,
+  );
 }
 
 export function createGridFromDensity({
@@ -197,17 +308,27 @@ export function createGridFromDensity({
   containerHeightPx,
   densityPerSquareUnit,
   pixelsPerUnit,
+  pathwayWidthXUnits = 0,
+  pathwayWidthYUnits = 0,
+  pathwayEveryColumns = 0,
+  pathwayEveryRows = 0,
   maxObjects = DEFAULT_MAX_OBJECTS,
-}: GridFromDensityInput): RectGridLayout {
+}: GridFromDensityInput & Partial<Pick<AreaGenerationSettings, "pathwayWidthXUnits" | "pathwayWidthYUnits" | "pathwayEveryColumns" | "pathwayEveryRows">>): RectGridLayout {
   requirePositiveNumber(containerWidthPx, "Container width");
   requirePositiveNumber(containerHeightPx, "Container height");
   requirePositiveNumber(densityPerSquareUnit, "Planting density");
   requirePositiveNumber(pixelsPerUnit, "Pixels per unit");
+  requireNonNegativeNumber(pathwayWidthXUnits, "Horizontal pathway width");
+  requireNonNegativeNumber(pathwayWidthYUnits, "Vertical pathway width");
 
   const widthUnits = containerWidthPx / pixelsPerUnit;
   const heightUnits = containerHeightPx / pixelsPerUnit;
   const totalArea = widthUnits * heightUnits;
   const targetCount = Math.max(1, Math.round(totalArea * densityPerSquareUnit));
+  const pathwayXPx = pathwayWidthXUnits * pixelsPerUnit;
+  const pathwayYPx = pathwayWidthYUnits * pixelsPerUnit;
+  const normalizedEveryColumns = pathwayXPx > 0 ? normalizePathwayEvery(pathwayEveryColumns) : 0;
+  const normalizedEveryRows = pathwayYPx > 0 ? normalizePathwayEvery(pathwayEveryRows) : 0;
 
   if (!Number.isFinite(targetCount) || targetCount < 1) {
     throw new Error("The selected density does not produce a valid grid.");
@@ -220,15 +341,27 @@ export function createGridFromDensity({
   const aspectRatio = containerWidthPx / containerHeightPx;
   const columns = Math.max(1, Math.round(Math.sqrt(targetCount * aspectRatio)));
   const rows = Math.max(1, Math.ceil(targetCount / columns));
+  const usableWidthPx = containerWidthPx - countInsertedPathways(columns, normalizedEveryColumns) * pathwayXPx;
+  const usableHeightPx = containerHeightPx - countInsertedPathways(rows, normalizedEveryRows) * pathwayYPx;
 
-  return {
-    rows,
-    columns,
-    cellWidthPx: containerWidthPx / columns,
-    cellHeightPx: containerHeightPx / rows,
-    generatedCount: ensureObjectCount(rows, columns, maxObjects),
-    actualDensityPerSquareUnit: computeActualDensity(rows, columns, containerWidthPx, containerHeightPx, pixelsPerUnit),
-  };
+  if (usableWidthPx <= 0 || usableHeightPx <= 0) {
+    throw new Error("The configured walking lanes leave no room for planting areas.");
+  }
+
+  return withLayoutMeta(
+    {
+      rows,
+      columns,
+      cellWidthPx: usableWidthPx / columns,
+      cellHeightPx: usableHeightPx / rows,
+      generatedCount: ensureObjectCount(rows, columns, maxObjects),
+      actualDensityPerSquareUnit: computeActualDensity(rows, columns, containerWidthPx, containerHeightPx, pixelsPerUnit),
+    },
+    pathwayXPx,
+    pathwayYPx,
+    normalizedEveryColumns,
+    normalizedEveryRows,
+  );
 }
 
 export function createGridFromCounts({
@@ -237,24 +370,47 @@ export function createGridFromCounts({
   rows,
   columns,
   pixelsPerUnit,
+  pathwayWidthXUnits = 0,
+  pathwayWidthYUnits = 0,
+  pathwayEveryColumns = 0,
+  pathwayEveryRows = 0,
   maxObjects = DEFAULT_MAX_OBJECTS,
-}: GridFromCountsInput): RectGridLayout {
+}: GridFromCountsInput & Partial<Pick<AreaGenerationSettings, "pathwayWidthXUnits" | "pathwayWidthYUnits" | "pathwayEveryColumns" | "pathwayEveryRows">>): RectGridLayout {
   requirePositiveNumber(containerWidthPx, "Container width");
   requirePositiveNumber(containerHeightPx, "Container height");
   requirePositiveInteger(rows, "Rows");
   requirePositiveInteger(columns, "Columns");
+  requireNonNegativeNumber(pathwayWidthXUnits, "Horizontal pathway width");
+  requireNonNegativeNumber(pathwayWidthYUnits, "Vertical pathway width");
 
-  return {
-    rows,
-    columns,
-    cellWidthPx: containerWidthPx / columns,
-    cellHeightPx: containerHeightPx / rows,
-    generatedCount: ensureObjectCount(rows, columns, maxObjects),
-    actualDensityPerSquareUnit:
-      pixelsPerUnit != null
-        ? computeActualDensity(rows, columns, containerWidthPx, containerHeightPx, pixelsPerUnit)
-        : undefined,
-  };
+  const pathwayXPx = pathwayWidthXUnits * (pixelsPerUnit ?? 0);
+  const pathwayYPx = pathwayWidthYUnits * (pixelsPerUnit ?? 0);
+  const normalizedEveryColumns = pathwayXPx > 0 ? normalizePathwayEvery(pathwayEveryColumns) : 0;
+  const normalizedEveryRows = pathwayYPx > 0 ? normalizePathwayEvery(pathwayEveryRows) : 0;
+  const usableWidthPx = containerWidthPx - countInsertedPathways(columns, normalizedEveryColumns) * pathwayXPx;
+  const usableHeightPx = containerHeightPx - countInsertedPathways(rows, normalizedEveryRows) * pathwayYPx;
+
+  if (usableWidthPx <= 0 || usableHeightPx <= 0) {
+    throw new Error("The configured walking lanes leave no room for planting areas.");
+  }
+
+  return withLayoutMeta(
+    {
+      rows,
+      columns,
+      cellWidthPx: usableWidthPx / columns,
+      cellHeightPx: usableHeightPx / rows,
+      generatedCount: ensureObjectCount(rows, columns, maxObjects),
+      actualDensityPerSquareUnit:
+        pixelsPerUnit != null
+          ? computeActualDensity(rows, columns, containerWidthPx, containerHeightPx, pixelsPerUnit)
+          : undefined,
+    },
+    pathwayXPx,
+    pathwayYPx,
+    normalizedEveryColumns,
+    normalizedEveryRows,
+  );
 }
 
 export function createAreaLayout({
@@ -267,6 +423,10 @@ export function createAreaLayout({
   plantingDensity,
   rows,
   columns,
+  pathwayWidthXUnits,
+  pathwayWidthYUnits,
+  pathwayEveryColumns,
+  pathwayEveryRows,
   maxObjects,
 }: AreaLayoutInput): RectGridLayout {
   switch (mode) {
@@ -277,6 +437,10 @@ export function createAreaLayout({
         cellWidthUnits: areaWidthUnits,
         cellHeightUnits: areaHeightUnits,
         pixelsPerUnit,
+        pathwayWidthXUnits,
+        pathwayWidthYUnits,
+        pathwayEveryColumns,
+        pathwayEveryRows,
         maxObjects,
       });
     case "density":
@@ -285,6 +449,10 @@ export function createAreaLayout({
         containerHeightPx,
         densityPerSquareUnit: plantingDensity,
         pixelsPerUnit,
+        pathwayWidthXUnits,
+        pathwayWidthYUnits,
+        pathwayEveryColumns,
+        pathwayEveryRows,
         maxObjects,
       });
     case "grid":
@@ -294,6 +462,10 @@ export function createAreaLayout({
         rows,
         columns,
         pixelsPerUnit,
+        pathwayWidthXUnits,
+        pathwayWidthYUnits,
+        pathwayEveryColumns,
+        pathwayEveryRows,
         maxObjects,
       });
     default:
@@ -312,6 +484,8 @@ export function buildRectGridObjects({
   labelPrefix,
   gapXPx = 0,
   gapYPx = 0,
+  gapEveryColumns = 0,
+  gapEveryRows = 0,
   parentId,
 }: BuildRectGridObjectsInput): CanvasObject[] {
   const defaults = OBJECT_DEFAULTS[objectType];
@@ -330,8 +504,8 @@ export function buildRectGridObjects({
         id: crypto.randomUUID(),
         type: objectType,
         layer: defaults.layer,
-        x: originX + columnIndex * (cellWidthPx + gapXPx),
-        y: originY + rowIndex * (cellHeightPx + gapYPx),
+        x: originX + getGridCellOffset(columnIndex, cellWidthPx, gapXPx, gapEveryColumns),
+        y: originY + getGridCellOffset(rowIndex, cellHeightPx, gapYPx, gapEveryRows),
         width: cellWidthPx,
         height: cellHeightPx,
         fill: defaults.fill,
