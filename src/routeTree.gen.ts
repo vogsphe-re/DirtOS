@@ -27,7 +27,6 @@ import { Route as JournalIndexRouteImport } from './routes/journal.index'
 import { Route as IssuesIndexRouteImport } from './routes/issues.index'
 import { Route as IndoorIndexRouteImport } from './routes/indoor.index'
 import { Route as GardenIndexRouteImport } from './routes/garden.index'
-import { Route as GardenPlotsRouteImport } from './routes/garden.plots'
 import { Route as PlantsTraysRouteImport } from './routes/plants.trays'
 import { Route as PlantsSeedsRouteImport } from './routes/plants.seeds'
 import { Route as PlantsSeedlingsRouteImport } from './routes/plants.seedlings'
@@ -37,6 +36,7 @@ import { Route as PlantsSpeciesIdRouteImport } from './routes/plants.$speciesId'
 import { Route as JournalEntryIdRouteImport } from './routes/journal.$entryId'
 import { Route as IssuesIssueIdRouteImport } from './routes/issues.$issueId'
 import { Route as IndoorEnvironmentIdRouteImport } from './routes/indoor.$environmentId'
+import { Route as GardenPlotsRouteImport } from './routes/garden.plots'
 import { Route as GardenLocationIdRouteImport } from './routes/garden.$locationId'
 import { Route as PlantsIndividualsIndexRouteImport } from './routes/plants.individuals.index'
 import { Route as PlantsIndividualsPlantIdRouteImport } from './routes/plants.individuals.$plantId'
@@ -131,11 +131,6 @@ const GardenIndexRoute = GardenIndexRouteImport.update({
   path: '/',
   getParentRoute: () => GardenRoute,
 } as any)
-const GardenPlotsRoute = GardenPlotsRouteImport.update({
-  id: '/plots',
-  path: '/plots',
-  getParentRoute: () => GardenRoute,
-} as any)
 const PlantsTraysRoute = PlantsTraysRouteImport.update({
   id: '/trays',
   path: '/trays',
@@ -180,6 +175,11 @@ const IndoorEnvironmentIdRoute = IndoorEnvironmentIdRouteImport.update({
   id: '/$environmentId',
   path: '/$environmentId',
   getParentRoute: () => IndoorRoute,
+} as any)
+const GardenPlotsRoute = GardenPlotsRouteImport.update({
+  id: '/plots',
+  path: '/plots',
+  getParentRoute: () => GardenRoute,
 } as any)
 const GardenLocationIdRoute = GardenLocationIdRouteImport.update({
   id: '/$locationId',
@@ -239,6 +239,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/weather': typeof WeatherRoute
   '/garden/$locationId': typeof GardenLocationIdRoute
+  '/garden/plots': typeof GardenPlotsRoute
   '/indoor/$environmentId': typeof IndoorEnvironmentIdRoute
   '/issues/$issueId': typeof IssuesIssueIdRoute
   '/journal/$entryId': typeof JournalEntryIdRoute
@@ -248,7 +249,6 @@ export interface FileRoutesByTo {
   '/plants/seeds': typeof PlantsSeedsRoute
   '/plants/trays': typeof PlantsTraysRoute
   '/garden': typeof GardenIndexRoute
-  '/garden/plots': typeof GardenPlotsRoute
   '/indoor': typeof IndoorIndexRoute
   '/issues': typeof IssuesIndexRoute
   '/journal': typeof JournalIndexRoute
@@ -529,13 +529,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GardenIndexRouteImport
       parentRoute: typeof GardenRoute
     }
-    '/garden/plots': {
-      id: '/garden/plots'
-      path: '/plots'
-      fullPath: '/garden/plots'
-      preLoaderRoute: typeof GardenPlotsRouteImport
-      parentRoute: typeof GardenRoute
-    }
     '/plants/trays': {
       id: '/plants/trays'
       path: '/trays'
@@ -599,6 +592,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndoorEnvironmentIdRouteImport
       parentRoute: typeof IndoorRoute
     }
+    '/garden/plots': {
+      id: '/garden/plots'
+      path: '/plots'
+      fullPath: '/garden/plots'
+      preLoaderRoute: typeof GardenPlotsRouteImport
+      parentRoute: typeof GardenRoute
+    }
     '/garden/$locationId': {
       id: '/garden/$locationId'
       path: '/$locationId'
@@ -625,14 +625,14 @@ declare module '@tanstack/react-router' {
 
 interface GardenRouteChildren {
   GardenLocationIdRoute: typeof GardenLocationIdRoute
-  GardenIndexRoute: typeof GardenIndexRoute
   GardenPlotsRoute: typeof GardenPlotsRoute
+  GardenIndexRoute: typeof GardenIndexRoute
 }
 
 const GardenRouteChildren: GardenRouteChildren = {
   GardenLocationIdRoute: GardenLocationIdRoute,
-  GardenIndexRoute: GardenIndexRoute,
   GardenPlotsRoute: GardenPlotsRoute,
+  GardenIndexRoute: GardenIndexRoute,
 }
 
 const GardenRouteWithChildren =
