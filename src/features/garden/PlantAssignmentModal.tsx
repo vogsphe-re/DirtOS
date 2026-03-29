@@ -41,7 +41,7 @@ export function PlantAssignmentModal({
   const activeEnvId = useAppStore((s) => s.activeEnvironmentId);
   const queryClient = useQueryClient();
 
-  // Existing unassigned plants
+  // Existing assignable plants
   const { data: allPlants = [], isLoading: plantsLoading } = useQuery({
     queryKey: ["plants-all"],
     queryFn: async () => {
@@ -67,10 +67,11 @@ export function PlantAssignmentModal({
   const [newSpeciesId, setNewSpeciesId] = useState<string | null>(null);
 
   // "Pick existing" selection
-  const unassigned = allPlants.filter(
-    (p) =>
-      (p.status === "planned" || p.status === "seedling") &&
-      (p.location_id == null || p.id === currentPlantId),
+  const assignablePlants = allPlants.filter(
+    (plant) =>
+      plant.environment_id === activeEnvId &&
+      (plant.status === "planned" || plant.status === "seedling" || plant.status === "active") &&
+      (plant.canvas_object_id == null || plant.id === currentPlantId),
   );
 
   const [pickedPlantId, setPickedPlantId] = useState<string | null>(
@@ -81,6 +82,10 @@ export function PlantAssignmentModal({
     mutationFn: async () => {
       if (!newName.trim()) throw new Error("Plant name is required");
       if (!activeEnvId) throw new Error("No active environment");
+      if (currentPlantId) {
+        const clearResult = await commands.unassignPlantFromCanvasObject(currentPlantId);
+        if (clearResult.status === "error") throw new Error(clearResult.error);
+      }
       const res = await commands.createPlant({
         species_id: newSpeciesId ? parseInt(newSpeciesId) : null,
         location_id: null,
@@ -111,6 +116,10 @@ export function PlantAssignmentModal({
     mutationFn: async () => {
       if (!pickedPlantId) throw new Error("No plant selected");
       const plantId = parseInt(pickedPlantId);
+      if (currentPlantId && currentPlantId !== plantId) {
+        const clearResult = await commands.unassignPlantFromCanvasObject(currentPlantId);
+        if (clearResult.status === "error") throw new Error(clearResult.error);
+      }
       const res = await commands.assignPlantToCanvasObject(plantId, spaceId, null);
       if (res.status === "error") throw new Error(res.error);
       return res.data as Plant;
@@ -159,15 +168,15 @@ export function PlantAssignmentModal({
           <Stack gap="sm">
             {plantsLoading ? (
               <Loader size="sm" />
-            ) : unassigned.length === 0 ? (
+            ) : assignablePlants.length === 0 ? (
               <Text size="sm" c="dimmed">
-                No unassigned planned/seedling plants. Create a new one instead.
+                No assignable plants yet. Create a new one instead.
               </Text>
             ) : (
               <Select
                 label="Plant"
                 searchable
-                data={unassigned.map((p) => ({
+                data={assignablePlants.map((p) => ({
                   value: String(p.id),
                   label: `${p.name} (${PLANT_STATUS_LABELS[p.status]})`,
                 }))}
@@ -178,7 +187,7 @@ export function PlantAssignmentModal({
             )}
             {pickedPlantId && (
               <PlantPreview
-                plant={unassigned.find((p) => String(p.id) === pickedPlantId)}
+                plant={assignablePlants.find((p) => String(p.id) === pickedPlantId)}
                 speciesList={speciesList}
               />
             )}

@@ -1,9 +1,10 @@
-import { ActionIcon, Box, Group, Text, Tooltip } from '@mantine/core';
+import { ActionIcon, Box, Button, Group, Text, Tooltip } from '@mantine/core';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { IconCode, IconDeviceFloppy, IconLayoutSidebar, IconPhoto, IconZoomIn, IconZoomOut, IconZoomReset } from '@tabler/icons-react';
 import { useCallback, useEffect, useState } from 'react';
 import { notifications } from '@mantine/notifications';
+import { useNavigate } from '@tanstack/react-router';
 import { useAppStore } from '../../stores/appStore';
 import { GardenScene } from '../garden3d/GardenScene';
 import { ViewToggle, type GardenViewMode } from '../garden3d/ViewToggle';
@@ -34,6 +35,7 @@ interface GardenPageProps {
 }
 
 export function GardenPage({ locationId: _locationId }: GardenPageProps) {
+  const navigate = useNavigate();
   const activeEnvironmentId = useAppStore((s) => s.activeEnvironmentId);
   const stageScale = useCanvasStore((s) => s.stageScale);
   const stageX = useCanvasStore((s) => s.stageX);
@@ -113,6 +115,9 @@ export function GardenPage({ locationId: _locationId }: GardenPageProps) {
         <Text size="sm" fw={500} c="dimmed">
           Garden Canvas
         </Text>
+        <Button size="compact-xs" variant="subtle" onClick={() => navigate({ to: '/garden/plots' })}>
+          Plot manager
+        </Button>
         <ViewToggle value={viewMode} onChange={setViewMode} />
         <Box style={{ flex: 1 }} />
         {viewMode === '2d' && (
