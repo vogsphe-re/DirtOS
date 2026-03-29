@@ -4,15 +4,19 @@ import {
   Button,
   Divider,
   Group,
+  Modal,
+  NumberInput,
   ScrollArea,
   Stack,
   Text,
   TextInput,
   Tooltip,
 } from '@mantine/core';
-import { IconEdit, IconPlus, IconTarget, IconTrash } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
+import { IconEdit, IconLayoutGridAdd, IconPlus, IconTarget, IconTrash } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useCanvasStore } from './canvasStore';
+import { buildRectGridObjects } from './layoutGeneration';
 import { OBJECT_DEFAULTS } from './types';
 
 interface PlotManagerProps {
@@ -23,13 +27,25 @@ interface PlotManagerProps {
 export function PlotManager({ onFocusObject }: PlotManagerProps) {
   const objects = useCanvasStore((s) => s.objects);
   const addObject = useCanvasStore((s) => s.addObject);
+  const setObjects = useCanvasStore((s) => s.setObjects);
   const removeObject = useCanvasStore((s) => s.removeObject);
   const updateObject = useCanvasStore((s) => s.updateObject);
   const setSelectedId = useCanvasStore((s) => s.setSelectedId);
+  const gridConfig = useCanvasStore((s) => s.gridConfig);
   const setDirty = useCanvasStore((s) => s.setDirty);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [generatorOpen, setGeneratorOpen] = useState(false);
+  const [plotWidth, setPlotWidth] = useState<number | string>(8);
+  const [plotHeight, setPlotHeight] = useState<number | string>(4);
+  const [gridRows, setGridRows] = useState<number | string>(1);
+  const [gridColumns, setGridColumns] = useState<number | string>(3);
+  const [startX, setStartX] = useState<number | string>(2);
+  const [startY, setStartY] = useState<number | string>(2);
+  const [gapX, setGapX] = useState<number | string>(1);
+  const [gapY, setGapY] = useState<number | string>(1);
+  const [labelPrefix, setLabelPrefix] = useState('Plot');
 
   const plots = objects.filter((o) => o.type === 'plot');
 
@@ -75,6 +91,71 @@ export function PlotManager({ onFocusObject }: PlotManagerProps) {
     setDirty(true);
   };
 
+  const generatePlots = () => {
+    try {
+      const widthUnits = Number(plotWidth);
+      const heightUnits = Number(plotHeight);
+      const rows = Number(gridRows);
+      const columns = Number(gridColumns);
+      const originX = Number(startX) * gridConfig.pixelsPerUnit;
+      const originY = Number(startY) * gridConfig.pixelsPerUnit;
+      const gapXPx = Number(gapX) * gridConfig.pixelsPerUnit;
+      const gapYPx = Number(gapY) * gridConfig.pixelsPerUnit;
+
+      if (!Number.isFinite(widthUnits) || widthUnits <= 0) {
+        throw new Error(`Plot width must be greater than 0 ${gridConfig.unit}.`);
+      }
+
+      if (!Number.isFinite(heightUnits) || heightUnits <= 0) {
+        throw new Error(`Plot height must be greater than 0 ${gridConfig.unit}.`);
+      }
+
+      if (!Number.isInteger(rows) || rows <= 0) {
+        throw new Error('Rows must be a whole number greater than 0.');
+      }
+
+      if (!Number.isInteger(columns) || columns <= 0) {
+        throw new Error('Columns must be a whole number greater than 0.');
+      }
+
+      if (!Number.isFinite(originX) || !Number.isFinite(originY)) {
+        throw new Error('Starting position must be a valid number.');
+      }
+
+      if (!Number.isFinite(gapXPx) || gapXPx < 0 || !Number.isFinite(gapYPx) || gapYPx < 0) {
+        throw new Error('Plot gaps cannot be negative.');
+      }
+
+      const generatedPlots = buildRectGridObjects({
+        objectType: 'plot',
+        originX,
+        originY,
+        rows,
+        columns,
+        cellWidthPx: widthUnits * gridConfig.pixelsPerUnit,
+        cellHeightPx: heightUnits * gridConfig.pixelsPerUnit,
+        gapXPx,
+        gapYPx,
+        labelPrefix,
+      });
+
+      setObjects([...objects, ...generatedPlots]);
+      setSelectedId(generatedPlots[0]?.id ?? null);
+      setDirty(true);
+      setGeneratorOpen(false);
+      notifications.show({
+        color: 'green',
+        message: `Created ${generatedPlots.length} plots in a ${rows} x ${columns} layout.`,
+      });
+    } catch (error) {
+      notifications.show({
+        color: 'red',
+        title: 'Plot generation failed',
+        message: error instanceof Error ? error.message : 'Unable to generate plots.',
+      });
+    }
+  };
+
   return (
     <Box
       style={{
@@ -86,11 +167,18 @@ export function PlotManager({ onFocusObject }: PlotManagerProps) {
         <Text size="sm" fw={600}>
           Plots
         </Text>
-        <Tooltip label="Add plot">
-          <ActionIcon size="sm" variant="subtle" onClick={createPlot}>
-            <IconPlus size={14} />
-          </ActionIcon>
-        </Tooltip>
+        <Group gap={2}>
+          <Tooltip label="Generate plot grid">
+            <ActionIcon size="sm" variant="subtle" onClick={() => setGeneratorOpen(true)}>
+              <IconLayoutGridAdd size={14} />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label="Add plot">
+            <ActionIcon size="sm" variant="subtle" onClick={createPlot}>
+              <IconPlus size={14} />
+            </ActionIcon>
+          </Tooltip>
+        </Group>
       </Group>
 
       <Divider />
@@ -163,10 +251,93 @@ export function PlotManager({ onFocusObject }: PlotManagerProps) {
       )}
 
       <Box px="xs" pb="xs">
-        <Button size="xs" variant="light" leftSection={<IconPlus size={12} />} onClick={createPlot} fullWidth>
-          New plot
-        </Button>
+        <Stack gap="xs">
+          <Button size="xs" variant="light" leftSection={<IconPlus size={12} />} onClick={createPlot} fullWidth>
+            New plot
+          </Button>
+          <Button size="xs" variant="default" leftSection={<IconLayoutGridAdd size={12} />} onClick={() => setGeneratorOpen(true)} fullWidth>
+            Generate plots
+          </Button>
+        </Stack>
       </Box>
+
+      <Modal
+        opened={generatorOpen}
+        onClose={() => setGeneratorOpen(false)}
+        title="Generate plots"
+        size="sm"
+      >
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">
+            Create a repeated plot layout using plot dimensions and a row-by-column arrangement in {gridConfig.unit}.
+          </Text>
+          <Group grow>
+            <NumberInput
+              label={`Plot width (${gridConfig.unit})`}
+              value={plotWidth}
+              onChange={setPlotWidth}
+              min={0.1}
+              decimalScale={2}
+              required
+            />
+            <NumberInput
+              label={`Plot height (${gridConfig.unit})`}
+              value={plotHeight}
+              onChange={setPlotHeight}
+              min={0.1}
+              decimalScale={2}
+              required
+            />
+          </Group>
+          <Group grow>
+            <NumberInput label="Rows" value={gridRows} onChange={setGridRows} min={1} step={1} required />
+            <NumberInput label="Columns" value={gridColumns} onChange={setGridColumns} min={1} step={1} required />
+          </Group>
+          <Group grow>
+            <NumberInput
+              label={`Start X (${gridConfig.unit})`}
+              value={startX}
+              onChange={setStartX}
+              decimalScale={2}
+            />
+            <NumberInput
+              label={`Start Y (${gridConfig.unit})`}
+              value={startY}
+              onChange={setStartY}
+              decimalScale={2}
+            />
+          </Group>
+          <Group grow>
+            <NumberInput
+              label={`Horizontal gap (${gridConfig.unit})`}
+              value={gapX}
+              onChange={setGapX}
+              min={0}
+              decimalScale={2}
+            />
+            <NumberInput
+              label={`Vertical gap (${gridConfig.unit})`}
+              value={gapY}
+              onChange={setGapY}
+              min={0}
+              decimalScale={2}
+            />
+          </Group>
+          <TextInput
+            label="Plot label prefix"
+            value={labelPrefix}
+            onChange={(event) => setLabelPrefix(event.currentTarget.value)}
+            placeholder="Plot"
+          />
+          <Text size="xs" c="dimmed">
+            Preview: {Number(gridRows) || 0} row(s) x {Number(gridColumns) || 0} column(s) starting at {Number(startX) || 0}, {Number(startY) || 0} {gridConfig.unit}.
+          </Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setGeneratorOpen(false)}>Cancel</Button>
+            <Button onClick={generatePlots}>Create plots</Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Box>
   );
 }

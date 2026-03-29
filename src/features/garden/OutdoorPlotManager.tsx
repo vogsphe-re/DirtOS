@@ -4,15 +4,11 @@ import {
   Box,
   Button,
   Card,
-  Checkbox,
   Group,
-  Modal,
-  NumberInput,
   ScrollArea,
   SimpleGrid,
   Stack,
   Text,
-  TextInput,
   Title,
   Tooltip,
 } from "@mantine/core";
@@ -25,10 +21,12 @@ import { commands, type Plant } from "../../lib/bindings";
 import { useAppStore } from "../../stores/appStore";
 import type { Species } from "../plants/types";
 import { PLANT_STATUS_COLORS, PLANT_STATUS_LABELS } from "../plants/types";
+import { AreaGeneratorModal } from "./AreaGeneratorModal";
 import { useCanvasStore } from "./canvasStore";
+import { buildRectGridObjects } from "./layoutGeneration";
 import { PlantAssignmentModal } from "./PlantAssignmentModal";
 import { useCanvasPersistence } from "./hooks/useCanvasPersistence";
-import { OBJECT_DEFAULTS, type CanvasObject } from "./types";
+import type { CanvasObject } from "./types";
 
 interface PlotGridCellEntry {
   spaces: CanvasObject[];
@@ -132,18 +130,6 @@ function formatSpaceSize(space: CanvasObject, pixelsPerUnit: number, unit: strin
   const width = ((space.width ?? 0) / pixelsPerUnit).toFixed(1);
   const height = ((space.height ?? 0) / pixelsPerUnit).toFixed(1);
   return `${width} x ${height} ${unit}`;
-}
-
-function toGridRowLabel(index: number): string {
-  let label = "";
-  let current = index;
-
-  do {
-    label = String.fromCharCode(65 + (current % 26)) + label;
-    current = Math.floor(current / 26) - 1;
-  } while (current >= 0);
-
-  return label;
 }
 
 function summarizePlot(spaces: CanvasObject[], plantsBySpace: Map<string, Plant[]>): PlotOccupancySummary {
@@ -291,9 +277,6 @@ export function OutdoorPlotManager() {
   const [activePlotId, setActivePlotId] = useState<string | null>(null);
   const [assigningSpaceId, setAssigningSpaceId] = useState<string | null>(null);
   const [subdivideOpen, setSubdivideOpen] = useState(false);
-  const [squareSize, setSquareSize] = useState<number | string>(1);
-  const [replaceExistingSpaces, setReplaceExistingSpaces] = useState(true);
-  const [labelPrefix, setLabelPrefix] = useState("Space");
 
   useEffect(() => {
     if (activeEnvironmentId != null) {
@@ -348,6 +331,8 @@ export function OutdoorPlotManager() {
     enabled: activeEnvironmentId != null,
   });
 
+  const activePlot = plots.find((plot) => plot.id === activePlotId) ?? null;
+
   const clearAssignment = useMutation({
     mutationFn: async (plantId: number) => {
       const result = await commands.unassignPlantFromCanvasObject(plantId);
@@ -365,24 +350,17 @@ export function OutdoorPlotManager() {
   });
 
   const subdividePlot = useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({
+      layout,
+      labelPrefix,
+      replaceExistingSpaces,
+    }: {
+      layout: { rows: number; columns: number; cellWidthPx: number; cellHeightPx: number };
+      labelPrefix: string;
+      replaceExistingSpaces: boolean;
+    }) => {
       if (!activeEnvironmentId) throw new Error("No active environment");
       if (!activePlot) throw new Error("No plot selected");
-
-      const sizeInUnits = Number(squareSize);
-      if (!Number.isFinite(sizeInUnits) || sizeInUnits <= 0) {
-        throw new Error(`Square size must be greater than 0 ${gridConfig.unit}.`);
-      }
-
-      const plotWidth = activePlot.width ?? 0;
-      const plotHeight = activePlot.height ?? 0;
-      const squareSizePx = sizeInUnits * gridConfig.pixelsPerUnit;
-      const columns = Math.floor(plotWidth / squareSizePx);
-      const rows = Math.floor(plotHeight / squareSizePx);
-
-      if (columns < 1 || rows < 1) {
-        throw new Error("The selected square size does not fit inside this plot.");
-      }
 
       const existingSpaces = objects.filter((object) => object.type === "space" && object.parentId === activePlot.id);
       const assignedPlantIds = replaceExistingSpaces
@@ -398,31 +376,17 @@ export function OutdoorPlotManager() {
         ? objects.filter((object) => !(object.type === "space" && object.parentId === activePlot.id))
         : objects;
 
-      const prefix = labelPrefix.trim() || "Space";
-      const defaults = OBJECT_DEFAULTS.space;
-      const generatedSpaces: CanvasObject[] = [];
-
-      for (let rowIndex = 0; rowIndex < rows; rowIndex += 1) {
-        for (let columnIndex = 0; columnIndex < columns; columnIndex += 1) {
-          generatedSpaces.push({
-            id: crypto.randomUUID(),
-            type: "space",
-            layer: defaults.layer,
-            x: activePlot.x + columnIndex * squareSizePx,
-            y: activePlot.y + rowIndex * squareSizePx,
-            width: squareSizePx,
-            height: squareSizePx,
-            fill: defaults.fill,
-            stroke: defaults.stroke,
-            strokeWidth: defaults.strokeWidth,
-            opacity: 1,
-            rotation: 0,
-            label: `${prefix} ${toGridRowLabel(rowIndex)}${columnIndex + 1}`,
-            notes: "",
-            parentId: activePlot.id,
-          });
-        }
-      }
+      const generatedSpaces: CanvasObject[] = buildRectGridObjects({
+        objectType: "space",
+        originX: activePlot.x,
+        originY: activePlot.y,
+        rows: layout.rows,
+        columns: layout.columns,
+        cellWidthPx: layout.cellWidthPx,
+        cellHeightPx: layout.cellHeightPx,
+        labelPrefix,
+        parentId: activePlot.id,
+      });
 
       const nextObjects = [...baseObjects, ...generatedSpaces];
       const saveResult = await commands.saveCanvas(
@@ -434,8 +398,8 @@ export function OutdoorPlotManager() {
       return {
         nextObjects,
         generatedCount: generatedSpaces.length,
-        rows,
-        columns,
+        rows: layout.rows,
+        columns: layout.columns,
       };
     },
     onSuccess: ({ nextObjects, generatedCount, rows, columns }) => {
@@ -470,7 +434,6 @@ export function OutdoorPlotManager() {
     return map;
   }, [canvasPlants]);
 
-  const activePlot = plots.find((plot) => plot.id === activePlotId) ?? null;
   const plotSummaries = useMemo(
     () => new Map(plots.map((plot) => {
       const spaces = objects.filter((object) => object.type === "space" && object.parentId === plot.id);
@@ -595,7 +558,7 @@ export function OutdoorPlotManager() {
                   leftSection={<IconLayoutGridAdd size={14} />}
                   onClick={() => setSubdivideOpen(true)}
                 >
-                  Subdivide into squares
+                  Auto-generate areas
                 </Button>
               </Group>
 
@@ -679,46 +642,22 @@ export function OutdoorPlotManager() {
         />
       )}
 
-      <Modal
-        opened={subdivideOpen && activePlot != null}
-        onClose={() => setSubdivideOpen(false)}
-        title={`Subdivide ${activePlot?.label || "plot"}`}
-        size="sm"
-      >
-        <Stack gap="sm">
-          <Text size="sm" c="dimmed">
-            Generate square planting spaces sized in {gridConfig.unit}. Existing spaces can be replaced to reset this plot to a clean grid.
-          </Text>
-          <NumberInput
-            label={`Square size (${gridConfig.unit})`}
-            value={squareSize}
-            onChange={setSquareSize}
-            min={0.1}
-            decimalScale={2}
-            required
-          />
-          <TextInput
-            label="Space label prefix"
-            value={labelPrefix}
-            onChange={(event) => setLabelPrefix(event.currentTarget.value)}
-            placeholder="Space"
-          />
-          <Checkbox
-            checked={replaceExistingSpaces}
-            onChange={(event) => setReplaceExistingSpaces(event.currentTarget.checked)}
-            label="Replace existing spaces in this plot"
-          />
-          <Text size="xs" c="dimmed">
-            Replacing spaces also clears any plant assignments currently attached to those spaces.
-          </Text>
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setSubdivideOpen(false)}>Cancel</Button>
-            <Button loading={subdividePlot.isPending} onClick={() => subdividePlot.mutate()}>
-              Create grid
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+      {activePlot && (
+        <AreaGeneratorModal
+          opened={subdivideOpen}
+          onClose={() => setSubdivideOpen(false)}
+          onGenerate={(input) => subdividePlot.mutate(input)}
+          title={`Generate areas in ${activePlot.label || "plot"}`}
+          description="Generate planting areas from direct dimensions, target density, or explicit row and column counts."
+          unit={gridConfig.unit}
+          pixelsPerUnit={gridConfig.pixelsPerUnit}
+          containerWidthPx={activePlot.width ?? 0}
+          containerHeightPx={activePlot.height ?? 0}
+          defaultLabelPrefix="Space"
+          loading={subdividePlot.isPending}
+          submitLabel="Create areas"
+        />
+      )}
 
       {envPlants.length === 0 && plots.length > 0 && (
         <Text size="sm" c="dimmed">
