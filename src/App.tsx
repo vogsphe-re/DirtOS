@@ -20,8 +20,13 @@ import bg09 from "../assets/background/bg09.jpg";
 import bg10 from "../assets/background/bg10.jpg";
 import bg11 from "../assets/background/bg11.jpg";
 import bg12 from "../assets/background/bg12.jpg";
+import bg13 from "../assets/background/bg13.jpg";
+import bg14 from "../assets/background/bg14.jpg";
+import bg15 from "../assets/background/bg15.jpg";
+import bg16 from "../assets/background/bg16.jpg";
+import bg17 from "../assets/background/bg17.jpg";
 
-const BG_IMAGES = [bg01, bg02, bg03, bg04, bg05, bg06, bg07, bg08, bg09, bg10, bg11, bg12];
+const BG_IMAGES = [bg01, bg02, bg03, bg04, bg05, bg06, bg07, bg08, bg09, bg10, bg11, bg12, bg13, bg14, bg15, bg16, bg17];
 const sessionBg = BG_IMAGES[Math.floor(Math.random() * BG_IMAGES.length)];
 
 const queryClient = new QueryClient({
