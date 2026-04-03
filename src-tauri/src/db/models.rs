@@ -1099,7 +1099,7 @@ pub struct WeatherCache {
 }
 
 // ---------------------------------------------------------------------------
-// Weather data (parsed from OpenWeather API; cached as JSON)
+// Weather data (from Open-Meteo; cached as JSON)
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -1116,6 +1116,12 @@ pub struct CurrentWeather {
     pub sunrise: Option<i64>,
     pub sunset: Option<i64>,
     pub dt: i64,
+    // Extended fields (Open-Meteo)
+    pub uv_index: Option<f64>,
+    pub visibility_m: Option<f64>,
+    pub dew_point_c: Option<f64>,
+    pub wind_gust_ms: Option<f64>,
+    pub is_day: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -1130,6 +1136,8 @@ pub struct ForecastItem {
     pub precipitation_prob: Option<f64>,
     pub description: String,
     pub icon: String,
+    pub wind_gust_ms: Option<f64>,
+    pub wind_direction_deg: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -1141,6 +1149,13 @@ pub struct DailyForecast {
     pub icon: String,
     pub precipitation_mm: Option<f64>,
     pub precipitation_prob: Option<f64>,
+    // Extended fields
+    pub uv_index_max: Option<f64>,
+    pub wind_speed_max_ms: Option<f64>,
+    pub wind_gusts_max_ms: Option<f64>,
+    pub precipitation_sum_mm: Option<f64>,
+    pub sunrise: Option<String>,
+    pub sunset: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -1150,6 +1165,23 @@ pub struct WeatherData {
     pub daily: Vec<DailyForecast>,
     pub from_cache: bool,
     pub fetched_at: String,
+    pub location_name: Option<String>,
+    pub latitude: Option<f64>,
+    pub longitude: Option<f64>,
+}
+
+/// Configurable thresholds for weather-based issue creation.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct WeatherAlertSettings {
+    /// Create issue when forecast high exceeds this (°C). 0 = disabled.
+    pub heat_max_c: f64,
+    /// Create issue when forecast low drops to or below this (°C).
+    pub frost_min_c: f64,
+    /// Create issue when max wind speed exceeds this (m/s). 0 = disabled.
+    pub wind_max_ms: f64,
+    /// Create issue when precipitation probability exceeds this (0–1). 0 = disabled.
+    pub precip_prob_threshold: f64,
+    pub alerts_enabled: bool,
 }
 
 // ---------------------------------------------------------------------------

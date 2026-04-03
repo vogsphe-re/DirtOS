@@ -214,6 +214,8 @@ fn specta_builder() -> Builder<tauri::Wry> {
         commands::set_weather_api_key,
         commands::get_trefle_api_key,
         commands::set_trefle_api_key,
+        commands::get_weather_alert_settings,
+        commands::set_weather_alert_settings,
         // Sensors
         commands::list_sensors,
         commands::get_sensor,
@@ -383,6 +385,28 @@ pub fn run() {
 
                 tracing::info!("Database initialised successfully");
                 services::backup::start_periodic_backups(app_data_dir.clone(), pool.clone());
+
+                // Seed API keys from environment variables if not already set in DB
+                if let Ok(owm_key) = std::env::var("OPENWEATHERMAP_API_KEY") {
+                    if !owm_key.trim().is_empty() {
+                        let existing = db::weather::get_setting(&pool, "openweather_api_key").await;
+                        if existing.map(|v| v.is_none()).unwrap_or(true) {
+                            if let Err(e) = db::weather::set_setting(&pool, "openweather_api_key", owm_key.trim()).await {
+                                tracing::warn!("Failed to seed OWM API key: {}", e);
+                            } else {
+                                tracing::info!("Seeded OpenWeather API key from environment variable");
+                            }
+                        }
+                    }
+                }
+                if let Ok(trefle_key) = std::env::var("TREFLE_ACCESS_KEY") {
+                    if !trefle_key.trim().is_empty() {
+                        let existing = db::weather::get_setting(&pool, "trefle_api_key").await;
+                        if existing.map(|v| v.is_none()).unwrap_or(true) {
+                            let _ = db::weather::set_setting(&pool, "trefle_api_key", trefle_key.trim()).await;
+                        }
+                    }
+                }
 
                 // Start the cron scheduler before managing the pool
                 let sched_pool = pool.clone();

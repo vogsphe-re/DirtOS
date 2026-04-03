@@ -10,15 +10,6 @@ export function WeatherMiniWidget() {
   const navigate = useNavigate();
   const activeEnvId = useAppStore((s) => s.activeEnvironmentId);
 
-  const { data: apiKey } = useQuery<string | null>({
-    queryKey: ["weather-api-key"],
-    queryFn: async () => {
-      const res = await commands.getWeatherApiKey();
-      if (res.status === "error") return null;
-      return res.data ?? null;
-    },
-  });
-
   const { data: weather, isLoading } = useQuery<WeatherData | null>({
     queryKey: ["weather", activeEnvId],
     queryFn: async () => {
@@ -27,11 +18,11 @@ export function WeatherMiniWidget() {
       if (res.status === "error") return null;
       return res.data ?? null;
     },
-    enabled: !!activeEnvId && !!apiKey,
+    enabled: !!activeEnvId,
     staleTime: 5 * 60 * 1000,
   });
 
-  if (!activeEnvId || !apiKey) return null;
+  if (!activeEnvId) return null;
 
   return (
     <Card

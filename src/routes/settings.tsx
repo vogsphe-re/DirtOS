@@ -84,11 +84,20 @@ function EnvironmentForm({ initial, onSave, onCancel, busy }: EnvFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+
+    // Mantine NumberInput onChange passes `number | string`.
+    // Force numeric coercion so typed values like "35.33429" don't become null.
+    const parseCoord = (v: number | string): number | null => {
+      if (typeof v === "number" && !Number.isNaN(v)) return v;
+      const parsed = parseFloat(String(v));
+      return Number.isNaN(parsed) ? null : parsed;
+    };
+
     await onSave({
       name: name.trim(),
-      latitude: typeof latitude === "number" ? latitude : null,
-      longitude: typeof longitude === "number" ? longitude : null,
-      elevation_m: typeof elevation === "number" ? elevation : null,
+      latitude: parseCoord(latitude),
+      longitude: parseCoord(longitude),
+      elevation_m: parseCoord(elevation),
       timezone: timezone.trim() || null,
       climate_zone: climateZone.trim() || null,
     });

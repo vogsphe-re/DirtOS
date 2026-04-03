@@ -1,7 +1,7 @@
 use chrono::NaiveDateTime;
 use sqlx::SqlitePool;
 
-use super::models::WeatherCache;
+use super::models::{WeatherAlertSettings, WeatherCache};
 
 pub async fn get_cache(
     pool: &SqlitePool,
@@ -59,4 +59,30 @@ pub async fn set_setting(pool: &SqlitePool, key: &str, value: &str) -> Result<()
     .execute(pool)
     .await?;
     Ok(())
+}
+
+const ALERT_SETTINGS_KEY: &str = "weather_alert_settings";
+
+pub async fn get_alert_settings(pool: &SqlitePool) -> Result<WeatherAlertSettings, sqlx::Error> {
+    let json = get_setting(pool, ALERT_SETTINGS_KEY).await?;
+    if let Some(v) = json {
+        if let Ok(s) = serde_json::from_str::<WeatherAlertSettings>(&v) {
+            return Ok(s);
+        }
+    }
+    Ok(WeatherAlertSettings {
+        heat_max_c: 38.0,
+        frost_min_c: 0.0,
+        wind_max_ms: 15.0,
+        precip_prob_threshold: 0.0,
+        alerts_enabled: true,
+    })
+}
+
+pub async fn set_alert_settings(
+    pool: &SqlitePool,
+    settings: &WeatherAlertSettings,
+) -> Result<(), sqlx::Error> {
+    let json = serde_json::to_string(settings).unwrap_or_default();
+    set_setting(pool, ALERT_SETTINGS_KEY, &json).await
 }

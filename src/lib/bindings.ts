@@ -1270,6 +1270,28 @@ async setTrefleApiKey(apiKey: string) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Return the current weather alert threshold settings.
+ */
+async getWeatherAlertSettings() : Promise<Result<WeatherAlertSettings, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_weather_alert_settings") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Update the weather alert threshold settings.
+ */
+async setWeatherAlertSettings(settings: WeatherAlertSettings) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_weather_alert_settings", { settings }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async listSensors(environmentId: number, limit: number | null, offset: number | null) : Promise<Result<Sensor[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("list_sensors", { environmentId, limit, offset }) };
@@ -1709,11 +1731,11 @@ export type BackupJob = { id: number; name: string; schedule_cron: string | null
 export type BackupRun = { id: number; backup_job_id: number | null; status: string; format: BackupFormat; output_ref: string | null; bytes_written: number | null; error_message: string | null; started_at: string; finished_at: string | null }
 export type CalendarEvent = { id: string; event_type: CalendarEventType; date: string; title: string; color: string | null; plant_id: number | null; schedule_id: number | null; issue_id: number | null }
 export type CalendarEventType = "Schedule" | "PlantingDate" | "HarvestDate" | "IssueCreated"
-export type CurrentWeather = { temperature_c: number; feels_like_c: number; humidity: number; pressure_hpa: number; wind_speed_ms: number; wind_direction_deg: number; cloud_cover_pct: number; description: string; icon: string; sunrise: number | null; sunset: number | null; dt: number }
+export type CurrentWeather = { temperature_c: number; feels_like_c: number; humidity: number; pressure_hpa: number; wind_speed_ms: number; wind_direction_deg: number; cloud_cover_pct: number; description: string; icon: string; sunrise: number | null; sunset: number | null; dt: number; uv_index: number | null; visibility_m: number | null; dew_point_c: number | null; wind_gust_ms: number | null; is_day: boolean | null }
 export type CustomField = { id: number; entity_type: CustomFieldEntityType; entity_id: number; field_name: string; field_value: string | null; field_type: CustomFieldType; created_at: string }
 export type CustomFieldEntityType = "Species" | "Plant" | "Location" | "SoilTest"
 export type CustomFieldType = "Text" | "Number" | "Date" | "Boolean"
-export type DailyForecast = { date: string; temp_min_c: number; temp_max_c: number; description: string; icon: string; precipitation_mm: number | null; precipitation_prob: number | null }
+export type DailyForecast = { date: string; temp_min_c: number; temp_max_c: number; description: string; icon: string; precipitation_mm: number | null; precipitation_prob: number | null; uv_index_max: number | null; wind_speed_max_ms: number | null; wind_gusts_max_ms: number | null; precipitation_sum_mm: number | null; sunrise: string | null; sunset: string | null }
 export type Dashboard = { id: number; environment_id: number | null; name: string; description: string | null; template_key: string | null; 
 /**
  * JSON-serialised Vec<WidgetConfig>
@@ -1775,7 +1797,7 @@ link: string | null;
  */
 snippet: string | null }
 export type ExportPayload = { format: BackupFormat; filename: string; content: string; is_base64: boolean }
-export type ForecastItem = { dt: number; temperature_c: number; feels_like_c: number; humidity: number; wind_speed_ms: number; cloud_cover_pct: number; precipitation_mm: number | null; precipitation_prob: number | null; description: string; icon: string }
+export type ForecastItem = { dt: number; temperature_c: number; feels_like_c: number; humidity: number; wind_speed_ms: number; cloud_cover_pct: number; precipitation_mm: number | null; precipitation_prob: number | null; description: string; icon: string; wind_gust_ms: number | null; wind_direction_deg: number | null }
 /**
  * A search/match candidate returned to the frontend for the user to pick.
  */
@@ -1943,7 +1965,8 @@ export type UpdateSpecies = { common_name: string | null; scientific_name: strin
 export type UpsertEnvironmentMapSetting = { latitude: number | null; longitude: number | null; zoom_level: number | null; geocode_json: string | null; weather_overlay: boolean; soil_overlay: boolean; boundaries_geojson: string | null; privacy_level: MapPrivacyLevel; allow_sharing: boolean }
 export type UpsertIndoorReservoirTarget = { ph_min: number | null; ph_max: number | null; ec_min: number | null; ec_max: number | null; ppm_min: number | null; ppm_max: number | null }
 export type UpsertIntegrationConfig = { enabled: boolean; auth_json: string | null; settings_json: string | null; sync_interval_minutes: number | null; cache_ttl_minutes: number | null; rate_limit_per_minute: number | null }
-export type WeatherData = { current: CurrentWeather; hourly: ForecastItem[]; daily: DailyForecast[]; from_cache: boolean; fetched_at: string }
+export type WeatherData = { current: CurrentWeather; hourly: ForecastItem[]; daily: DailyForecast[]; from_cache: boolean; fetched_at: string; location_name: string | null; latitude: number | null; longitude: number | null }
+export type WeatherAlertSettings = { heat_max_c: number; frost_min_c: number; wind_max_ms: number; precip_prob_threshold: number; alerts_enabled: boolean }
 /**
  * A candidate article returned by the fuzzy OpenSearch API.
  */
