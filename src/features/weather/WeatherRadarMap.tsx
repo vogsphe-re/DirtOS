@@ -105,22 +105,42 @@ export function WeatherRadarMap({
     return () => { cancelled = true; clearInterval(id); };
   }, []);
 
-  // Mount Leaflet map once
+  // Mount Leaflet map once.
+  // NOTE: this component is often rendered inside a Mantine Tabs.Panel that starts
+  // hidden (display:none). Leaflet initialises with a 0×0 viewport in that case,
+  // so tiles never load and the centre is wrong. We fix both by attaching a
+  // ResizeObserver: the first time the container gets a nonzero size (i.e. the tab
+  // becomes visible), we call invalidateSize() + setView() so tiles load correctly.
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
-    const map = L.map(containerRef.current, {
+    const container = containerRef.current;
+    if (!container || mapRef.current) return;
+
+    const map = L.map(container, {
       center: [latitude, longitude],
       zoom,
       zoomControl: true,
       attributionControl: true,
     });
+
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 18,
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map);
+
     L.marker([latitude, longitude]).addTo(map);
     mapRef.current = map;
+
+    const ro = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect;
+      if (rect && rect.width > 0 && rect.height > 0) {
+        map.invalidateSize({ animate: false });
+        map.setView([latitude, longitude], zoom, { animate: false });
+      }
+    });
+    ro.observe(container);
+
     return () => {
+      ro.disconnect();
       map.remove();
       mapRef.current = null;
       overlayRef.current = null;
