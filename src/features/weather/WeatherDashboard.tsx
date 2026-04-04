@@ -6,7 +6,6 @@ import {
   Divider,
   Group,
   Loader,
-  PasswordInput,
   SegmentedControl,
   SimpleGrid,
   Stack,
@@ -23,7 +22,6 @@ import {
   IconRefresh,
   IconSettings,
   IconSun,
-  IconTemperature,
   IconThermometer,
   IconWind,
 } from "@tabler/icons-react";
@@ -33,8 +31,10 @@ import type { DailyForecast, WeatherData } from "../../lib/bindings";
 import { commands } from "../../lib/bindings";
 import { useAppStore } from "../../stores/appStore";
 import { useWeatherStore } from "../../stores/weatherStore";
+import { useUnits, type UnitFormatters } from "../../lib/units";
 import { ForecastChart } from "./ForecastChart";
 import { WeatherAlertSettingsPanel } from "./WeatherAlertSettingsPanel";
+import type { RadarLayer } from "./WeatherRadarMap";
 import { WeatherRadarMap } from "./WeatherRadarMap";
 
 // ---------------------------------------------------------------------------
@@ -95,7 +95,7 @@ function StatCard({
 // 10-day forecast card
 // ---------------------------------------------------------------------------
 
-function DayCard({ day }: { day: DailyForecast }) {
+function DayCard({ day, fmt }: { day: DailyForecast; fmt: UnitFormatters }) {
   const date = new Date(day.date + "T12:00:00");
   return (
     <Card padding="xs" radius="sm" withBorder ta="center">
@@ -108,14 +108,14 @@ function DayCard({ day }: { day: DailyForecast }) {
         {day.description}
       </Text>
       <Group justify="center" gap={4} mt={2}>
-        <Text size="xs" fw={700} c="orange">{Math.round(day.temp_max_c)}°</Text>
-        <Text size="xs" c="dimmed">/ {Math.round(day.temp_min_c)}°</Text>
+        <Text size="xs" fw={700} c="orange">{fmt.tempShort(day.temp_max_c)}</Text>
+        <Text size="xs" c="dimmed">/ {fmt.tempShort(day.temp_min_c)}</Text>
       </Group>
       {day.precipitation_prob != null && day.precipitation_prob > 0 && (
         <Text size="xs" c="blue">💧 {Math.round(day.precipitation_prob * 100)}%</Text>
       )}
       {day.precipitation_sum_mm != null && day.precipitation_sum_mm > 0 && (
-        <Text size="xs" c="cyan">{day.precipitation_sum_mm.toFixed(1)} mm</Text>
+        <Text size="xs" c="cyan">{fmt.precip(day.precipitation_sum_mm)}</Text>
       )}
       {day.uv_index_max != null && (
         <Text size="xs" c={uvLabel(day.uv_index_max).color}>
@@ -123,53 +123,8 @@ function DayCard({ day }: { day: DailyForecast }) {
         </Text>
       )}
       {day.wind_speed_max_ms != null && (
-        <Text size="xs" c="dimmed">💨 {day.wind_speed_max_ms.toFixed(1)} m/s</Text>
+        <Text size="xs" c="dimmed">💨 {fmt.wind(day.wind_speed_max_ms)}</Text>
       )}
-    </Card>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// OWM API key setup (only for radar, weather data is free via Open-Meteo)
-// ---------------------------------------------------------------------------
-
-function RadarKeySetup({ onSaved }: { onSaved: () => void }) {
-  const [key, setKey] = useState("");
-  const [saving, setSaving] = useState(false);
-  const save = async () => {
-    if (!key.trim()) return;
-    setSaving(true);
-    try {
-      const res = await commands.setWeatherApiKey(key.trim());
-      if (res.status === "error") throw new Error(res.error);
-      notifications.show({ message: "API key saved for radar tiles", color: "green" });
-      onSaved();
-    } finally {
-      setSaving(false);
-    }
-  };
-  return (
-    <Card withBorder p="md" maw={520}>
-      <Stack gap="sm">
-        <Title order={5}>Enable Weather Radar</Title>
-        <Text size="sm" c="dimmed">
-          Weather data loads from Open-Meteo (free, no key needed). To enable radar tile overlays
-          on the map, optionally add a free OpenWeatherMap API key.
-        </Text>
-        <PasswordInput
-          placeholder="OpenWeatherMap API key (optional for radar)…"
-          value={key}
-          onChange={(e) => setKey(e.currentTarget.value)}
-        />
-        <Group>
-          <Button onClick={save} loading={saving} disabled={!key.trim()} size="xs">
-            Save radar key
-          </Button>
-          <Button variant="subtle" size="xs" onClick={onSaved}>
-            Skip (no radar)
-          </Button>
-        </Group>
-      </Stack>
     </Card>
   );
 }
@@ -182,18 +137,9 @@ export function WeatherDashboard() {
   const qc = useQueryClient();
   const activeEnvId = useAppStore((s) => s.activeEnvironmentId);
   const setWeather = useWeatherStore((s) => s.setWeather);
+  const fmt = useUnits();
 
-  const [radarSetupDone, setRadarSetupDone] = useState(false);
-  const [radarLayer, setRadarLayer] = useState<string>("precipitation_new");
-
-  const { data: apiKey, refetch: refetchKey } = useQuery<string | null>({
-    queryKey: ["weather-api-key"],
-    queryFn: async () => {
-      const res = await commands.getWeatherApiKey();
-      if (res.status === "error") return null;
-      return res.data ?? null;
-    },
-  });
+  const [radarLayer, setRadarLayer] = useState<RadarLayer>("radar");
 
   const {
     data: weather,
@@ -239,9 +185,6 @@ export function WeatherDashboard() {
       </Stack>
     );
   }
-
-  const hasRadarKey = !!apiKey;
-  const showRadarSetup = !hasRadarKey && !radarSetupDone;
 
   return (
     <Stack p="md" gap="lg">
@@ -321,17 +264,17 @@ export function WeatherDashboard() {
                     )}
                     <Box>
                       <Text size="48" fw={800} lh={1}>
-                        {Math.round(weather.current.temperature_c)}°C
+                        {fmt.temp(weather.current.temperature_c)}
                       </Text>
                       <Text size="sm" c="dimmed" style={{ textTransform: "capitalize" }}>
                         {weather.current.description}
                       </Text>
                       <Text size="xs" c="dimmed">
-                        Feels like {Math.round(weather.current.feels_like_c)}°C
+                        Feels like {fmt.temp(weather.current.feels_like_c)}
                       </Text>
                       {weather.daily[0] && (
                         <Text size="xs" c="dimmed">
-                          High {Math.round(weather.daily[0].temp_max_c)}° · Low {Math.round(weather.daily[0].temp_min_c)}°
+                          High {fmt.tempShort(weather.daily[0].temp_max_c)} · Low {fmt.tempShort(weather.daily[0].temp_min_c)}
                         </Text>
                       )}
                     </Box>
@@ -357,14 +300,14 @@ export function WeatherDashboard() {
                   <StatCard
                     icon={<IconWind size={16} />}
                     label="Wind"
-                    value={`${weather.current.wind_speed_ms.toFixed(1)} m/s`}
+                    value={fmt.wind(weather.current.wind_speed_ms)}
                     sub={windDegToCompass(weather.current.wind_direction_deg)}
                   />
                   {weather.current.wind_gust_ms != null && (
                     <StatCard
                       icon={<IconWind size={16} />}
                       label="Gusts"
-                      value={`${weather.current.wind_gust_ms.toFixed(1)} m/s`}
+                      value={fmt.wind(weather.current.wind_gust_ms)}
                     />
                   )}
                   <StatCard
@@ -376,18 +319,14 @@ export function WeatherDashboard() {
                     <StatCard
                       icon={<IconDroplet size={16} />}
                       label="Dew Point"
-                      value={`${Math.round(weather.current.dew_point_c)}°C`}
+                      value={fmt.temp(weather.current.dew_point_c)}
                     />
                   )}
                   {weather.current.visibility_m != null && (
                     <StatCard
                       icon={<IconEye size={16} />}
                       label="Visibility"
-                      value={
-                        weather.current.visibility_m >= 1000
-                          ? `${(weather.current.visibility_m / 1000).toFixed(1)} km`
-                          : `${Math.round(weather.current.visibility_m)} m`
-                      }
+                      value={fmt.visibility(weather.current.visibility_m)}
                     />
                   )}
                   {weather.current.uv_index != null && (
@@ -428,7 +367,7 @@ export function WeatherDashboard() {
                   <Text fw={600}>{weather.daily.length}-Day Forecast</Text>
                   <SimpleGrid cols={{ base: 2, sm: 3, md: 5 }} spacing="xs">
                     {weather.daily.map((day) => (
-                      <DayCard key={day.date} day={day} />
+                      <DayCard key={day.date} day={day} fmt={fmt} />
                     ))}
                   </SimpleGrid>
                 </>
@@ -455,51 +394,35 @@ export function WeatherDashboard() {
           {/* ── Radar Map ────────────────────────────────────────── */}
           <Tabs.Panel value="radar" pt="md">
             <Stack gap="sm">
-              {showRadarSetup ? (
-                <RadarKeySetup
-                  onSaved={() => {
-                    refetchKey();
-                    setRadarSetupDone(true);
-                  }}
+              <Group>
+                <Text size="sm" fw={500}>Overlay:</Text>
+                <SegmentedControl
+                  size="xs"
+                  value={radarLayer}
+                  onChange={(v) => setRadarLayer(v as RadarLayer)}
+                  data={[
+                    { label: "Radar", value: "radar" },
+                    { label: "Satellite", value: "satellite" },
+                    { label: "24h Rain", value: "precip_24h" },
+                    { label: "7-Day Rain", value: "precip_7d" },
+                  ]}
                 />
+              </Group>
+              {weather.latitude != null && weather.longitude != null ? (
+                <Card withBorder p={0} radius="md" style={{ overflow: "hidden" }}>
+                  <WeatherRadarMap
+                    latitude={weather.latitude}
+                    longitude={weather.longitude}
+                    layer={radarLayer}
+                    height={440}
+                  />
+                </Card>
               ) : (
-                <>
-                  {hasRadarKey && (
-                    <Group>
-                      <Text size="sm" fw={500}>Overlay:</Text>
-                      <SegmentedControl
-                        size="xs"
-                        value={radarLayer}
-                        onChange={setRadarLayer}
-                        data={[
-                          { label: "Rain", value: "precipitation_new" },
-                          { label: "Clouds", value: "clouds_new" },
-                          { label: "Wind", value: "wind_new" },
-                          { label: "Temp", value: "temp_new" },
-                        ]}
-                      />
-                    </Group>
-                  )}
-                  {weather.latitude != null && weather.longitude != null ? (
-                    <Card withBorder p={0} radius="md" style={{ overflow: "hidden" }}>
-                      <WeatherRadarMap
-                        latitude={weather.latitude}
-                        longitude={weather.longitude}
-                        owmApiKey={apiKey}
-                        layer={radarLayer as any}
-                        height={440}
-                      />
-                    </Card>
-                  ) : (
-                    <Text c="dimmed" size="sm">Coordinates not available for radar map.</Text>
-                  )}
-                  {!hasRadarKey && (
-                    <Text size="xs" c="dimmed">
-                      Add an OpenWeatherMap API key in the Radar tab setup to enable radar overlays.
-                    </Text>
-                  )}
-                </>
+                <Text c="dimmed" size="sm">Coordinates not available for radar map.</Text>
               )}
+              <Text size="xs" c="dimmed">
+                Radar &amp; Satellite: RainViewer / NOAA NEXRAD &amp; GOES · Precipitation: Iowa Env. Mesonet / NOAA MRMS
+              </Text>
             </Stack>
           </Tabs.Panel>
 

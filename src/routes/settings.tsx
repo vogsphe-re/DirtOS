@@ -27,6 +27,7 @@ import {
 } from "../features/integrations/IntegrationExtensionsPanel";
 import { LabelManager } from "../features/issues/LabelManager";
 import { useAppStore } from "../stores/appStore";
+import type { UnitSystem } from "../stores/appStore";
 import { useEnvironmentStore, type Environment } from "../stores/environmentStore";
 
 export const Route = createFileRoute("/settings")({
@@ -178,6 +179,8 @@ function SettingsPage() {
   const setActiveId = useAppStore((s) => s.setActiveEnvironmentId);
   const colorScheme = useAppStore((s) => s.colorScheme);
   const setColorScheme = useAppStore((s) => s.setColorScheme);
+  const unitSystem = useAppStore((s) => s.unitSystem);
+  const setUnitSystem = useAppStore((s) => s.setUnitSystem);
   const setEnvironment = useEnvironmentStore((s) => s.setEnvironment);
 
   const [creatingNew, setCreatingNew] = useState(false);
@@ -290,6 +293,21 @@ function SettingsPage() {
         <Text size="sm" c="dimmed" mt="sm">
           DirtOS uses Inter for interface text, IM Fell English for headings, and Roboto Mono for measurements and diagnostics.
         </Text>
+
+        <Divider my="sm" />
+
+        <Title order={5} mb={4}>Units</Title>
+        <Text size="sm" c="dimmed" mb="sm">
+          Choose how temperatures, wind speeds, precipitation, and distances are displayed.
+        </Text>
+        <SegmentedControl
+          value={unitSystem}
+          onChange={(value) => setUnitSystem(value as UnitSystem)}
+          data={[
+            { value: "metric", label: "Metric (°C, m/s, mm, km)" },
+            { value: "imperial", label: "Imperial (°F, mph, in, mi)" },
+          ]}
+        />
       </Card>
 
       {/* ---- Environments section ---- */}

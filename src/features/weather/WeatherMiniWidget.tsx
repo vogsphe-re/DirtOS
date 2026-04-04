@@ -5,10 +5,12 @@ import { useNavigate } from "@tanstack/react-router";
 import type { WeatherData } from "../../lib/bindings";
 import { commands } from "../../lib/bindings";
 import { useAppStore } from "../../stores/appStore";
+import { useUnits } from "../../lib/units";
 
 export function WeatherMiniWidget() {
   const navigate = useNavigate();
   const activeEnvId = useAppStore((s) => s.activeEnvironmentId);
+  const fmt = useUnits();
 
   const { data: weather, isLoading } = useQuery<WeatherData | null>({
     queryKey: ["weather", activeEnvId],
@@ -51,7 +53,7 @@ export function WeatherMiniWidget() {
             )}
             <Stack gap={0}>
               <Text size="lg" fw={700} lh={1}>
-                {Math.round(weather.current.temperature_c)}°C
+                {fmt.temp(weather.current.temperature_c)}
               </Text>
               <Text size="xs" c="dimmed" style={{ textTransform: "capitalize" }}>
                 {weather.current.description}
@@ -66,10 +68,10 @@ export function WeatherMiniWidget() {
           {weather.daily[0] && (
             <Stack gap={0} ta="right">
               <Text size="xs" c="orange">
-                ↑ {Math.round(weather.daily[0].temp_max_c)}°
+                ↑ {fmt.tempShort(weather.daily[0].temp_max_c)}
               </Text>
               <Text size="xs" c="dimmed">
-                ↓ {Math.round(weather.daily[0].temp_min_c)}°
+                ↓ {fmt.tempShort(weather.daily[0].temp_min_c)}
               </Text>
             </Stack>
           )}
