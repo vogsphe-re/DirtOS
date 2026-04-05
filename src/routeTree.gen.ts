@@ -14,8 +14,8 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SensorsRouteImport } from './routes/sensors'
 import { Route as SchedulesRouteImport } from './routes/schedules'
 import { Route as ReportsRouteImport } from './routes/reports'
-import { Route as LabelsRouteImport } from './routes/labels'
 import { Route as PlantsRouteImport } from './routes/plants'
+import { Route as LabelsRouteImport } from './routes/labels'
 import { Route as JournalRouteImport } from './routes/journal'
 import { Route as IssuesRouteImport } from './routes/issues'
 import { Route as IndoorRouteImport } from './routes/indoor'
@@ -67,14 +67,14 @@ const ReportsRoute = ReportsRouteImport.update({
   path: '/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LabelsRoute = LabelsRouteImport.update({
-  id: '/labels',
-  path: '/labels',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PlantsRoute = PlantsRouteImport.update({
   id: '/plants',
   path: '/plants',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabelsRoute = LabelsRouteImport.update({
+  id: '/labels',
+  path: '/labels',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JournalRoute = JournalRouteImport.update({
@@ -211,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/indoor': typeof IndoorRouteWithChildren
   '/issues': typeof IssuesRouteWithChildren
   '/journal': typeof JournalRouteWithChildren
+  '/labels': typeof LabelsRoute
   '/plants': typeof PlantsRouteWithChildren
   '/reports': typeof ReportsRoute
   '/schedules': typeof SchedulesRouteWithChildren
@@ -443,13 +444,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SchedulesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/labels': {
-      id: '/labels'
-      path: '/labels'
-      fullPath: '/labels'
-      preLoaderRoute: typeof LabelsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/reports': {
       id: '/reports'
       path: '/reports'
@@ -462,6 +456,13 @@ declare module '@tanstack/react-router' {
       path: '/plants'
       fullPath: '/plants'
       preLoaderRoute: typeof PlantsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labels': {
+      id: '/labels'
+      path: '/labels'
+      fullPath: '/labels'
+      preLoaderRoute: typeof LabelsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/journal': {
