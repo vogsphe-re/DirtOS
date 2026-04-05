@@ -8,7 +8,8 @@ export type WidgetType =
   | "soil_health"
   | "recent_harvests"
   | "recommendations"
-  | "recent_journal";
+  | "recent_journal"
+  | "ha_iframe";
 
 // Supported column spans (12-column grid)
 export type ColSpan = 4 | 6 | 12;
@@ -84,5 +85,11 @@ export const WIDGET_CATALOGUE: WidgetMeta[] = [
     label: "Journal",
     description: "Latest journal entries",
     defaultSpan: 4,
+  },
+  {
+    type: "ha_iframe",
+    label: "Home Assistant Dashboard",
+    description: "Embed a Home Assistant dashboard or panel via its URL",
+    defaultSpan: 12,
   },
 ];

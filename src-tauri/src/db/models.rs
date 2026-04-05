@@ -125,6 +125,7 @@ pub enum SensorConnectionType {
     Mqtt,
     Http,
     Manual,
+    HomeAssistant,
 }
 
 #[derive(Debug, Clone, PartialEq, sqlx::Type, Serialize, Deserialize, Type)]

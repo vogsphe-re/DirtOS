@@ -11,6 +11,8 @@ import {
   Loader,
   Stack,
   Text,
+  TextInput,
+  NumberInput,
   ThemeIcon,
 } from "@mantine/core";
 import {
@@ -493,4 +495,34 @@ export function RecentJournalWidget({ envId }: { envId: number }) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────
+// 10. Home Assistant iframe embed
+// ─────────────────────────────────────────────────────────────
+
+export function HaIframeWidget({ config }: { config: Record<string, unknown> }) {
+  const url = typeof config.url === "string" ? config.url.trim() : "";
+  const height = typeof config.height === "number" ? config.height : 500;
+
+  if (!url) {
+    return (
+      <Box py="xl" ta="center">
+        <Text size="sm" c="dimmed">
+          No URL configured. Edit this widget and enter a Home Assistant dashboard URL.
+        </Text>
+      </Box>
+    );
+  }
+
+  return (
+    <Box style={{ width: "100%", height }}>
+      <iframe
+        src={url}
+        title="Home Assistant"
+        style={{ width: "100%", height: "100%", border: "none", borderRadius: 4 }}
+        allow="fullscreen"
+        loading="lazy"
+      />
+    </Box>
+  );
+}
 

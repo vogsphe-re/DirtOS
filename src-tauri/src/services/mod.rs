@@ -4,6 +4,7 @@ pub mod export;
 pub mod plant_category;
 pub mod gbif;
 pub mod export_import;
+pub mod ha_publisher;
 pub mod inaturalist;
 pub mod issue_generator;
 pub mod indoor;

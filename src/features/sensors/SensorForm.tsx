@@ -31,6 +31,7 @@ const CONNECTION_TYPE_OPTIONS: { value: SensorConnectionType; label: string }[] 
   { value: "manual", label: "Manual Entry" },
   { value: "http", label: "HTTP Endpoint" },
   { value: "mqtt", label: "MQTT Topic" },
+  { value: "home_assistant", label: "Home Assistant (Virtual)" },
   { value: "serial", label: "Serial Port" },
   { value: "usb", label: "USB / Serial" },
 ];
@@ -66,6 +67,12 @@ export function SensorForm({ opened, environmentId, sensor, onClose, onSaved }: 
   const [mqttBroker, setMqttBroker] = useState("");
   const [mqttTopic, setMqttTopic] = useState("");
 
+  // Home Assistant virtual sensor fields
+  const [haUrl, setHaUrl] = useState("");
+  const [haToken, setHaToken] = useState("");
+  const [haEntityId, setHaEntityId] = useState("");
+  const [haAttributePointer, setHaAttributePointer] = useState("");
+
   // Limits
   const [minValue, setMinValue] = useState<number | string>("");
   const [maxValue, setMaxValue] = useState<number | string>("");
@@ -87,6 +94,14 @@ export function SensorForm({ opened, environmentId, sensor, onClose, onSaved }: 
     }
     if (connectionType === "mqtt") {
       return JSON.stringify({ broker_url: mqttBroker, topic: mqttTopic });
+    }
+    if (connectionType === "home_assistant") {
+      return JSON.stringify({
+        ha_url: haUrl,
+        token: haToken,
+        entity_id: haEntityId,
+        attribute_pointer: haAttributePointer || null,
+      });
     }
     return "{}";
   };
@@ -236,6 +251,41 @@ export function SensorForm({ opened, environmentId, sensor, onClose, onSaved }: 
               placeholder="/value"
               value={httpJsonPointer}
               onChange={(e) => setHttpJsonPointer(e.currentTarget.value)}
+            />
+          </Stack>
+        )}
+
+        {connectionType === "home_assistant" && (
+          <Stack gap="xs">
+            <Text size="xs" c="dimmed">
+              Configure a virtual sensor that mirrors a Home Assistant entity state.
+              Requires a Long-Lived Access Token from your HA Profile page.
+            </Text>
+            <TextInput
+              label="Home Assistant URL"
+              placeholder="http://homeassistant.local:8123"
+              value={haUrl}
+              onChange={(e) => setHaUrl(e.currentTarget.value)}
+            />
+            <TextInput
+              label="Long-Lived Access Token"
+              placeholder="eyJ0..."
+              type="password"
+              value={haToken}
+              onChange={(e) => setHaToken(e.currentTarget.value)}
+            />
+            <TextInput
+              label="Entity ID"
+              placeholder="sensor.outdoor_temperature"
+              value={haEntityId}
+              onChange={(e) => setHaEntityId(e.currentTarget.value)}
+            />
+            <TextInput
+              label="Attribute Pointer (optional)"
+              description="JSON pointer into entity attributes, e.g. /temperature. Leave blank to use the entity state directly."
+              placeholder="/temperature"
+              value={haAttributePointer}
+              onChange={(e) => setHaAttributePointer(e.currentTarget.value)}
             />
           </Stack>
         )}

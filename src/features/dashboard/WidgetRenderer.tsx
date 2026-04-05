@@ -13,6 +13,7 @@ import {
   SoilHealthWidget,
   UpcomingSchedulesWidget,
   WeatherWidget,
+  HaIframeWidget,
   EmptyState,
 } from "./widgets";
 
@@ -42,6 +43,8 @@ export function WidgetRenderer({
       return <RecommendationsWidget envId={envId} />;
     case "recent_journal":
       return <RecentJournalWidget envId={envId} />;
+    case "ha_iframe":
+      return <HaIframeWidget config={config.config} />;
     default:
       return <EmptyState msg="Unknown widget type." />;
   }

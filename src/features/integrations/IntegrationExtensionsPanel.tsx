@@ -23,7 +23,7 @@ import { IconExternalLink, IconRefresh, IconSearch } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { commands, type AutomationEvent, type BackupFormat, type BackupJob, type BackupRun, type IntegrationConfig, type IntegrationSyncRun, type IntegrationWebhookToken, type OSMPlaceResult, type SpeciesExternalSource } from "../../lib/bindings";
 
 type Provider = "inaturalist" | "wikipedia" | "osm" | "home_assistant" | "n8n";
@@ -45,6 +45,12 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
   const [callbackProvider, setCallbackProvider] = useState<Provider>("n8n");
   const [callbackToken, setCallbackToken] = useState("");
   const [callbackPayload, setCallbackPayload] = useState('{"sensor_id": 1, "value": 22.5, "unit": "C"}');
+
+  // Home Assistant MQTT publisher settings
+  const [haMqttBroker, setHaMqttBroker] = useState("mqtt://localhost:1883");
+  const [haTopicPrefix, setHaTopicPrefix] = useState("dirtos");
+  const [haInstanceId, setHaInstanceId] = useState("home");
+  const [haPublishInterval, setHaPublishInterval] = useState<number | string>(300);
 
   const { data: integrationConfigs = [] } = useQuery({
     queryKey: ["integration-configs"],
@@ -158,6 +164,46 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
     onError: (e: Error) => notifications.show({ color: "red", title: "Error", message: e.message }),
   });
 
+  // Populate HA settings from DB when config loads
+  useEffect(() => {
+    const haCfg = configByProvider.get("home_assistant");
+    if (haCfg?.settings_json) {
+      try {
+        const s = JSON.parse(haCfg.settings_json);
+        if (s.mqtt_broker) setHaMqttBroker(s.mqtt_broker);
+        if (s.topic_prefix) setHaTopicPrefix(s.topic_prefix);
+        if (s.instance_id) setHaInstanceId(s.instance_id);
+        if (s.publish_interval_seconds) setHaPublishInterval(Number(s.publish_interval_seconds));
+      } catch { /* ignore */ }
+    }
+  }, [configByProvider]);
+
+  const saveHaSettings = useMutation({
+    mutationFn: async () => {
+      const haCfg = configByProvider.get("home_assistant");
+      const settings = JSON.stringify({
+        mqtt_broker: haMqttBroker,
+        topic_prefix: haTopicPrefix,
+        instance_id: haInstanceId,
+        publish_interval_seconds: typeof haPublishInterval === "number" ? haPublishInterval : 300,
+      });
+      const res = await commands.upsertIntegrationConfig("home_assistant", {
+        enabled: haCfg?.enabled ?? false,
+        auth_json: haCfg?.auth_json ?? null,
+        settings_json: settings,
+        sync_interval_minutes: haCfg?.sync_interval_minutes ?? 1440,
+        cache_ttl_minutes: haCfg?.cache_ttl_minutes ?? 240,
+        rate_limit_per_minute: haCfg?.rate_limit_per_minute ?? 60,
+      });
+      if (res.status === "error") throw new Error(res.error);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["integration-configs"] });
+      notifications.show({ color: "green", message: "Home Assistant settings saved. Restart DirtOS to apply." });
+    },
+    onError: (e: Error) => notifications.show({ color: "red", title: "Save failed", message: e.message }),
+  });
+
   const syncSpecies = useMutation({
     mutationFn: async (speciesId: number) => {
       const res = await commands.syncSpeciesExternalSources(speciesId);
@@ -246,6 +292,7 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
         <Tabs.List>
           <Tabs.Tab value="knowledge">Knowledge</Tabs.Tab>
           <Tabs.Tab value="maps">Maps</Tabs.Tab>
+          <Tabs.Tab value="home_assistant">Home Assistant</Tabs.Tab>
           <Tabs.Tab value="automation">Automation</Tabs.Tab>
         </Tabs.List>
 
@@ -422,6 +469,90 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
               <Text size="xs" c="dimmed">
                 Last saved map setting updated at {String(mapSetting.updated_at)}.
               </Text>
+            )}
+          </Stack>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="home_assistant" pt="md">
+          <Stack gap="md">
+            <Text size="sm" c="dimmed">
+              DirtOS publishes sensor readings, plant status, and garden data to Home Assistant via MQTT.
+              Install the <strong>DirtOS</strong> HACS integration in Home Assistant, then configure the same
+              MQTT broker and topic settings here.
+            </Text>
+
+            <Card withBorder>
+              <Group justify="space-between" mb="sm">
+                <Text fw={600}>MQTT Publisher</Text>
+                <Switch
+                  label={configByProvider.get("home_assistant")?.enabled ? "Enabled" : "Disabled"}
+                  checked={!!configByProvider.get("home_assistant")?.enabled}
+                  onChange={(e) =>
+                    upsertConfig.mutate({ provider: "home_assistant", enabled: e.currentTarget.checked })
+                  }
+                />
+              </Group>
+              <Stack gap="sm">
+                <TextInput
+                  label="MQTT Broker URL"
+                  placeholder="mqtt://localhost:1883"
+                  description="Address of your MQTT broker (same one used by Home Assistant)"
+                  value={haMqttBroker}
+                  onChange={(e) => setHaMqttBroker(e.currentTarget.value)}
+                />
+                <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                  <TextInput
+                    label="Topic Prefix"
+                    placeholder="dirtos"
+                    description="Root namespace for all DirtOS MQTT topics"
+                    value={haTopicPrefix}
+                    onChange={(e) => setHaTopicPrefix(e.currentTarget.value)}
+                  />
+                  <TextInput
+                    label="Instance ID"
+                    placeholder="home"
+                    description="Unique slug for this DirtOS instance (no spaces)"
+                    value={haInstanceId}
+                    onChange={(e) => setHaInstanceId(e.currentTarget.value.replace(/\s+/g, "_"))}
+                  />
+                </SimpleGrid>
+                <NumberInput
+                  label="Publish Interval (seconds)"
+                  description="How often DirtOS republishes all state to MQTT (default: 300)"
+                  value={haPublishInterval}
+                  onChange={setHaPublishInterval}
+                  min={30}
+                  max={86400}
+                  w={240}
+                />
+                <Divider />
+                <Text size="xs" c="dimmed">
+                  Topic schema: <Code>{haTopicPrefix}/{haInstanceId}/sensor/&#123;id&#125;/state</Code>
+                  {" · "}
+                  Commands: <Code>{haTopicPrefix}/{haInstanceId}/cmd/#</Code>
+                </Text>
+                <Button loading={saveHaSettings.isPending} onClick={() => saveHaSettings.mutate()} maw={200}>
+                  Save settings
+                </Button>
+              </Stack>
+            </Card>
+
+            <Card withBorder>
+              <Text fw={600} mb={8}>HACS Installation</Text>
+              <Stack gap={6}>
+                <Text size="sm">1. In Home Assistant, go to <strong>HACS → Integrations → Custom repositories</strong></Text>
+                <Text size="sm">2. Add <Code>https://github.com/your-org/ha-dirtos</Code> as an Integration</Text>
+                <Text size="sm">3. Install <strong>DirtOS Garden OS</strong> and reload Home Assistant</Text>
+                <Text size="sm">4. Go to <strong>Settings → Integrations → Add Integration → DirtOS</strong></Text>
+                <Text size="sm">5. Enter Instance Name, Instance ID (<Code>{haInstanceId}</Code>), and Topic Prefix (<Code>{haTopicPrefix}</Code>)</Text>
+              </Stack>
+            </Card>
+
+            {configByProvider.get("home_assistant")?.last_error && (
+              <Card withBorder>
+                <Text fw={600} c="red" mb={4}>Last error</Text>
+                <Code block>{configByProvider.get("home_assistant")!.last_error}</Code>
+              </Card>
             )}
           </Stack>
         </Tabs.Panel>

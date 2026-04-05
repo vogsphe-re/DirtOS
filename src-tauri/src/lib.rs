@@ -420,6 +420,13 @@ pub fn run() {
                 tauri::async_runtime::spawn(async move {
                     services::sensors::poller::start(sensor_app, sensor_pool).await;
                 });
+
+                // Start the Home Assistant MQTT publisher
+                let ha_pool = pool.clone();
+                let ha_app = app_handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    services::ha_publisher::start(ha_app, ha_pool).await;
+                });
                 app_handle.manage(pool);
 
                 startup.set_status(AppStartupStatus {

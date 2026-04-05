@@ -76,6 +76,20 @@ pub struct MqttConfig {
     pub client_id: Option<String>,
 }
 
+/// Configuration for a virtual sensor that mirrors a Home Assistant entity state.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct HomeAssistantConfig {
+    /// Base URL of the HA instance, e.g. "http://homeassistant.local:8123"
+    pub ha_url: String,
+    /// Long-lived access token for the HA REST API.
+    pub token: String,
+    /// Entity ID to read from, e.g. "sensor.outdoor_temperature"
+    pub entity_id: String,
+    /// Optional JSON pointer into `attributes`, e.g. `/temperature`.
+    /// If omitted, the entity `state` field is parsed as a float.
+    pub attribute_pointer: Option<String>,
+}
+
 // ---------------------------------------------------------------------------
 // Serial sensor
 // ---------------------------------------------------------------------------
@@ -231,6 +245,75 @@ impl SensorDriver for MqttSensor {
 }
 
 // ---------------------------------------------------------------------------
+// Home Assistant virtual sensor (mirrors an HA entity state via REST API)
+// ---------------------------------------------------------------------------
+
+pub struct HomeAssistantSensor {
+    pub config: HomeAssistantConfig,
+    pub unit: Option<String>,
+    pub client: reqwest::Client,
+}
+
+#[async_trait]
+impl SensorDriver for HomeAssistantSensor {
+    async fn read(&self) -> Result<DriverReading, SensorError> {
+        let url = format!(
+            "{}/api/states/{}",
+            self.config.ha_url.trim_end_matches('/'),
+            self.config.entity_id,
+        );
+
+        let resp = self
+            .client
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", self.config.token))
+            .header("Content-Type", "application/json")
+            .send()
+            .await
+            .map_err(|e| SensorError::Http(e.to_string()))?;
+
+        if !resp.status().is_success() {
+            return Err(SensorError::Http(format!(
+                "HA REST API returned HTTP {}",
+                resp.status()
+            )));
+        }
+
+        let json: serde_json::Value = resp
+            .json()
+            .await
+            .map_err(|e| SensorError::Http(e.to_string()))?;
+
+        let value = if let Some(ptr) = &self.config.attribute_pointer {
+            // Read from `attributes` object using the JSON pointer
+            json.pointer(&format!("/attributes{}", ptr))
+                .and_then(|v| v.as_f64())
+                .ok_or_else(|| {
+                    SensorError::Parse(format!(
+                        "Attribute pointer '{}' not found or not numeric in HA response",
+                        ptr
+                    ))
+                })?
+        } else {
+            // Read the top-level `state` field
+            json.get("state")
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse::<f64>().ok())
+                .ok_or_else(|| {
+                    SensorError::Parse(format!(
+                        "HA entity '{}' state is not a numeric value",
+                        self.config.entity_id
+                    ))
+                })?
+        };
+
+        Ok(DriverReading { value, unit: self.unit.clone() })
+    }
+
+    fn connection_type_label(&self) -> &'static str { "home_assistant" }
+}
+
+// ---------------------------------------------------------------------------
 // Manual sensor (UI-only entry, no polling)
 // ---------------------------------------------------------------------------
 
@@ -268,6 +351,17 @@ pub fn build_driver(sensor: &Sensor) -> Box<dyn SensorDriver> {
         SensorConnectionType::Mqtt => {
             let config: MqttConfig = serde_json::from_str(cfg).unwrap_or_default();
             Box::new(MqttSensor { config, unit: None })
+        }
+        SensorConnectionType::HomeAssistant => {
+            let config: HomeAssistantConfig = serde_json::from_str(cfg).unwrap_or_default();
+            Box::new(HomeAssistantSensor {
+                config,
+                unit: None,
+                client: reqwest::Client::builder()
+                    .use_rustls_tls()
+                    .build()
+                    .unwrap_or_default(),
+            })
         }
         SensorConnectionType::Manual => Box::new(ManualSensor),
     }
