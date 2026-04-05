@@ -1,3 +1,6 @@
 [submodule "inc/home-assistant"]
 	path = inc/home-assistant
 	url = https://github.com/silverXnoise/home-assistant
+[submodule "inc/ha-dirtos"]
+	path = inc/ha-dirtos
+	url = https://code.dev.nativeit.net/sdavis/ha-dirtos
