@@ -14,6 +14,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SensorsRouteImport } from './routes/sensors'
 import { Route as SchedulesRouteImport } from './routes/schedules'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as LabelsRouteImport } from './routes/labels'
 import { Route as PlantsRouteImport } from './routes/plants'
 import { Route as JournalRouteImport } from './routes/journal'
 import { Route as IssuesRouteImport } from './routes/issues'
@@ -64,6 +65,11 @@ const SchedulesRoute = SchedulesRouteImport.update({
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabelsRoute = LabelsRouteImport.update({
+  id: '/labels',
+  path: '/labels',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlantsRoute = PlantsRouteImport.update({
@@ -234,6 +240,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/labels': typeof LabelsRoute
   '/reports': typeof ReportsRoute
   '/sensors': typeof SensorsRoute
   '/settings': typeof SettingsRoute
@@ -265,6 +272,7 @@ export interface FileRoutesById {
   '/indoor': typeof IndoorRouteWithChildren
   '/issues': typeof IssuesRouteWithChildren
   '/journal': typeof JournalRouteWithChildren
+  '/labels': typeof LabelsRoute
   '/plants': typeof PlantsRouteWithChildren
   '/reports': typeof ReportsRoute
   '/schedules': typeof SchedulesRouteWithChildren
@@ -300,6 +308,7 @@ export interface FileRouteTypes {
     | '/indoor'
     | '/issues'
     | '/journal'
+    | '/labels'
     | '/plants'
     | '/reports'
     | '/schedules'
@@ -329,6 +338,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/labels'
     | '/reports'
     | '/sensors'
     | '/settings'
@@ -359,6 +369,7 @@ export interface FileRouteTypes {
     | '/indoor'
     | '/issues'
     | '/journal'
+    | '/labels'
     | '/plants'
     | '/reports'
     | '/schedules'
@@ -393,6 +404,7 @@ export interface RootRouteChildren {
   IndoorRoute: typeof IndoorRouteWithChildren
   IssuesRoute: typeof IssuesRouteWithChildren
   JournalRoute: typeof JournalRouteWithChildren
+  LabelsRoute: typeof LabelsRoute
   PlantsRoute: typeof PlantsRouteWithChildren
   ReportsRoute: typeof ReportsRoute
   SchedulesRoute: typeof SchedulesRouteWithChildren
@@ -429,6 +441,13 @@ declare module '@tanstack/react-router' {
       path: '/schedules'
       fullPath: '/schedules'
       preLoaderRoute: typeof SchedulesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labels': {
+      id: '/labels'
+      path: '/labels'
+      fullPath: '/labels'
+      preLoaderRoute: typeof LabelsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports': {
@@ -732,6 +751,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndoorRoute: IndoorRouteWithChildren,
   IssuesRoute: IssuesRouteWithChildren,
   JournalRoute: JournalRouteWithChildren,
+  LabelsRoute: LabelsRoute,
   PlantsRoute: PlantsRouteWithChildren,
   ReportsRoute: ReportsRoute,
   SchedulesRoute: SchedulesRouteWithChildren,

@@ -3,6 +3,7 @@ use sqlx::SqlitePool;
 use super::models::{
     NewSeedLot, Pagination, SeedLot, SowSeedInput, UpdateSeedLot,
 };
+use crate::services::asset_tag;
 
 pub async fn list_seed_store(
     pool: &SqlitePool,
@@ -29,12 +30,13 @@ pub async fn create_seed_lot(
     input: NewSeedLot,
 ) -> Result<SeedLot, sqlx::Error> {
     let source_type = input.source_type.unwrap_or_else(|| "purchased".to_string());
+    let tag = asset_tag::generate_tag("SED");
     let result = sqlx::query(
         "INSERT INTO seed_lots
             (species_id, parent_plant_id, harvest_id, lot_label, quantity,
              viability_pct, storage_location, collected_date,
-             source_type, vendor, purchase_date, expiration_date, packet_info, notes)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+             source_type, vendor, purchase_date, expiration_date, packet_info, notes, asset_id)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
     )
     .bind(input.species_id)
     .bind(input.parent_plant_id)
@@ -50,6 +52,7 @@ pub async fn create_seed_lot(
     .bind(&input.expiration_date)
     .bind(&input.packet_info)
     .bind(&input.notes)
+    .bind(&tag)
     .execute(pool)
     .await?;
 

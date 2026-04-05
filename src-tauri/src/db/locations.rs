@@ -1,6 +1,7 @@
 use sqlx::SqlitePool;
 
 use super::models::{Location, NewLocation, Pagination, UpdateLocation};
+use crate::services::asset_tag;
 
 pub async fn list_locations(
     pool: &SqlitePool,
@@ -40,11 +41,18 @@ pub async fn create_location(
     pool: &SqlitePool,
     input: NewLocation,
 ) -> Result<Location, sqlx::Error> {
+    // Serialise the LocationType to its snake_case DB value to pick the prefix.
+    let type_str = serde_json::to_string(&input.location_type)
+        .unwrap_or_default()
+        .trim_matches('"')
+        .to_string();
+    let prefix = asset_tag::prefix_for_location_type(&type_str);
+    let tag = asset_tag::generate_tag(prefix);
     let result = sqlx::query(
         "INSERT INTO locations
             (environment_id, parent_id, type, name, label,
-             position_x, position_y, width, height, canvas_data_json, notes)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+             position_x, position_y, width, height, canvas_data_json, notes, asset_id)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
     )
     .bind(input.environment_id)
     .bind(input.parent_id)
@@ -57,6 +65,7 @@ pub async fn create_location(
     .bind(input.height)
     .bind(&input.canvas_data_json)
     .bind(&input.notes)
+    .bind(&tag)
     .execute(pool)
     .await?;
 

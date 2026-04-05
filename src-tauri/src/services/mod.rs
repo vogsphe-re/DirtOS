@@ -1,3 +1,4 @@
+pub mod asset_tag;
 pub mod backup;
 pub mod eol;
 pub mod export;

@@ -11,6 +11,7 @@ interface AppState {
   sidebarCollapsed: boolean;
   colorScheme: ColorSchemePreference;
   unitSystem: UnitSystem;
+  inventoryMode: boolean;
 
   setActiveEnvironmentId: (id: number | null) => void;
   setActiveDashboardId: (id: number | null) => void;
@@ -18,6 +19,8 @@ interface AppState {
   setColorScheme: (colorScheme: ColorSchemePreference) => void;
   toggleColorScheme: (resolvedColorScheme: ColorScheme) => void;
   setUnitSystem: (unitSystem: UnitSystem) => void;
+  setInventoryMode: (enabled: boolean) => void;
+  toggleInventoryMode: () => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -29,12 +32,15 @@ export const useAppStore = create<AppState>()(
         sidebarCollapsed: false,
         colorScheme: "system",
         unitSystem: "metric",
+        inventoryMode: false,
 
         setActiveEnvironmentId: (id) => set({ activeEnvironmentId: id }, undefined, "app/setActiveEnvironmentId"),
         setActiveDashboardId: (id) => set({ activeDashboardId: id }, undefined, "app/setActiveDashboardId"),
         setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }, undefined, "app/setSidebarCollapsed"),
         setColorScheme: (colorScheme) => set({ colorScheme }, undefined, "app/setColorScheme"),
         setUnitSystem: (unitSystem) => set({ unitSystem }, undefined, "app/setUnitSystem"),
+        setInventoryMode: (enabled) => set({ inventoryMode: enabled }, undefined, "app/setInventoryMode"),
+        toggleInventoryMode: () => set((s) => ({ inventoryMode: !s.inventoryMode }), undefined, "app/toggleInventoryMode"),
         toggleColorScheme: (resolvedColorScheme) =>
           set(
             (state) => ({

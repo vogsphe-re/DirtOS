@@ -1,6 +1,7 @@
 use sqlx::SqlitePool;
 
 use super::models::{Environment, NewEnvironment, Pagination, UpdateEnvironment};
+use crate::services::asset_tag;
 
 pub async fn list_environments(
     pool: &SqlitePool,
@@ -29,9 +30,10 @@ pub async fn create_environment(
     pool: &SqlitePool,
     input: NewEnvironment,
 ) -> Result<Environment, sqlx::Error> {
+    let tag = asset_tag::generate_tag("GDN");
     let result = sqlx::query(
-        "INSERT INTO environments (name, latitude, longitude, elevation_m, timezone, climate_zone)
-         VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO environments (name, latitude, longitude, elevation_m, timezone, climate_zone, asset_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&input.name)
     .bind(input.latitude)
@@ -39,6 +41,7 @@ pub async fn create_environment(
     .bind(input.elevation_m)
     .bind(&input.timezone)
     .bind(&input.climate_zone)
+    .bind(&tag)
     .execute(pool)
     .await?;
 

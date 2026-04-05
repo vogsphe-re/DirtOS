@@ -3,6 +3,7 @@ use sqlx::SqlitePool;
 use super::models::{
     AssignTrayCell, NewSeedlingTray, SeedlingTray, SeedlingTrayCell, UpdateSeedlingTray,
 };
+use crate::services::asset_tag;
 
 // ---------------------------------------------------------------------------
 // Trays
@@ -31,9 +32,10 @@ pub async fn create_tray(
     pool: &SqlitePool,
     input: NewSeedlingTray,
 ) -> Result<SeedlingTray, sqlx::Error> {
+    let tag = asset_tag::generate_tag("TRY");
     let result = sqlx::query(
-        "INSERT INTO seedling_trays (environment_id, name, rows, cols, cell_size_cm, notes)
-         VALUES (?,?,?,?,?,?)",
+        "INSERT INTO seedling_trays (environment_id, name, rows, cols, cell_size_cm, notes, asset_id)
+         VALUES (?,?,?,?,?,?,?)",
     )
     .bind(input.environment_id)
     .bind(&input.name)
@@ -41,6 +43,7 @@ pub async fn create_tray(
     .bind(input.cols)
     .bind(input.cell_size_cm)
     .bind(&input.notes)
+    .bind(&tag)
     .execute(pool)
     .await?;
 

@@ -263,6 +263,9 @@ fn specta_builder() -> Builder<tauri::Wry> {
         commands::delete_season,
         commands::get_report_data,
         commands::get_recommendations,
+        // Inventory / asset tags
+        commands::lookup_asset_tag,
+        commands::list_asset_tags,
         // Dashboards
         commands::list_dashboards,
         commands::get_dashboard,
