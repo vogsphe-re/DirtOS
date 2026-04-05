@@ -50,3 +50,4 @@ tsconfig.tsbuildinfo
 docs/.dev
 docs/.dev/*
 assets/logo
+.agents

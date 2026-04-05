@@ -8,25 +8,14 @@ import { routeTree } from "./routeTree.gen";
 import { useAppStore } from "./stores/appStore";
 import { dirtTheme, gruvboxResolver } from "./theme/config";
 
-import bg01 from "../assets/background/bg01.jpg";
-import bg02 from "../assets/background/bg02.jpg";
-import bg03 from "../assets/background/bg03.jpg";
-import bg04 from "../assets/background/bg04.jpg";
-import bg05 from "../assets/background/bg05.jpg";
-import bg06 from "../assets/background/bg06.jpg";
-import bg07 from "../assets/background/bg07.jpg";
-import bg08 from "../assets/background/bg08.jpg";
-import bg09 from "../assets/background/bg09.jpg";
-import bg10 from "../assets/background/bg10.jpg";
-import bg11 from "../assets/background/bg11.jpg";
-import bg12 from "../assets/background/bg12.jpg";
-import bg13 from "../assets/background/bg13.jpg";
-import bg14 from "../assets/background/bg14.jpg";
-import bg15 from "../assets/background/bg15.jpg";
-import bg16 from "../assets/background/bg16.jpg";
-import bg17 from "../assets/background/bg17.jpg";
+import bg03 from "../assets/background/active/bg03.jpg";
+import bg13 from "../assets/background/active/bg13.jpg";
+import bg14 from "../assets/background/active/bg14.jpg";
+import bg15 from "../assets/background/active/bg15.jpg";
+import bg16 from "../assets/background/active/bg16.jpg";
+import bg17 from "../assets/background/active/bg17.jpg";
 
-const BG_IMAGES = [bg01, bg02, bg03, bg04, bg05, bg06, bg07, bg08, bg09, bg10, bg11, bg12, bg13, bg14, bg15, bg16, bg17];
+const BG_IMAGES = [bg03, bg13, bg14, bg15, bg16, bg17];
 const sessionBg = BG_IMAGES[Math.floor(Math.random() * BG_IMAGES.length)];
 
 const queryClient = new QueryClient({
@@ -83,7 +72,7 @@ function ThemedApp() {
           backgroundImage: `url(${sessionBg})`, // Random background image for the session
           backgroundSize: "cover",
           backgroundPosition: "center",
-          opacity: 0.4,  // Subtle opacity for the background image
+          opacity: 0.5,  // Subtle opacity for the background image
           filter: "blur(2px)", // Slight blur for a softer look
           transform: "scale(1.04)",
           pointerEvents: "none",
