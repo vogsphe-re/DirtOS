@@ -22,6 +22,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { commands } from "../../lib/bindings";
 import type { Harvest, HarvestSummary, NewHarvest, SeedLot } from "../../lib/bindings";
+import { AssetTagInline } from "../../components/AssetTagBadge";
 
 const UNIT_OPTIONS = [
   { value: "g", label: "Grams (g)" },
@@ -159,6 +160,7 @@ export function HarvestLog({ plantId }: HarvestLogProps) {
               <Table.Th>Date</Table.Th>
               <Table.Th>Quantity</Table.Th>
               <Table.Th>Quality</Table.Th>
+              <Table.Th>Tag</Table.Th>
               <Table.Th>Notes</Table.Th>
               <Table.Th />
             </Table.Tr>
@@ -178,6 +180,9 @@ export function HarvestLog({ plantId }: HarvestLogProps) {
                       {h.quality_rating}/5
                     </Badge>
                   ) : "—"}
+                </Table.Td>
+                <Table.Td>
+                  {h.asset_id ? <AssetTagInline tag={h.asset_id} /> : "—"}
                 </Table.Td>
                 <Table.Td>{h.notes ?? "—"}</Table.Td>
                 <Table.Td>
@@ -236,6 +241,7 @@ export function HarvestLog({ plantId }: HarvestLogProps) {
               <Table.Th>Viability</Table.Th>
               <Table.Th>Storage</Table.Th>
               <Table.Th>Collected</Table.Th>
+              <Table.Th>Tag</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -248,6 +254,9 @@ export function HarvestLog({ plantId }: HarvestLogProps) {
                 </Table.Td>
                 <Table.Td>{s.storage_location ?? "—"}</Table.Td>
                 <Table.Td>{s.collected_date ?? "—"}</Table.Td>
+                <Table.Td>
+                  {s.asset_id ? <AssetTagInline tag={s.asset_id} /> : "—"}
+                </Table.Td>
               </Table.Tr>
             ))}
           </Table.Tbody>

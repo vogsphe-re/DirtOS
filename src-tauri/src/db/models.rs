@@ -185,6 +185,7 @@ pub struct Environment {
     pub elevation_m: Option<f64>,
     pub timezone: Option<String>,
     pub climate_zone: Option<String>,
+    pub asset_id: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -228,6 +229,7 @@ pub struct Location {
     pub height: Option<f64>,
     pub canvas_data_json: Option<String>,
     pub notes: Option<String>,
+    pub asset_id: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -1198,6 +1200,7 @@ pub struct Harvest {
     pub unit: Option<String>,
     pub quality_rating: Option<i64>,
     pub notes: Option<String>,
+    pub asset_id: Option<String>,
     pub created_at: NaiveDateTime,
 }
 
@@ -1227,6 +1230,7 @@ pub struct SeedLot {
     pub storage_location: Option<String>,
     pub collected_date: Option<String>,
     pub source_type: String,
+    pub asset_id: Option<String>,
     pub vendor: Option<String>,
     pub purchase_date: Option<String>,
     pub expiration_date: Option<String>,
@@ -1669,6 +1673,7 @@ pub struct SeedlingTray {
     pub cols: i64,
     pub cell_size_cm: Option<f64>,
     pub notes: Option<String>,
+    pub asset_id: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -1739,5 +1744,25 @@ impl Default for Pagination {
     fn default() -> Self {
         Self { limit: 50, offset: 0 }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Inventory / asset-tag lookup
+// ---------------------------------------------------------------------------
+
+/// The result returned when scanning or looking up an asset tag.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct AssetTagLookup {
+    /// The scanned / queried asset tag string.
+    pub asset_tag: String,
+    /// Entity category: "plant", "environment", "location", "harvest",
+    ///                    "seed_lot", or "seedling_tray".
+    pub entity_type: String,
+    /// Primary-key ID of the matching record.
+    pub entity_id: i64,
+    /// Human-readable display name for the entity.
+    pub display_name: String,
+    /// Optional secondary description (e.g. environment name for a plant).
+    pub description: Option<String>,
 }
 

@@ -17,8 +17,7 @@
 /// | Generic    | genr | any other recognized value              |
 /// | Unknown    | unkn | no species / growth_type not set        |
 
-use chrono::Datelike;
-use rand::Rng;
+use rand as _; // keep rand in scope so cargo doesn't drop it from the dep tree
 
 /// Derive a short 4-char category slug from a normalized `growth_type` string.
 ///
@@ -62,17 +61,16 @@ pub fn growth_type_to_slug(growth_type: Option<&str>) -> &'static str {
     "genr"
 }
 
-/// Generate a unique asset ID for a plant.
+/// Generate a unique asset tag for a plant.
 ///
-/// Format: `{year}-{slug}-{6-hex-chars}`  e.g. `2026-herb-a3f5b2`
+/// Format: `PLA-YYRRRR`  e.g. `PLA-26a3f7`
 ///
-/// The six hex digits come from a cryptographically random source via the
-/// `rand` crate, giving ~16 million distinct IDs per year per category.
-pub fn generate_asset_id(growth_type: Option<&str>) -> String {
-    let year = chrono::Utc::now().year();
-    let slug = growth_type_to_slug(growth_type);
-    let hash: u32 = rand::thread_rng().gen_range(0x000000..=0xFFFFFF);
-    format!("{year}-{slug}-{hash:06x}")
+/// This replaces the previous `{year}-{slug}-{6hex}` format.  The `growth_type`
+/// argument is retained for API compatibility but no longer used in the tag
+/// itself; callers that still want a category slug should call
+/// [`growth_type_to_slug`] directly.
+pub fn generate_asset_id(_growth_type: Option<&str>) -> String {
+    crate::services::asset_tag::generate_tag("PLA")
 }
 
 #[cfg(test)]

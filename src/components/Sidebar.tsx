@@ -1,4 +1,4 @@
-import { NavLink, ScrollArea, Stack, Tooltip, Box } from "@mantine/core";
+import { NavLink, ScrollArea, Stack, Tooltip, Box, Badge } from "@mantine/core";
 import {
   IconLayoutDashboard,
   IconMap2,
@@ -16,8 +16,11 @@ import {
   IconChartBar,
   IconInfoCircle,
   IconSettings,
+  IconBarcode,
+  IconPrinter,
 } from "@tabler/icons-react";
 import { useNavigate, useLocation } from "@tanstack/react-router";
+import { useAppStore } from "../stores/appStore";
 
 const NAV_ITEMS = [
   { label: "Dashboard", icon: IconLayoutDashboard, to: "/" as const },
@@ -34,6 +37,7 @@ const NAV_ITEMS = [
   { label: "Sensors", icon: IconWifi, to: "/sensors" as const },
   { label: "Indoor", icon: IconBuildingFactory2, to: "/indoor" as const },
   { label: "Reports", icon: IconChartBar, to: "/reports" as const },
+  { label: "Labels", icon: IconPrinter, to: "/labels" as const },
 ];
 
 const SETTINGS_ITEM = {
@@ -53,6 +57,9 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed }: SidebarProps) {
+  const inventoryMode = useAppStore((s) => s.inventoryMode);
+  const toggleInventoryMode = useAppStore((s) => s.toggleInventoryMode);
+
   return (
     <Stack gap={0} h="100%">
       <ScrollArea flex={1} type="never">
@@ -66,6 +73,34 @@ export function Sidebar({ collapsed }: SidebarProps) {
         py={4}
         style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}
       >
+        {/* Inventory mode toggle */}
+        <Tooltip
+          label={inventoryMode ? "Inventory mode ON — scanner active" : "Enable inventory mode (barcode scanner)"}
+          position="right"
+          offset={8}
+          withArrow
+        >
+          <Box mx={4} my="1px">
+            <NavLink
+              label={collapsed ? undefined : (
+                <Stack gap={0}>
+                  <span>Inventory</span>
+                  {inventoryMode && <Badge size="xs" color="teal" variant="dot">Active</Badge>}
+                </Stack>
+              )}
+              leftSection={
+                <IconBarcode
+                  size={18}
+                  color={inventoryMode ? "var(--mantine-color-teal-6)" : undefined}
+                />
+              }
+              active={inventoryMode}
+              onClick={toggleInventoryMode}
+              color="teal"
+              styles={{ root: { borderRadius: 6 } }}
+            />
+          </Box>
+        </Tooltip>
         <SidebarItem item={SETTINGS_ITEM} collapsed={collapsed} />
         <SidebarItem item={ABOUT_ITEM} collapsed={collapsed} />
       </Box>

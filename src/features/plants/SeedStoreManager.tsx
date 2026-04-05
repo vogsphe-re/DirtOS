@@ -38,6 +38,7 @@ import {
 } from "../../lib/bindings";
 import { useAppStore } from "../../stores/appStore";
 import type { Species } from "./types";
+import { AssetTagInline } from "../../components/AssetTagBadge";
 
 const SOURCE_TYPES = [
   { value: "purchased", label: "Purchased" },
@@ -532,6 +533,11 @@ function SeedStoreCard({
         {lot.notes && (
           <Text size="xs" c="dimmed" lineClamp={2}>
             {lot.notes}
+          </Text>
+        )}
+        {lot.asset_id && (
+          <Text size="xs" c="dimmed" mt={2}>
+            Tag: <AssetTagInline tag={lot.asset_id} />
           </Text>
         )}
       </Stack>

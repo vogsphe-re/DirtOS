@@ -1,6 +1,7 @@
 use sqlx::SqlitePool;
 
 use super::models::{Harvest, HarvestSummary, NewHarvest, Pagination, ReportData, ReportDataPoint, Season, SeedLot, NewSeason};
+use crate::services::asset_tag;
 
 pub async fn list_harvests(
     pool: &SqlitePool,
@@ -56,9 +57,19 @@ pub async fn create_harvest(
     pool: &SqlitePool,
     input: NewHarvest,
 ) -> Result<Harvest, sqlx::Error> {
+    // Derive a LOT- tag from the parent plant's PLA- tag, or generate fresh.
+    let plant_tag: Option<String> = sqlx::query_scalar(
+        "SELECT asset_id FROM plants WHERE id = ?",
+    )
+    .bind(input.plant_id)
+    .fetch_optional(pool)
+    .await?
+    .flatten();
+    let tag = asset_tag::harvest_tag_from_plant(plant_tag.as_deref());
+
     let result = sqlx::query(
-        "INSERT INTO harvests (plant_id, harvest_date, quantity, unit, quality_rating, notes)
-         VALUES (?,?,?,?,?,?)",
+        "INSERT INTO harvests (plant_id, harvest_date, quantity, unit, quality_rating, notes, asset_id)
+         VALUES (?,?,?,?,?,?,?)",
     )
     .bind(input.plant_id)
     .bind(&input.harvest_date)
@@ -66,6 +77,7 @@ pub async fn create_harvest(
     .bind(&input.unit)
     .bind(input.quality_rating)
     .bind(&input.notes)
+    .bind(&tag)
     .execute(pool)
     .await?;
 
@@ -166,11 +178,13 @@ pub async fn create_seed_lot(
         None
     };
 
+    let tag = asset_tag::generate_tag("SED");
+
     let result = sqlx::query(
         "INSERT INTO seed_lots
             (parent_plant_id, harvest_id, species_id, lot_label, quantity, viability_pct,
-             storage_location, collected_date, source_type, notes)
-         VALUES (?,?,?,?,?,?,?,?,'harvested',?)",
+             storage_location, collected_date, source_type, notes, asset_id)
+         VALUES (?,?,?,?,?,?,?,?,'harvested',?,?)",
     )
     .bind(parent_plant_id)
     .bind(harvest_id)
@@ -181,6 +195,7 @@ pub async fn create_seed_lot(
     .bind(&storage_location)
     .bind(&collected_date)
     .bind(&notes)
+    .bind(&tag)
     .execute(pool)
     .await?;
 

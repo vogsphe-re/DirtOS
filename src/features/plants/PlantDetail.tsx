@@ -26,6 +26,7 @@ import { HarvestLog } from "./HarvestLog";
 import { GenealogyView } from "./GenealogyView";
 import type { Plant, PlantStatus, Species } from "./types";
 import { PLANT_STATUS_COLORS, PLANT_STATUS_LABELS } from "./types";
+import { AssetTagBadge } from "../../components/AssetTagBadge";
 
 interface PlantDetailProps {
   plantId: number;
@@ -180,6 +181,9 @@ export function PlantDetail({ plantId }: PlantDetailProps) {
                   Edit
                 </Button>
               </Group>
+              {plant.asset_id && (
+                <AssetTagBadge tag={plant.asset_id} label={plant.name} />
+              )}
               <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
                 <InfoItem
                   label="Status"

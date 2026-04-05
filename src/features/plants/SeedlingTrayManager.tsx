@@ -36,6 +36,7 @@ import {
 } from "../../lib/bindings";
 import { useAppStore } from "../../stores/appStore";
 import type { Plant, Species } from "./types";
+import { AssetTagInline } from "../../components/AssetTagBadge";
 
 // ---------------------------------------------------------------------------
 // Create / edit tray modal
@@ -630,6 +631,9 @@ export function SeedlingTrayManager() {
                 </Group>
                 {tray.notes && (
                   <Text size="xs" c="dimmed" lineClamp={2}>{tray.notes}</Text>
+                )}
+                {tray.asset_id && (
+                  <Text size="xs" c="dimmed">Tag: <AssetTagInline tag={tray.asset_id} /></Text>
                 )}
               </Stack>
             </Card>

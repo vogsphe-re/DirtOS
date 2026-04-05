@@ -34,6 +34,7 @@ import { useEnvironmentStore, type Environment } from "../stores/environmentStor
 import { AppSplash, ErrorState } from "./LoadingStates";
 import { Sidebar } from "./Sidebar";
 import { NotificationCenter } from "./NotificationCenter";
+import { InventoryModeOverlay } from "../features/inventory/InventoryModeOverlay";
 
 // ---------------------------------------------------------------------------
 // First-launch wizard
@@ -160,6 +161,7 @@ export function AppLayout() {
   const setColorScheme = useAppStore((s) => s.setColorScheme);
   const activeEnvironmentId = useAppStore((s) => s.activeEnvironmentId);
   const setActiveEnvironmentId = useAppStore((s) => s.setActiveEnvironmentId);
+  const inventoryMode = useAppStore((s) => s.inventoryMode);
   const setEnvironment = useEnvironmentStore((s) => s.setEnvironment);
 
   const resolvedColorScheme =
@@ -255,6 +257,7 @@ export function AppLayout() {
 
   return (
     <>
+      <InventoryModeOverlay enabled={inventoryMode} />
       {showWizard && (
         <SetupWizard
           onCreated={(env) => {
