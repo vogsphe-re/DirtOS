@@ -8,3 +8,6 @@
 
 # Force specific files to use LF (e.g., shell scripts)
 *.sh text eol=lf
+*.toml text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
