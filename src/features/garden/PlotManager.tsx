@@ -13,10 +13,11 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconEdit, IconLayoutGridAdd, IconPlus, IconTarget, IconTrash } from '@tabler/icons-react';
+import { IconEdit, IconLayoutGridAdd, IconPlus, IconRefresh, IconTarget, IconTrash } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useCanvasStore } from './canvasStore';
 import { buildRectGridObjects } from './layoutGeneration';
+import { generatePlotPrefix } from './plotNameGenerator';
 import { OBJECT_DEFAULTS } from './types';
 
 interface PlotManagerProps {
@@ -46,6 +47,10 @@ export function PlotManager({ onFocusObject }: PlotManagerProps) {
   const [gapX, setGapX] = useState<number | string>(1);
   const [gapY, setGapY] = useState<number | string>(1);
   const [labelPrefix, setLabelPrefix] = useState('Plot');
+
+  const randomizePrefix = () => {
+    setLabelPrefix(generatePlotPrefix(plots.map((p) => p.label)));
+  };
 
   const plots = objects.filter((o) => o.type === 'plot');
 
@@ -255,7 +260,7 @@ export function PlotManager({ onFocusObject }: PlotManagerProps) {
           <Button size="xs" variant="light" leftSection={<IconPlus size={12} />} onClick={createPlot} fullWidth>
             New plot
           </Button>
-          <Button size="xs" variant="default" leftSection={<IconLayoutGridAdd size={12} />} onClick={() => setGeneratorOpen(true)} fullWidth>
+          <Button size="xs" variant="default" leftSection={<IconLayoutGridAdd size={12} />} onClick={() => { setGeneratorOpen(true); randomizePrefix(); }} fullWidth>
             Generate plots
           </Button>
         </Stack>
@@ -328,6 +333,13 @@ export function PlotManager({ onFocusObject }: PlotManagerProps) {
             value={labelPrefix}
             onChange={(event) => setLabelPrefix(event.currentTarget.value)}
             placeholder="Plot"
+            rightSection={
+              <Tooltip label="Generate random prefix" withArrow>
+                <ActionIcon size="sm" variant="subtle" onClick={randomizePrefix}>
+                  <IconRefresh size={14} />
+                </ActionIcon>
+              </Tooltip>
+            }
           />
           <Text size="xs" c="dimmed">
             Preview: {Number(gridRows) || 0} row(s) x {Number(gridColumns) || 0} column(s) starting at {Number(startX) || 0}, {Number(startY) || 0} {gridConfig.unit}.
