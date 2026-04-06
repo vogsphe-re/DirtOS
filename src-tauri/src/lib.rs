@@ -274,6 +274,7 @@ fn specta_builder() -> Builder<tauri::Wry> {
         commands::delete_dashboard,
         // Demo
         commands::seed_demo_garden,
+        commands::save_example_garden,
     ])
 }
 
@@ -431,6 +432,15 @@ pub fn run() {
                     services::ha_publisher::start(ha_app, ha_pool).await;
                 });
                 app_handle.manage(pool);
+
+                // Ensure a clean importable example file exists under Documents/DirtOS/Examples.
+                // This keeps first-run onboarding and manual import flows working even after updates.
+                let example_app = app_handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(err) = commands::demo::ensure_example_garden_installed(&example_app).await {
+                        tracing::warn!("Failed to install example garden file: {}", err);
+                    }
+                });
 
                 startup.set_status(AppStartupStatus {
                     ready: true,

@@ -21,8 +21,7 @@ use rumqttc::{AsyncClient, Event, MqttOptions, Packet, QoS};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::SqlitePool;
-use tauri::{AppHandle, Manager};
-use tokio::sync::Mutex;
+use tauri::AppHandle;
 use tokio::time::sleep;
 
 use crate::db::{self, integrations, models::IntegrationProvider};
