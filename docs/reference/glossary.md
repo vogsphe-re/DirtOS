@@ -89,6 +89,11 @@ Lifecycle state: `planned`, `seedling`, `active`, `harvested`, `removed`, `dead`
 ## Report
 Aggregated output used for seasonal and performance review.
 
+## REST API
+Local HTTP server embedded in DirtOS (default port 7272). Exposes garden data
+over standard REST endpoints for plugins, scripts, and 3rd-party integrations.
+See the [REST API reference](rest-api.md).
+
 ## Reservoir Target
 Defined min/max water chemistry ranges for indoor hydro systems.
 

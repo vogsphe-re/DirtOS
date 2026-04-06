@@ -55,6 +55,7 @@ any archived snapshots.
 - [Weather](reference/weather.md)
 - [Reports](reference/reports.md)
 - [Integrations and API Keys](reference/integrations-and-keys.md)
+- [REST API](reference/rest-api.md)
 - [Architecture](reference/architecture.md)
 - [Glossary](reference/glossary.md)
 

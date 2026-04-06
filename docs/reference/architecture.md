@@ -18,6 +18,7 @@ description: "Technical architecture overview of DirtOS frontend, backend, and d
 - Tauri 2 desktop runtime
 - Rust command modules by feature domain
 - SQLite local data store
+- Embedded axum HTTP server (REST API on `127.0.0.1:7272`)
 - Services for export/import, scheduler, sensors, weather, integrations, and backup
 
 ## Startup lifecycle
@@ -26,7 +27,8 @@ description: "Technical architecture overview of DirtOS frontend, backend, and d
 2. Initialize DB, run migrations, and seed reference data.
 3. Attempt backup recovery if DB init fails.
 4. Start scheduler, sensor polling, and backup services.
-5. Ensure example garden file exists in Documents.
+5. Start the REST API server (`127.0.0.1:7272`).
+6. Ensure example garden file exists in Documents.
 
 ## Data safety model
 
@@ -42,3 +44,4 @@ description: "Technical architecture overview of DirtOS frontend, backend, and d
 - [SQLite](glossary.md#sqlite)
 - [Migration](glossary.md#migration)
 - [Backup Export](glossary.md#backup-export)
+- [REST API](glossary.md#rest-api)

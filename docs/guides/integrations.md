@@ -4,6 +4,20 @@ description: "Configure external integrations and API-backed enrichment features
 ---
 
 DirtOS supports local configuration for enrichment, weather, and automation integrations.
+It also exposes a built-in REST API for plugin development and direct data access.
+
+## REST API
+
+DirtOS runs a local HTTP API on `http://127.0.0.1:7272` automatically when the app
+is open. It covers all core entities — environments, plants, species, schedules,
+sensors, issues, journal entries, and harvests — and is designed for:
+
+- Custom plugins and scripts that read or write garden data
+- Automation platforms (n8n, Home Assistant)
+- Development and testing via Swagger UI or Postman
+
+See the [REST API reference](../reference/rest-api.md) for the full endpoint list,
+request/response schemas, and integration examples.
 
 ## Core integration areas
 
@@ -39,3 +53,4 @@ DirtOS supports local configuration for enrichment, weather, and automation inte
 - [Enrichment](../reference/glossary.md#enrichment)
 - [Sync Run](../reference/glossary.md#sync-run)
 - [Cache TTL](../reference/glossary.md#cache-ttl)
+- [REST API](../reference/glossary.md#rest-api)
