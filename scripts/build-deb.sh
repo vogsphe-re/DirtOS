@@ -1,36 +1,36 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$SCRIPT_DIR/.."
-NPM_VERSION=$(<".nvmrc")
+PROJECT_NAME="DirtOS"
+PROJECT_DIR="$(dirname "$PWD")/${PROJECT_NAME}"
 
-cd "$ROOT"
+cd "$PROJECT_DIR"
 
 # ── Clean previous build   ──────────────────────────────────────────────────
-rm -rf "$ROOT/dist"
+rm -rf "$PROJECT_DIR/dist"
 
-# ── Setup dependencies ──────────────────────────────────────────────────────
-echo "Setting up dependencies..."
+# ── Install prerequisites ───────────────────────────────────────────────────
+echo "Setting up prerequisites..."
 sudo apt update
 sudo apt install -y build-essential fakeroot dpkg-dev debhelper
 
 # ── Setup NPM ───────────────────────────────────────────────────────────────
 echo "Setting up NPM..."
 
-# Check if Node.js is already installed and at the correct version
-if command -v node &> /dev/null; then
-    INSTALLED_NODE_VERSION=$(node -v | sed 's/v//')
-    if [[ "$INSTALLED_NODE_VERSION" == "$NPM_VERSION" || "$INSTALLED_NODE_VERSION" == "$NPM_VERSION.*.*" ]]; then
-        echo "Node.js version $INSTALLED_NODE_VERSION is already installed and matches the required version $NPM_VERSION."
-    else
-        echo "Node.js version $INSTALLED_NODE_VERSION is installed but does not match the required version $NPM_VERSION. Installing the correct version..."
-        curl -fsSL https://deb.nodesource.com/setup_${NPM_VERSION}.x | sudo bash -
-    fi
+# Check if NVM is installed, if not, install it
+if ! command -v nvm &> /dev/null; then
+    echo "NVM is not installed. Installing NVM..."
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 else
-    echo "Node.js is not installed. Installing Node.js version $NPM_VERSION..."
-    curl -fsSL https://deb.nodesource.com/setup_${NPM_VERSION}.x | sudo bash -
+    echo "NVM is already installed."
 fi
+
+# Ensure NVM is loaded and install the required Node.js version
+NVM_VERSION="$(<"$PROJECT_DIR/.nvmrc")"
+nvm install "$NVM_VERSION"
+nvm use "$NVM_VERSION"
 
 # ── Install PNPM globally ───────────────────────────────────────────────────
 
