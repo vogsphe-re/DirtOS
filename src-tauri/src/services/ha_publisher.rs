@@ -1,4 +1,3 @@
-
 ///
 /// 1. Publishes HA MQTT Discovery config messages for every sensor, garden,
 ///    plant, and active issue so Home Assistant auto-creates entities.
