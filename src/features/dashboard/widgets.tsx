@@ -11,8 +11,6 @@ import {
   Loader,
   Stack,
   Text,
-  TextInput,
-  NumberInput,
   ThemeIcon,
 } from "@mantine/core";
 import {
@@ -28,8 +26,9 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { useRef } from "react";
+import { useMemo } from "react";
 import { commands } from "../../lib/bindings";
+import { useUnits } from "../../lib/units";
 import type {
   CalendarEvent,
   Harvest,
@@ -179,12 +178,11 @@ const EVENT_COLORS: Record<string, string> = {
 };
 
 export function UpcomingSchedulesWidget({ envId }: { envId: number }) {
-  const todayRef = useRef(new Date().toISOString().slice(0, 10));
-  const nextWeekRef = useRef(
-    new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10),
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const nextWeek = useMemo(
+    () => new Date(new Date().getTime() + 7 * 86_400_000).toISOString().slice(0, 10),
+    [],
   );
-  const today = todayRef.current;
-  const nextWeek = nextWeekRef.current;
 
   const { data: events = [], isLoading } = useQuery<CalendarEvent[]>({
     queryKey: ["calendar-events", envId, today, nextWeek],
@@ -226,6 +224,7 @@ export function UpcomingSchedulesWidget({ envId }: { envId: number }) {
 // ─────────────────────────────────────────────────────────────
 
 export function WeatherWidget({ envId }: { envId: number }) {
+  const fmt = useUnits();
   const { data: weather, isLoading } = useQuery<WeatherData | null>({
     queryKey: ["weather", envId],
     queryFn: async () => {
@@ -242,13 +241,13 @@ export function WeatherWidget({ envId }: { envId: number }) {
   return (
     <Stack gap="sm">
       <Group gap="sm" align="flex-end">
-        <Text size="xl" fw={700}>{c.temperature_c.toFixed(1)}°C</Text>
+        <Text size="xl" fw={700}>{fmt.temp(c.temperature_c)}</Text>
         <Text size="sm" c="dimmed">{c.description}</Text>
       </Group>
       <Group gap="md">
         <Group gap={4}>
           <IconThermometer size={14} />
-          <Text size="xs">Feels {c.feels_like_c.toFixed(1)}°C</Text>
+          <Text size="xs">Feels {fmt.temp(c.feels_like_c)}</Text>
         </Group>
         <Group gap={4}>
           <IconCloudRain size={14} />
@@ -260,8 +259,8 @@ export function WeatherWidget({ envId }: { envId: number }) {
           {weather.daily.slice(0, 4).map((d, i) => (
             <Card key={i} p={6} withBorder radius="sm" style={{ minWidth: 60, textAlign: "center" }}>
               <Text size="xs" c="dimmed">{d.date.slice(5)}</Text>
-              <Text size="xs" fw={600}>{d.temp_max_c.toFixed(0)}°</Text>
-              <Text size="xs" c="dimmed">{d.temp_min_c.toFixed(0)}°</Text>
+              <Text size="xs" fw={600}>{fmt.tempShort(d.temp_max_c)}</Text>
+              <Text size="xs" c="dimmed">{fmt.tempShort(d.temp_min_c)}</Text>
             </Card>
           ))}
         </Group>
