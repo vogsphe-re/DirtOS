@@ -8,6 +8,7 @@ pub mod commands;
 pub mod db;
 pub mod events;
 pub mod services;
+pub mod api;
 
 use commands::app::AppStartupStatus;
 
@@ -431,7 +432,13 @@ pub fn run() {
                 tauri::async_runtime::spawn(async move {
                     services::ha_publisher::start(ha_app, ha_pool).await;
                 });
-                app_handle.manage(pool);
+                app_handle.manage(pool.clone());
+
+                // Start the REST API server for plugin and integration access.
+                let api_pool = pool.clone();
+                tauri::async_runtime::spawn(async move {
+                    api::start(api_pool).await;
+                });
 
                 // Ensure a clean importable example file exists under Documents/DirtOS/Examples.
                 // This keeps first-run onboarding and manual import flows working even after updates.

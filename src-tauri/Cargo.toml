@@ -46,3 +46,5 @@ aes-gcm-siv = "0.11"
 pbkdf2 = "0.12"
 sha2 = "0.10"
 rand = "0.8"
+axum = "0.8"
+tower-http = { version = "0.6", features = ["cors"] }

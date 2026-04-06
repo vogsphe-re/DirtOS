@@ -1,0 +1,1771 @@
+openapi: "3.1.0"
+
+info:
+  title: DirtOS REST API
+  version: "1"
+  description: |
+    Local REST API embedded in the DirtOS desktop application.
+    Intended for plugin development and 3rd-party integrations (n8n, Home Assistant, scripts, etc.).
+
+    **Base URL:** `http://127.0.0.1:7272`
+    Override the port with the `DIRTOS_API_PORT` environment variable before launching DirtOS.
+
+    All endpoints return JSON. Timestamps are ISO 8601 strings in UTC.
+    Enum values are lowercase snake_case strings unless noted otherwise.
+
+servers:
+  - url: http://127.0.0.1:7272
+    description: DirtOS local API (default port)
+
+tags:
+  - name: Health
+    description: Application health check
+  - name: Environments
+    description: Garden environments (outdoor plots, indoor grow spaces, etc.)
+  - name: Locations
+    description: Named locations within an environment (beds, tents, pots, trays)
+  - name: Species
+    description: Plant species catalog
+  - name: Plants
+    description: Individual plant instances
+  - name: Schedules
+    description: Recurring care schedules (watering, feeding, maintenance)
+  - name: Sensors
+    description: Environmental and soil sensors
+  - name: Issues
+    description: Problem tracking and workflow
+  - name: Journal
+    description: Timestamped garden journal entries
+  - name: Harvests
+    description: Harvest records linked to plants
+
+paths:
+  # ---------------------------------------------------------------------------
+  # Health
+  # ---------------------------------------------------------------------------
+  /api/v1/health:
+    get:
+      tags: [Health]
+      summary: Health check
+      operationId: getHealth
+      responses:
+        "200":
+          description: Application is running
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  version:
+                    type: string
+                    example: "0.2.4"
+
+  # ---------------------------------------------------------------------------
+  # Environments
+  # ---------------------------------------------------------------------------
+  /api/v1/environments:
+    get:
+      tags: [Environments]
+      summary: List environments
+      operationId: listEnvironments
+      parameters:
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: List of environments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Environment"
+    post:
+      tags: [Environments]
+      summary: Create an environment
+      operationId: createEnvironment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewEnvironment"
+      responses:
+        "200":
+          description: Created environment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Environment"
+
+  /api/v1/environments/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Environments]
+      summary: Get an environment
+      operationId: getEnvironment
+      responses:
+        "200":
+          description: Environment record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Environment"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Environments]
+      summary: Update an environment
+      operationId: updateEnvironment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEnvironment"
+      responses:
+        "200":
+          description: Updated environment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Environment"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Environments]
+      summary: Delete an environment
+      operationId: deleteEnvironment
+      responses:
+        "204":
+          description: Deleted successfully
+
+  # ---------------------------------------------------------------------------
+  # Locations
+  # ---------------------------------------------------------------------------
+  /api/v1/locations:
+    get:
+      tags: [Locations]
+      summary: List locations in an environment
+      operationId: listLocations
+      parameters:
+        - $ref: "#/components/parameters/environment_id"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: List of locations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Location"
+    post:
+      tags: [Locations]
+      summary: Create a location
+      operationId: createLocation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewLocation"
+      responses:
+        "200":
+          description: Created location
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+
+  /api/v1/locations/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Locations]
+      summary: Get a location
+      operationId: getLocation
+      responses:
+        "200":
+          description: Location record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Locations]
+      summary: Update a location
+      operationId: updateLocation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLocation"
+      responses:
+        "200":
+          description: Updated location
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Locations]
+      summary: Delete a location
+      operationId: deleteLocation
+      responses:
+        "204":
+          description: Deleted successfully
+
+  # ---------------------------------------------------------------------------
+  # Species
+  # ---------------------------------------------------------------------------
+  /api/v1/species:
+    get:
+      tags: [Species]
+      summary: List / search species
+      operationId: listSpecies
+      parameters:
+        - name: query
+          in: query
+          schema:
+            type: string
+          description: Free-text search against common name and scientific name
+        - name: sun_requirement
+          in: query
+          schema:
+            type: string
+        - name: water_requirement
+          in: query
+          schema:
+            type: string
+        - name: growth_type
+          in: query
+          schema:
+            type: string
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: List of species
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Species"
+    post:
+      tags: [Species]
+      summary: Create a species record
+      operationId: createSpecies
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewSpecies"
+      responses:
+        "200":
+          description: Created species
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Species"
+
+  /api/v1/species/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Species]
+      summary: Get a species record
+      operationId: getSpecies
+      responses:
+        "200":
+          description: Species record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Species"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Species]
+      summary: Update a species record
+      operationId: updateSpecies
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSpecies"
+      responses:
+        "200":
+          description: Updated species
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Species"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Species]
+      summary: Delete a species record
+      operationId: deleteSpecies
+      responses:
+        "204":
+          description: Deleted successfully
+
+  # ---------------------------------------------------------------------------
+  # Plants
+  # ---------------------------------------------------------------------------
+  /api/v1/plants:
+    get:
+      tags: [Plants]
+      summary: List plants in an environment
+      operationId: listPlants
+      parameters:
+        - $ref: "#/components/parameters/environment_id"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: List of plants
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Plant"
+    post:
+      tags: [Plants]
+      summary: Create a plant
+      operationId: createPlant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewPlant"
+      responses:
+        "200":
+          description: Created plant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Plant"
+
+  /api/v1/plants/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Plants]
+      summary: Get a plant
+      operationId: getPlant
+      responses:
+        "200":
+          description: Plant record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Plant"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Plants]
+      summary: Update a plant
+      operationId: updatePlant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePlant"
+      responses:
+        "200":
+          description: Updated plant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Plant"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Plants]
+      summary: Delete a plant
+      operationId: deletePlant
+      responses:
+        "204":
+          description: Deleted successfully
+
+  # ---------------------------------------------------------------------------
+  # Schedules
+  # ---------------------------------------------------------------------------
+  /api/v1/schedules:
+    get:
+      tags: [Schedules]
+      summary: List schedules in an environment
+      operationId: listSchedules
+      parameters:
+        - $ref: "#/components/parameters/environment_id"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: List of schedules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Schedule"
+    post:
+      tags: [Schedules]
+      summary: Create a schedule
+      operationId: createSchedule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewSchedule"
+      responses:
+        "200":
+          description: Created schedule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Schedule"
+
+  /api/v1/schedules/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Schedules]
+      summary: Get a schedule
+      operationId: getSchedule
+      responses:
+        "200":
+          description: Schedule record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Schedule"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Schedules]
+      summary: Update a schedule
+      operationId: updateSchedule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSchedule"
+      responses:
+        "200":
+          description: Updated schedule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Schedule"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Schedules]
+      summary: Delete a schedule
+      operationId: deleteSchedule
+      responses:
+        "204":
+          description: Deleted successfully
+
+  # ---------------------------------------------------------------------------
+  # Sensors
+  # ---------------------------------------------------------------------------
+  /api/v1/sensors:
+    get:
+      tags: [Sensors]
+      summary: List sensors in an environment
+      operationId: listSensors
+      parameters:
+        - $ref: "#/components/parameters/environment_id"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: List of sensors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Sensor"
+    post:
+      tags: [Sensors]
+      summary: Create a sensor
+      operationId: createSensor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewSensor"
+      responses:
+        "200":
+          description: Created sensor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sensor"
+
+  /api/v1/sensors/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Sensors]
+      summary: Get a sensor
+      operationId: getSensor
+      responses:
+        "200":
+          description: Sensor record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sensor"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Sensors]
+      summary: Update a sensor
+      operationId: updateSensor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSensor"
+      responses:
+        "200":
+          description: Updated sensor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sensor"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Sensors]
+      summary: Delete a sensor
+      operationId: deleteSensor
+      responses:
+        "204":
+          description: Deleted successfully
+
+  # ---------------------------------------------------------------------------
+  # Issues
+  # ---------------------------------------------------------------------------
+  /api/v1/issues:
+    get:
+      tags: [Issues]
+      summary: List issues in an environment
+      operationId: listIssues
+      parameters:
+        - $ref: "#/components/parameters/environment_id"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: List of issues
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Issue"
+    post:
+      tags: [Issues]
+      summary: Create an issue
+      operationId: createIssue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewIssue"
+      responses:
+        "200":
+          description: Created issue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Issue"
+
+  /api/v1/issues/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Issues]
+      summary: Get an issue
+      operationId: getIssue
+      responses:
+        "200":
+          description: Issue record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Issue"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Issues]
+      summary: Update an issue
+      operationId: updateIssue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateIssue"
+      responses:
+        "200":
+          description: Updated issue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Issue"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Issues]
+      summary: Delete an issue
+      operationId: deleteIssue
+      responses:
+        "204":
+          description: Deleted successfully
+
+  # ---------------------------------------------------------------------------
+  # Journal
+  # ---------------------------------------------------------------------------
+  /api/v1/journal:
+    get:
+      tags: [Journal]
+      summary: List journal entries in an environment
+      operationId: listJournalEntries
+      parameters:
+        - $ref: "#/components/parameters/environment_id"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: List of journal entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JournalEntry"
+    post:
+      tags: [Journal]
+      summary: Create a journal entry
+      operationId: createJournalEntry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewJournalEntry"
+      responses:
+        "200":
+          description: Created journal entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+
+  /api/v1/journal/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Journal]
+      summary: Get a journal entry
+      operationId: getJournalEntry
+      responses:
+        "200":
+          description: Journal entry record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Journal]
+      summary: Update a journal entry
+      operationId: updateJournalEntry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateJournalEntry"
+      responses:
+        "200":
+          description: Updated journal entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Journal]
+      summary: Delete a journal entry
+      operationId: deleteJournalEntry
+      responses:
+        "204":
+          description: Deleted successfully
+
+  # ---------------------------------------------------------------------------
+  # Harvests
+  # ---------------------------------------------------------------------------
+  /api/v1/harvests:
+    get:
+      tags: [Harvests]
+      summary: List harvests in an environment
+      operationId: listHarvests
+      parameters:
+        - $ref: "#/components/parameters/environment_id"
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+            example: "2026-01-01"
+          description: Filter harvests on or after this date (YYYY-MM-DD)
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+            example: "2026-12-31"
+          description: Filter harvests on or before this date (YYYY-MM-DD)
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: List of harvests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Harvest"
+    post:
+      tags: [Harvests]
+      summary: Record a harvest
+      operationId: createHarvest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewHarvest"
+      responses:
+        "200":
+          description: Created harvest record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Harvest"
+
+  /api/v1/harvests/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Harvests]
+      summary: Get a harvest record
+      operationId: getHarvest
+      responses:
+        "200":
+          description: Harvest record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Harvest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Harvests]
+      summary: Delete a harvest record
+      operationId: deleteHarvest
+      responses:
+        "204":
+          description: Deleted successfully
+
+# ===========================================================================
+# Components
+# ===========================================================================
+components:
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+
+    environment_id:
+      name: environment_id
+      in: query
+      required: true
+      schema:
+        type: integer
+        format: int64
+      description: Filter results to a specific environment
+
+    limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 100
+      description: Maximum number of records to return
+
+    offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        default: 0
+      description: Number of records to skip (for pagination)
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: not found
+
+  schemas:
+    # -------------------------------------------------------------------------
+    # Environment
+    # -------------------------------------------------------------------------
+    Environment:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        latitude:
+          type: number
+          nullable: true
+        longitude:
+          type: number
+          nullable: true
+        elevation_m:
+          type: number
+          nullable: true
+        timezone:
+          type: string
+          nullable: true
+        climate_zone:
+          type: string
+          nullable: true
+        asset_id:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    NewEnvironment:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        latitude:
+          type: number
+          nullable: true
+        longitude:
+          type: number
+          nullable: true
+        elevation_m:
+          type: number
+          nullable: true
+        timezone:
+          type: string
+          nullable: true
+        climate_zone:
+          type: string
+          nullable: true
+
+    UpdateEnvironment:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        latitude:
+          type: number
+          nullable: true
+        longitude:
+          type: number
+          nullable: true
+        elevation_m:
+          type: number
+          nullable: true
+        timezone:
+          type: string
+          nullable: true
+        climate_zone:
+          type: string
+          nullable: true
+
+    # -------------------------------------------------------------------------
+    # Location
+    # -------------------------------------------------------------------------
+    LocationType:
+      type: string
+      enum: [plot, space, tent, tray, pot, shed]
+
+    Location:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        environment_id:
+          type: integer
+          format: int64
+        parent_id:
+          type: integer
+          format: int64
+          nullable: true
+        location_type:
+          $ref: "#/components/schemas/LocationType"
+        name:
+          type: string
+        label:
+          type: string
+          nullable: true
+        position_x:
+          type: number
+          nullable: true
+        position_y:
+          type: number
+          nullable: true
+        width:
+          type: number
+          nullable: true
+        height:
+          type: number
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        asset_id:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    NewLocation:
+      type: object
+      required: [environment_id, location_type, name]
+      properties:
+        environment_id:
+          type: integer
+          format: int64
+        parent_id:
+          type: integer
+          format: int64
+          nullable: true
+        location_type:
+          $ref: "#/components/schemas/LocationType"
+        name:
+          type: string
+        label:
+          type: string
+          nullable: true
+        position_x:
+          type: number
+          nullable: true
+        position_y:
+          type: number
+          nullable: true
+        width:
+          type: number
+          nullable: true
+        height:
+          type: number
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    UpdateLocation:
+      type: object
+      properties:
+        parent_id:
+          type: integer
+          format: int64
+          nullable: true
+        location_type:
+          $ref: "#/components/schemas/LocationType"
+        name:
+          type: string
+          nullable: true
+        label:
+          type: string
+          nullable: true
+        position_x:
+          type: number
+          nullable: true
+        position_y:
+          type: number
+          nullable: true
+        width:
+          type: number
+          nullable: true
+        height:
+          type: number
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    # -------------------------------------------------------------------------
+    # Species
+    # -------------------------------------------------------------------------
+    Species:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        common_name:
+          type: string
+        scientific_name:
+          type: string
+          nullable: true
+        family:
+          type: string
+          nullable: true
+        genus:
+          type: string
+          nullable: true
+        growth_type:
+          type: string
+          nullable: true
+        sun_requirement:
+          type: string
+          nullable: true
+        water_requirement:
+          type: string
+          nullable: true
+        soil_ph_min:
+          type: number
+          nullable: true
+        soil_ph_max:
+          type: number
+          nullable: true
+        spacing_cm:
+          type: number
+          nullable: true
+        days_to_germination_min:
+          type: integer
+          nullable: true
+        days_to_germination_max:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    NewSpecies:
+      type: object
+      required: [common_name]
+      properties:
+        common_name:
+          type: string
+        scientific_name:
+          type: string
+          nullable: true
+        family:
+          type: string
+          nullable: true
+        genus:
+          type: string
+          nullable: true
+        growth_type:
+          type: string
+          nullable: true
+        sun_requirement:
+          type: string
+          nullable: true
+        water_requirement:
+          type: string
+          nullable: true
+        soil_ph_min:
+          type: number
+          nullable: true
+        soil_ph_max:
+          type: number
+          nullable: true
+        spacing_cm:
+          type: number
+          nullable: true
+        days_to_germination_min:
+          type: integer
+          nullable: true
+        days_to_germination_max:
+          type: integer
+          nullable: true
+
+    UpdateSpecies:
+      type: object
+      properties:
+        common_name:
+          type: string
+          nullable: true
+        scientific_name:
+          type: string
+          nullable: true
+        family:
+          type: string
+          nullable: true
+        genus:
+          type: string
+          nullable: true
+        growth_type:
+          type: string
+          nullable: true
+        sun_requirement:
+          type: string
+          nullable: true
+        water_requirement:
+          type: string
+          nullable: true
+        soil_ph_min:
+          type: number
+          nullable: true
+        soil_ph_max:
+          type: number
+          nullable: true
+        spacing_cm:
+          type: number
+          nullable: true
+        days_to_germination_min:
+          type: integer
+          nullable: true
+        days_to_germination_max:
+          type: integer
+          nullable: true
+
+    # -------------------------------------------------------------------------
+    # Plant
+    # -------------------------------------------------------------------------
+    PlantStatus:
+      type: string
+      enum: [planned, seedling, active, harvested, removed, dead]
+
+    Plant:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        species_id:
+          type: integer
+          format: int64
+          nullable: true
+        location_id:
+          type: integer
+          format: int64
+          nullable: true
+        environment_id:
+          type: integer
+          format: int64
+        status:
+          $ref: "#/components/schemas/PlantStatus"
+        name:
+          type: string
+        label:
+          type: string
+          nullable: true
+        asset_id:
+          type: string
+          nullable: true
+        planted_date:
+          type: string
+          format: date
+          nullable: true
+        germinated_date:
+          type: string
+          format: date
+          nullable: true
+        transplanted_date:
+          type: string
+          format: date
+          nullable: true
+        removed_date:
+          type: string
+          format: date
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    NewPlant:
+      type: object
+      required: [environment_id, name]
+      properties:
+        environment_id:
+          type: integer
+          format: int64
+        species_id:
+          type: integer
+          format: int64
+          nullable: true
+        location_id:
+          type: integer
+          format: int64
+          nullable: true
+        status:
+          $ref: "#/components/schemas/PlantStatus"
+        name:
+          type: string
+        label:
+          type: string
+          nullable: true
+        planted_date:
+          type: string
+          format: date
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    UpdatePlant:
+      type: object
+      properties:
+        species_id:
+          type: integer
+          format: int64
+          nullable: true
+        location_id:
+          type: integer
+          format: int64
+          nullable: true
+        status:
+          $ref: "#/components/schemas/PlantStatus"
+        name:
+          type: string
+          nullable: true
+        label:
+          type: string
+          nullable: true
+        planted_date:
+          type: string
+          format: date
+          nullable: true
+        germinated_date:
+          type: string
+          format: date
+          nullable: true
+        transplanted_date:
+          type: string
+          format: date
+          nullable: true
+        removed_date:
+          type: string
+          format: date
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    # -------------------------------------------------------------------------
+    # Schedule
+    # -------------------------------------------------------------------------
+    ScheduleType:
+      type: string
+      enum: [water, feed, maintenance, treatment, sample, custom]
+
+    Schedule:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        environment_id:
+          type: integer
+          format: int64
+          nullable: true
+        plant_id:
+          type: integer
+          format: int64
+          nullable: true
+        location_id:
+          type: integer
+          format: int64
+          nullable: true
+        schedule_type:
+          $ref: "#/components/schemas/ScheduleType"
+        title:
+          type: string
+        cron_expression:
+          type: string
+          nullable: true
+          description: Standard 5-field cron expression (e.g. "0 8 * * *" = 08:00 daily)
+        next_run_at:
+          type: string
+          format: date-time
+          nullable: true
+        is_active:
+          type: boolean
+        notes:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    NewSchedule:
+      type: object
+      required: [schedule_type, title]
+      properties:
+        environment_id:
+          type: integer
+          format: int64
+          nullable: true
+        plant_id:
+          type: integer
+          format: int64
+          nullable: true
+        location_id:
+          type: integer
+          format: int64
+          nullable: true
+        schedule_type:
+          $ref: "#/components/schemas/ScheduleType"
+        title:
+          type: string
+        cron_expression:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+          default: true
+        notes:
+          type: string
+          nullable: true
+
+    UpdateSchedule:
+      type: object
+      properties:
+        schedule_type:
+          $ref: "#/components/schemas/ScheduleType"
+        title:
+          type: string
+          nullable: true
+        cron_expression:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+          nullable: true
+        plant_id:
+          type: integer
+          format: int64
+          nullable: true
+        location_id:
+          type: integer
+          format: int64
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    # -------------------------------------------------------------------------
+    # Sensor
+    # -------------------------------------------------------------------------
+    SensorType:
+      type: string
+      enum: [moisture, light, temperature, humidity, ph, ec, co2, air_quality, custom]
+
+    SensorConnectionType:
+      type: string
+      enum: [serial, usb, mqtt, http, manual, home_assistant]
+
+    Sensor:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        environment_id:
+          type: integer
+          format: int64
+          nullable: true
+        location_id:
+          type: integer
+          format: int64
+          nullable: true
+        plant_id:
+          type: integer
+          format: int64
+          nullable: true
+        name:
+          type: string
+        sensor_type:
+          $ref: "#/components/schemas/SensorType"
+        connection_type:
+          $ref: "#/components/schemas/SensorConnectionType"
+        connection_config_json:
+          type: string
+          nullable: true
+          description: JSON blob with connection-specific configuration
+        poll_interval_seconds:
+          type: integer
+          nullable: true
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    NewSensor:
+      type: object
+      required: [name, sensor_type, connection_type]
+      properties:
+        environment_id:
+          type: integer
+          format: int64
+          nullable: true
+        location_id:
+          type: integer
+          format: int64
+          nullable: true
+        plant_id:
+          type: integer
+          format: int64
+          nullable: true
+        name:
+          type: string
+        sensor_type:
+          $ref: "#/components/schemas/SensorType"
+        connection_type:
+          $ref: "#/components/schemas/SensorConnectionType"
+        connection_config_json:
+          type: string
+          nullable: true
+        poll_interval_seconds:
+          type: integer
+          nullable: true
+        is_active:
+          type: boolean
+          default: true
+
+    UpdateSensor:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        sensor_type:
+          $ref: "#/components/schemas/SensorType"
+        connection_type:
+          $ref: "#/components/schemas/SensorConnectionType"
+        connection_config_json:
+          type: string
+          nullable: true
+        poll_interval_seconds:
+          type: integer
+          nullable: true
+        location_id:
+          type: integer
+          format: int64
+          nullable: true
+        plant_id:
+          type: integer
+          format: int64
+          nullable: true
+        is_active:
+          type: boolean
+          nullable: true
+
+    # -------------------------------------------------------------------------
+    # Issue
+    # -------------------------------------------------------------------------
+    IssueStatus:
+      type: string
+      enum: [new, open, in_progress, closed]
+
+    IssuePriority:
+      type: string
+      enum: [low, medium, high, critical]
+
+    Issue:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        environment_id:
+          type: integer
+          format: int64
+          nullable: true
+        plant_id:
+          type: integer
+          format: int64
+          nullable: true
+        location_id:
+          type: integer
+          format: int64
+          nullable: true
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/IssueStatus"
+        priority:
+          $ref: "#/components/schemas/IssuePriority"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        closed_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    NewIssue:
+      type: object
+      required: [title]
+      properties:
+        environment_id:
+          type: integer
+          format: int64
+          nullable: true
+        plant_id:
+          type: integer
+          format: int64
+          nullable: true
+        location_id:
+          type: integer
+          format: int64
+          nullable: true
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/IssueStatus"
+        priority:
+          $ref: "#/components/schemas/IssuePriority"
+
+    UpdateIssue:
+      type: object
+      properties:
+        title:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/IssueStatus"
+        priority:
+          $ref: "#/components/schemas/IssuePriority"
+        plant_id:
+          type: integer
+          format: int64
+          nullable: true
+        location_id:
+          type: integer
+          format: int64
+          nullable: true
+
+    # -------------------------------------------------------------------------
+    # Journal
+    # -------------------------------------------------------------------------
+    JournalEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        environment_id:
+          type: integer
+          format: int64
+          nullable: true
+        plant_id:
+          type: integer
+          format: int64
+          nullable: true
+        location_id:
+          type: integer
+          format: int64
+          nullable: true
+        title:
+          type: string
+        body:
+          type: string
+          nullable: true
+        conditions_json:
+          type: string
+          nullable: true
+          description: JSON blob with environmental conditions at time of entry
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    NewJournalEntry:
+      type: object
+      required: [title]
+      properties:
+        environment_id:
+          type: integer
+          format: int64
+          nullable: true
+        plant_id:
+          type: integer
+          format: int64
+          nullable: true
+        location_id:
+          type: integer
+          format: int64
+          nullable: true
+        title:
+          type: string
+        body:
+          type: string
+          nullable: true
+        conditions_json:
+          type: string
+          nullable: true
+
+    UpdateJournalEntry:
+      type: object
+      properties:
+        title:
+          type: string
+          nullable: true
+        body:
+          type: string
+          nullable: true
+        conditions_json:
+          type: string
+          nullable: true
+
+    # -------------------------------------------------------------------------
+    # Harvest
+    # -------------------------------------------------------------------------
+    Harvest:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        plant_id:
+          type: integer
+          format: int64
+        harvest_date:
+          type: string
+          format: date
+        quantity:
+          type: number
+          nullable: true
+        unit:
+          type: string
+          nullable: true
+        quality_rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        asset_id:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    NewHarvest:
+      type: object
+      required: [plant_id, harvest_date]
+      properties:
+        plant_id:
+          type: integer
+          format: int64
+        harvest_date:
+          type: string
+          format: date
+          example: "2026-07-15"
+        quantity:
+          type: number
+          nullable: true
+        unit:
+          type: string
+          nullable: true
+          example: kg
+        quality_rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          nullable: true
+        notes:
+          type: string
+          nullable: true
