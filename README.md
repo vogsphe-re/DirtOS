@@ -1,6 +1,6 @@
 # DirtOS
 
-![DirtOS Splash](splash.png)
+![DirtOS Splash](assets/DirtOS.png)
 
 > DirtOS is a unified application for home gardening that facilitates planning, lifecycles, monitoring, and management of gardens of all shapes/sizes.
 
@@ -23,7 +23,6 @@
 - Built-in database includes a wide variety of default/generic soil types, fertilizers, and water/soil additives to help determine the garden's ideal conditions, and track health/quality.
 - Users can add their own custom fields, attributes, and/or photos.
 - Each individual plant added to the garden is included as its own entry in the database that's linked to its respective species, and given customizable attributes and fields specific to that individual for things like notes, dates, photos, attachments, and geneological information (if the plant was grown from a seed harvested from another plant in the garden), and purchase information (if it was bought).
-
 
 ### Suite of Gardening Tools & Utilities
 
