@@ -94,7 +94,8 @@ function snapshotDocs(args) {
 }
 
 function main() {
-  const [command = "build", ...args] = process.argv.slice(2);
+  const [command = "build", ...rawArgs] = process.argv.slice(2);
+  const args = rawArgs[0] === "--" ? rawArgs.slice(1) : rawArgs;
 
   try {
     switch (command) {

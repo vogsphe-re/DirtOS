@@ -29,8 +29,9 @@ echo "New version:     $NEW_VERSION"
 # ── Determine documentation release version ──────────────────────────────────
 # Docs can be versioned independently by overriding DOCS_VERSION_ID/LABEL.
 CURRENT_DOCS_VERSION="$(node -p "require('./docs.versions.json').current.id")"
-DOCS_VERSION_ID="${DOCS_VERSION_ID:-$NEW_VERSION}"
-DOCS_VERSION_LABEL="${DOCS_VERSION_LABEL:-$DOCS_VERSION_ID}"
+CURRENT_DOCS_LABEL="$(node -p "require('./docs.versions.json').current.label")"
+DOCS_VERSION_ID="${DOCS_VERSION_ID:-$CURRENT_DOCS_VERSION}"
+DOCS_VERSION_LABEL="${DOCS_VERSION_LABEL:-$CURRENT_DOCS_LABEL}"
 DOCS_ARCHIVE_DIR=""
 
 echo "Current docs:    $CURRENT_DOCS_VERSION"
