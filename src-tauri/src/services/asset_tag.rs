@@ -29,13 +29,12 @@
 /// | SHD    | Shed location                    |
 /// | PLA    | Individual plant                 |
 /// | SED    | Seed lot / seed package          |
-/// | LOT    | Harvest lot (derived from plant) |
+/// | LOT    | Harvest lot                      |
 ///
 /// ## Harvest tags
 ///
-/// Harvest asset tags keep the same 6-digit hex suffix as the parent plant's
-/// tag but swap the `PLA-` prefix for `LOT-`.  This preserves the visible
-/// link between plant and harvest without any extra DB join.
+/// Harvest asset tags use the `LOT-` prefix with a freshly-generated random
+/// suffix.  The plant relationship is stored in `harvests.plant_id`.
 use chrono::Datelike;
 use rand::Rng;
 
@@ -53,19 +52,12 @@ pub fn generate_tag(prefix: &str) -> String {
     format!("{}-{:02x}{:04x}", prefix, year, suffix)
 }
 
-/// Derive a harvest tag from a plant's existing asset tag.
+/// Generate a unique harvest asset tag.
 ///
-/// Swaps the leading `PLA-` for `LOT-`, keeping the hex suffix identical so
-/// the plant↔harvest relationship is apparent from the tag alone.
-///
-/// Falls back to a freshly-generated `LOT-` tag if the plant has no tag or
-/// if the tag doesn't start with `PLA-`.
-pub fn harvest_tag_from_plant(plant_asset_id: Option<&str>) -> String {
-    if let Some(tag) = plant_asset_id {
-        if let Some(rest) = tag.strip_prefix("PLA-") {
-            return format!("LOT-{rest}");
-        }
-    }
+/// Always returns a freshly-generated `LOT-` tag. The plant relationship is
+/// stored in `harvests.plant_id`; encoding it in the tag suffix caused UNIQUE
+/// constraint violations when a plant had more than one harvest.
+pub fn harvest_tag_from_plant(_plant_asset_id: Option<&str>) -> String {
     generate_tag("LOT")
 }
 
@@ -100,15 +92,12 @@ mod tests {
     }
 
     #[test]
-    fn harvest_tag_derived() {
-        let plant_tag = "PLA-26a3f7";
-        let harvest_tag = harvest_tag_from_plant(Some(plant_tag));
-        assert_eq!(harvest_tag, "LOT-26a3f7");
-    }
-
-    #[test]
-    fn harvest_tag_fallback() {
-        let tag = harvest_tag_from_plant(None);
-        assert!(tag.starts_with("LOT-"));
+    fn harvest_tag_is_unique_lot() {
+        let t1 = harvest_tag_from_plant(Some("PLA-26a3f7"));
+        let t2 = harvest_tag_from_plant(Some("PLA-26a3f7"));
+        assert!(t1.starts_with("LOT-"));
+        assert!(t2.starts_with("LOT-"));
+        // Two harvests for the same plant must get different tags.
+        assert_ne!(t1, t2);
     }
 }
