@@ -1,0 +1,137 @@
+:root {
+  --dirtos-docs-bg: #f9f5e8;
+  --dirtos-docs-fg: #2f2a24;
+  --dirtos-docs-muted: #665c54;
+  --dirtos-docs-accent: #3f7a6b;
+  --dirtos-docs-accent-strong: #2f5d53;
+  --dirtos-docs-border: #d8ccb8;
+  --dirtos-docs-code-bg: #f1e8d5;
+}
+
+html,
+body {
+  background: radial-gradient(circle at top left, #fdf7ee 0%, #f8f1e0 42%, #f3ead6 100%);
+}
+
+body {
+  color: var(--dirtos-docs-fg);
+  font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  text-rendering: optimizeLegibility;
+  line-height: 1.65;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: #2b241d;
+  font-family: "IM Fell English", Georgia, "Times New Roman", serif;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+}
+
+h1 {
+  font-size: clamp(2rem, 2.2vw + 1rem, 2.85rem);
+}
+
+h2 {
+  font-size: clamp(1.5rem, 1.3vw + 0.9rem, 2rem);
+  margin-top: 2rem;
+  border-bottom: 1px solid var(--dirtos-docs-border);
+  padding-bottom: 0.35rem;
+}
+
+a {
+  color: var(--dirtos-docs-accent);
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.14em;
+}
+
+a:hover {
+  color: var(--dirtos-docs-accent-strong);
+}
+
+code,
+pre {
+  font-family: "Roboto Mono", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+pre {
+  border: 1px solid var(--dirtos-docs-border);
+  border-radius: 10px;
+  background: var(--dirtos-docs-code-bg);
+}
+
+code {
+  background: color-mix(in srgb, var(--dirtos-docs-code-bg) 82%, white 18%);
+  border-radius: 6px;
+  padding: 0.12rem 0.34rem;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+  font-size: 0.96rem;
+}
+
+table th,
+table td {
+  border: 1px solid var(--dirtos-docs-border);
+  padding: 0.55rem 0.7rem;
+  vertical-align: top;
+}
+
+table th {
+  background: #efe6d4;
+  text-align: left;
+}
+
+blockquote {
+  border-left: 4px solid #8f7e6a;
+  margin: 1rem 0;
+  padding: 0.4rem 0.9rem;
+  color: #4b4036;
+  background: #f6eddc;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --dirtos-docs-bg: #1f1d1a;
+    --dirtos-docs-fg: #e9ddc8;
+    --dirtos-docs-muted: #bfae96;
+    --dirtos-docs-accent: #8db7ad;
+    --dirtos-docs-accent-strong: #b5d4cd;
+    --dirtos-docs-border: #4b4339;
+    --dirtos-docs-code-bg: #2b2722;
+  }
+
+  html,
+  body {
+    background: radial-gradient(circle at top left, #2c2a25 0%, #1f1d1a 45%, #171513 100%);
+  }
+
+  body {
+    color: var(--dirtos-docs-fg);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: #f0e4cd;
+  }
+
+  table th {
+    background: #2d2822;
+  }
+
+  blockquote {
+    background: #2b2620;
+    color: #dacbb4;
+  }
+}
