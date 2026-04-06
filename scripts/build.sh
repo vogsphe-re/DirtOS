@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-NPM_VERSION="(<"$SCRIPT_DIR/../.nvmrc")"
+NPM_VERSION="$(<"$SCRIPT_DIR/../.nvmrc")"
 ROOT="$SCRIPT_DIR/.."
 
 cd "$ROOT"
@@ -43,6 +43,8 @@ fi
 
 # Install dependencies and build the project with the deb bundle
 pnpm install
+echo "Building documentation..."
+pnpm docsmd
 echo "Running clean build..."
 pnpm build
 

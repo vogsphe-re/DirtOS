@@ -30,13 +30,22 @@ DirtOS documentation is maintained with `docmd`.
 
 ```bash
 pnpm install
-pnpm docs:dev
+pnpm docsmd:dev
 ```
 
 Build static docs:
 
 ```bash
-pnpm docs:build
+pnpm docsmd
+```
+
+Docs versioning is managed separately from the app release number in
+`docs.versions.json`.
+
+To archive the current docs and advance the active docs release:
+
+```bash
+pnpm docsmd:snapshot -- 2026-05 "2026.05"
 ```
 
 ## Zero-Config docs mode

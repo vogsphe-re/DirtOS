@@ -1,8 +1,24 @@
-import { defineConfig } from "@docmd/core";
+const { readFileSync } = require("node:fs");
+const path = require("node:path");
+const { defineConfig } = require("@docmd/core");
 
-export default defineConfig({
+const docsVersioning = JSON.parse(
+  readFileSync(path.resolve(__dirname, "docs.versions.json"), "utf8"),
+);
+
+const siteUrl = docsVersioning.siteUrl || "";
+const docsVersions = [
+  {
+    id: "current",
+    dir: "docs",
+    label: `${docsVersioning.current.label} (Current)`,
+  },
+  ...(docsVersioning.archives || []),
+];
+
+module.exports = defineConfig({
   title: "DirtOS Documentation",
-  url: "",
+  url: siteUrl,
 
   logo: {
     light: "assets/logo-dark.png",
@@ -32,7 +48,7 @@ export default defineConfig({
     },
     footer: {
       style: "minimal",
-      content: "© " + new Date().getFullYear() + " DirtOS",
+      content: `© ${new Date().getFullYear()} DirtOS • Docs ${docsVersioning.current.label}`,
       branding: true,
     },
   },
@@ -48,6 +64,11 @@ export default defineConfig({
   autoTitleFromH1: true,
   copyCode: true,
   pageNavigation: true,
+  versions: {
+    position: "sidebar-top",
+    current: "current",
+    all: docsVersions,
+  },
 
   customJs: [],
 
@@ -108,10 +129,14 @@ export default defineConfig({
       openGraph: { defaultImage: "" },
       twitter: { cardType: "summary_large_image" },
     },
-    sitemap: { defaultChangefreq: "weekly" },
     search: {},
     mermaid: {},
-    llms: {},
+    ...(siteUrl
+      ? {
+          sitemap: { defaultChangefreq: "weekly" },
+          llms: {},
+        }
+      : {}),
   },
 
   editLink: {

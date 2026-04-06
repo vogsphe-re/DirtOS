@@ -3,7 +3,7 @@ title: "DirtOS Documentation"
 description: "Practical user and feature documentation for DirtOS."
 ---
 
-![DirtOS Splash](assets/DirtOS.png)
+![DirtOS Splash](../assets/DirtOS.png)
 
 DirtOS is a local-first desktop platform for planning, tracking, and
 operating home gardens.
@@ -14,8 +14,19 @@ This documentation is organized so you can:
 2. Learn common workflows.
 3. Look up feature details and field-level references.
 
+The documentation release track is versioned independently from DirtOS itself.
+Use the version switcher in the sidebar to move between the current docs and
+any archived snapshots.
+
 > [SCREENSHOT:docs-home-overview]
 > Capture the docs home page after final formatting and theme polish.
+
+## Docs Versioning
+
+- Current docs release metadata lives in `docs.versions.json`.
+- Build the current docs release with `pnpm docsmd`.
+- Archive the current docs and advance the active docs release with
+  `pnpm docsmd:snapshot -- <new-id> "<label>"`.
 
 ## Start Here
 

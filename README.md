@@ -38,11 +38,20 @@ pnpm dev
 DirtOS docs are generated and maintained with `docmd`.
 
 ```bash
-pnpm docs:dev
-pnpm docs:build
+pnpm docsmd
+pnpm docsmd:dev
 ```
 
-Docs source lives in `docs/` and is configured by `docmd.config.js`.
+Versioned docs are configured in `docmd.config.js` and tracked independently
+from the DirtOS app version in `docs.versions.json`.
+
+To archive the current docs and start the next docs release:
+
+```bash
+pnpm docsmd:snapshot -- 2026-05 "2026.05"
+```
+
+Docs source lives in `docs/`.
 
 ### Primary docs entry points
 

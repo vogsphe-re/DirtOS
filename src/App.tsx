@@ -73,8 +73,8 @@ function ThemedApp() {
           backgroundSize: "cover",
           backgroundPosition: "center",
           opacity: 0.5,  // Subtle opacity for the background image
-          filter: "blur(2px)", // Slight blur for a softer look
-          transform: "scale(1.04)",
+          filter: "blur(0)", // Slight blur for a softer look
+          transform: "scale(1.0)",
           pointerEvents: "none",
         }}
       />
