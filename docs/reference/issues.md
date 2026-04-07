@@ -8,7 +8,7 @@ description: "Reference for issue tracking, labels, comments, and workflow state
 ## Issue fields
 
 | Field | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `environment_id` | integer/null | Scope |
 | `plant_id` | integer/null | Optional plant link |
 | `location_id` | integer/null | Optional location link |
@@ -21,7 +21,7 @@ description: "Reference for issue tracking, labels, comments, and workflow state
 ## Label fields
 
 | Field | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `name` | string | Label name |
 | `color` | string/null | Visual grouping |
 | `icon` | string/null | UI icon identifier |
@@ -29,7 +29,7 @@ description: "Reference for issue tracking, labels, comments, and workflow state
 ## Comment fields
 
 | Field | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `issue_id` | integer | Parent issue |
 | `body` | string | Action note or update |
 | `created_at` | timestamp | Timeline ordering |

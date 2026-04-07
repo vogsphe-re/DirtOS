@@ -51,4 +51,8 @@ if [[ ! -f "$EXAMPLE_PATH" ]] && command -v dirtos &> /dev/null; then
     fi
 fi
 
+# ── Post-installation script ─────────────────────────────────────────────────
+echo "$BLUE_NEUTRAL Running post-installation script..."
+"$ROOT/scripts/deb-postinst.sh"
+
 echo "$GREEN_FADED DirtOS version $VERSION has been installed successfully."

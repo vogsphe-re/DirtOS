@@ -8,7 +8,7 @@ description: "Reference for sensor setup, readings, and alert thresholds."
 ## Sensor fields
 
 | Field | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `environment_id` | integer/null | Scope |
 | `location_id` | integer/null | Optional location assignment |
 | `plant_id` | integer/null | Optional plant assignment |
@@ -22,7 +22,7 @@ description: "Reference for sensor setup, readings, and alert thresholds."
 ## Reading fields
 
 | Field | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `sensor_id` | integer | Parent sensor |
 | `value` | number | Reading value |
 | `unit` | string/null | Unit (`%`, `C`, `lux`, etc.) |
@@ -31,7 +31,7 @@ description: "Reference for sensor setup, readings, and alert thresholds."
 ## Limit fields
 
 | Field | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `sensor_id` | integer | Parent sensor |
 | `min_value` | number/null | Lower threshold |
 | `max_value` | number/null | Upper threshold |

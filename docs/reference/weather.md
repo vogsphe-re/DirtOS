@@ -8,7 +8,7 @@ description: "Reference for weather cache, settings, and weather-driven alerts."
 ## Core settings keys
 
 | Key | Purpose |
-|---|---|
+| --- | --- |
 | `openweather_api_key` | API key for weather provider |
 | `default_latitude` | Default weather latitude |
 | `default_longitude` | Default weather longitude |
@@ -17,7 +17,7 @@ description: "Reference for weather cache, settings, and weather-driven alerts."
 ## Weather cache fields
 
 | Field | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `environment_id` | integer | Scope |
 | `forecast_json` | string | Serialized weather payload |
 | `fetched_at` | timestamp | Cache write time |
@@ -26,7 +26,7 @@ description: "Reference for weather cache, settings, and weather-driven alerts."
 ## Alert settings
 
 | Field | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `heat_max_c` | number | Trigger threshold for high heat |
 | `frost_min_c` | number | Trigger threshold for freezing risk |
 | `wind_max_ms` | number | Trigger threshold for wind events |

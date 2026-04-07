@@ -26,7 +26,7 @@ DIRTOS_API_PORT=8080 pnpm dev
 ## Resources
 
 | Resource | Endpoints |
-|---|---|
+| --- | --- |
 | Health | `GET /api/v1/health` |
 | Environments | `GET/POST /api/v1/environments` · `GET/PUT/DELETE /api/v1/environments/{id}` |
 | Locations | `GET/POST /api/v1/locations?environment_id=` · `GET/PUT/DELETE /api/v1/locations/{id}` |
@@ -55,9 +55,7 @@ execute requests against the running DirtOS API directly.
 
 > **Note:** Browsers enforce CORS for file:// origins. Serve the file locally
 > if you hit CORS issues:
-> ```bash
-> npx serve api/     # then open http://localhost:3000/swagger-ui.html
-> ```
+> `npx serve api` then open [http://localhost:3000/swagger-ui.html](http://localhost:3000/swagger-ui.html)
 
 ### Postman
 

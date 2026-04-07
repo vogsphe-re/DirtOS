@@ -8,7 +8,7 @@ description: "Reference for harvest and seasonal reporting data."
 ## Harvest fields
 
 | Field | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `plant_id` | integer | Linked plant |
 | `harvest_date` | date | Harvest event date |
 | `quantity` | number/null | Measured output |
@@ -20,7 +20,7 @@ description: "Reference for harvest and seasonal reporting data."
 ## Season fields
 
 | Field | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `environment_id` | integer | Scope |
 | `name` | string | Season label |
 | `start_date`, `end_date` | date | Time boundaries |

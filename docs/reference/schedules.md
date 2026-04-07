@@ -8,7 +8,7 @@ description: "Reference for recurring tasks and execution history."
 ## Schedule fields
 
 | Field | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `environment_id` | integer/null | Scope |
 | `plant_id` | integer/null | Optional plant targeting |
 | `location_id` | integer/null | Optional location targeting |
@@ -22,7 +22,7 @@ description: "Reference for recurring tasks and execution history."
 ## Schedule run fields
 
 | Field | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `schedule_id` | integer | Parent schedule |
 | `issue_id` | integer/null | Optional linked issue |
 | `ran_at` | timestamp | Execution time |

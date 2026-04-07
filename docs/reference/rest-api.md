@@ -10,7 +10,7 @@ and 3rd-party integrations. The API starts automatically whenever DirtOS is runn
 
 ## Base URL and port
 
-```
+```shell
 http://127.0.0.1:7272
 ```
 
@@ -37,7 +37,7 @@ All endpoints are prefixed with `/api/v1/`. Timestamps are ISO 8601 UTC strings.
 Enum values use lowercase snake_case.
 
 | Resource | Collection URL | Item URL |
-|---|---|---|
+| --- | --- | --- |
 | Health | `GET /api/v1/health` | — |
 | Environments | `/api/v1/environments` | `/api/v1/environments/{id}` |
 | Locations | `/api/v1/locations` | `/api/v1/locations/{id}` |
@@ -52,7 +52,7 @@ Enum values use lowercase snake_case.
 ### Standard HTTP methods
 
 | Method | Behaviour |
-|---|---|
+| --- | --- |
 | `GET` (collection) | List records |
 | `POST` | Create a record |
 | `GET` (item) | Fetch a single record |
@@ -65,7 +65,7 @@ Harvests do not support `PUT` (delete and re-create to correct a record).
 
 Collection endpoints support `limit` (default `100`) and `offset` (default `0`):
 
-```
+```shell
 GET /api/v1/plants?environment_id=1&limit=50&offset=50
 ```
 
@@ -74,7 +74,7 @@ GET /api/v1/plants?environment_id=1&limit=50&offset=50
 Most collection endpoints require `environment_id` as a query parameter to
 scope results to a specific garden environment:
 
-```
+```shell
 GET /api/v1/plants?environment_id=1
 GET /api/v1/issues?environment_id=1
 ```
@@ -87,7 +87,7 @@ environment-scoped.
 The `/api/v1/harvests` collection endpoint additionally accepts `date_from` and
 `date_to` filters (YYYY-MM-DD format):
 
-```
+```shell
 GET /api/v1/harvests?environment_id=1&date_from=2026-01-01&date_to=2026-06-30
 ```
 
@@ -96,7 +96,7 @@ GET /api/v1/harvests?environment_id=1&date_from=2026-01-01&date_to=2026-06-30
 Errors are returned as JSON with an `error` string field.
 
 | HTTP Status | Meaning |
-|---|---|
+| --- | --- |
 | `404 Not Found` | Record does not exist |
 | `500 Internal Server Error` | Unexpected database or server error |
 
@@ -146,7 +146,7 @@ curl -X POST http://127.0.0.1:7272/api/v1/harvests \
 The `api/` directory at the project root contains:
 
 | File | Purpose |
-|---|---|
+| --- | --- |
 | [`openapi.yaml`](../../api/openapi.yaml) | Full OpenAPI 3.1 spec with schemas for every resource |
 | [`swagger-ui.html`](../../api/swagger-ui.html) | Swagger UI — open in a browser to browse and execute requests |
 | [`DirtOS.postman_environment.json`](../../api/DirtOS.postman_environment.json) | Postman environment with `baseUrl` and `environmentId` variables |

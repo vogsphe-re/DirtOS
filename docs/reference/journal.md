@@ -8,7 +8,7 @@ description: "Reference for chronological garden notes and contextual records."
 ## Journal entry fields
 
 | Field | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `environment_id` | integer/null | Scope |
 | `plant_id` | integer/null | Optional plant link |
 | `location_id` | integer/null | Optional location link |

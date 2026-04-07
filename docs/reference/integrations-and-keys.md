@@ -8,7 +8,7 @@ description: "Reference for provider configuration, map settings, and sync recor
 ## Integration provider fields
 
 | Field | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `provider` | enum | `inaturalist`, `wikipedia`, `osm`, `home_assistant`, `n8n` |
 | `enabled` | boolean | Active/inactive state |
 | `auth_json` | string/null | Credential payload |
@@ -22,7 +22,7 @@ description: "Reference for provider configuration, map settings, and sync recor
 ## Map settings fields
 
 | Field | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `latitude`, `longitude` | number/null | Map center |
 | `zoom_level` | integer/null | Default zoom |
 | `weather_overlay` | boolean | Weather layer toggle |
@@ -33,7 +33,7 @@ description: "Reference for provider configuration, map settings, and sync recor
 ## Sync run fields
 
 | Field | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `provider` | string | Integration target |
 | `operation` | string | Operation type |
 | `status` | string | `started`, `success`, `error` |
