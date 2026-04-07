@@ -62,21 +62,53 @@ pub async fn seed_demo_garden(pool: State<'_, SqlitePool>) -> Result<i64, String
 #[tauri::command]
 #[specta::specta]
 pub async fn save_example_garden(app: AppHandle) -> Result<String, String> {
+    let output_path = default_example_output_path(&app)?;
+    let written = write_example_garden_to_path(&output_path).await?;
+    Ok(written.to_string_lossy().into_owned())
+}
+
+pub async fn write_example_garden_to_path(output_path: &Path) -> Result<PathBuf, String> {
     let content = build_example_garden_content().await?;
-    let output_path = write_example_file(&app, &content)?;
-    Ok(output_path.to_string_lossy().into_owned())
+    write_example_file(output_path, &content)
+}
+
+pub fn default_documents_dir() -> Result<PathBuf, String> {
+    let home_dir = std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .ok_or_else(|| "Unable to resolve HOME for Documents fallback".to_string())?;
+
+    Ok(home_dir.join("Documents"))
+}
+
+pub fn default_example_output_path(app: &AppHandle) -> Result<PathBuf, String> {
+    let docs = match app.path().document_dir() {
+        Ok(path) => path,
+        Err(err) => {
+            let fallback = default_documents_dir()?;
+            tracing::warn!(
+                "Failed to resolve document_dir via platform APIs: {}. Falling back to {:?}",
+                err,
+                fallback
+            );
+            fallback
+        }
+    };
+
+    Ok(docs
+        .join("DirtOS")
+        .join("Examples")
+        .join(EXAMPLE_FILE_NAME))
 }
 
 /// Ensure the bundled example file exists in the user's Documents folder.
 /// Called during startup; non-fatal if it fails.
 pub async fn ensure_example_garden_installed(app: &AppHandle) -> Result<String, String> {
-    let output_path = example_output_path(app)?;
+    let output_path = default_example_output_path(app)?;
     if output_path.exists() {
         return Ok(output_path.to_string_lossy().into_owned());
     }
 
-    let content = build_example_garden_content().await?;
-    let written = write_example_file(app, &content)?;
+    let written = write_example_garden_to_path(&output_path).await?;
     Ok(written.to_string_lossy().into_owned())
 }
 
@@ -101,21 +133,12 @@ async fn build_example_garden_content() -> Result<String, String> {
     result
 }
 
-fn write_example_file(app: &AppHandle, content: &str) -> Result<PathBuf, String> {
-    let output_path = example_output_path(app)?;
+fn write_example_file(output_path: &Path, content: &str) -> Result<PathBuf, String> {
     if let Some(parent) = output_path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    std::fs::write(&output_path, content).map_err(|e| e.to_string())?;
-    Ok(output_path)
-}
-
-fn example_output_path(app: &AppHandle) -> Result<PathBuf, String> {
-    let docs = app.path().document_dir().map_err(|e| e.to_string())?;
-    Ok(docs
-        .join("DirtOS")
-        .join("Examples")
-        .join(EXAMPLE_FILE_NAME))
+    std::fs::write(output_path, content).map_err(|e| e.to_string())?;
+    Ok(output_path.to_path_buf())
 }
 
 fn read_local_env_file() -> HashMap<String, String> {

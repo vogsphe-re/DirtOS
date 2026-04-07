@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::RwLock;
 
 use tauri::Manager;
@@ -295,6 +296,10 @@ pub fn export_bindings() {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    if let Some(exit_code) = handle_cli_mode() {
+        std::process::exit(exit_code);
+    }
+
     // Initialize structured logging. RUST_LOG env var controls verbosity.
     // Default: info for dirtos, warn for everything else.
     tracing_subscriber::registry()
@@ -466,6 +471,52 @@ pub fn run() {
         .invoke_handler(invoke_handler)
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+fn handle_cli_mode() -> Option<i32> {
+    let mut args = std::env::args_os();
+    let _bin = args.next();
+
+    let Some(command) = args.next() else {
+        return None;
+    };
+
+    if command != "--write-example-garden" {
+        return None;
+    }
+
+    let Some(output_path) = args.next() else {
+        eprintln!("Missing output path for --write-example-garden");
+        return Some(1);
+    };
+
+    if args.next().is_some() {
+        eprintln!("Unexpected extra arguments for --write-example-garden");
+        return Some(1);
+    }
+
+    let output_path = PathBuf::from(output_path);
+    let runtime = match tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+    {
+        Ok(runtime) => runtime,
+        Err(err) => {
+            eprintln!("Failed to start runtime: {err}");
+            return Some(1);
+        }
+    };
+
+    match runtime.block_on(commands::demo::write_example_garden_to_path(&output_path)) {
+        Ok(written) => {
+            println!("{}", written.display());
+            Some(0)
+        }
+        Err(err) => {
+            eprintln!("Failed to write example garden: {err}");
+            Some(1)
+        }
+    }
 }
 
 #[cfg(test)]

@@ -19,6 +19,7 @@ import { notifications } from "@mantine/notifications";
 import { IconDeviceDesktop, IconMoon, IconPlus, IconSun, IconTrash } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { readTextFile } from "@tauri-apps/plugin-fs";
 import { useState } from "react";
 import { commands } from "../lib/bindings";
 import {
@@ -247,6 +248,53 @@ function SettingsPage() {
     },
   });
 
+  const importDemoGardenMutation = useMutation({
+    mutationFn: async () => {
+      const examplePathResult = await commands.saveExampleGarden();
+      if (examplePathResult.status !== "ok") throw new Error(examplePathResult.error);
+
+      const content = await readTextFile(examplePathResult.data);
+      const importResult = await commands.importFullGardenData(content);
+      if (importResult.status !== "ok") throw new Error(importResult.error);
+
+      const environmentsResult = await commands.listEnvironments();
+      if (environmentsResult.status !== "ok") throw new Error(environmentsResult.error);
+
+      return {
+        examplePath: examplePathResult.data,
+        message: importResult.data,
+        environments: environmentsResult.data as Environment[],
+      };
+    },
+    onSuccess: ({ examplePath, message, environments }) => {
+      queryClient.invalidateQueries();
+      const nextEnvironment = environments[0] ?? null;
+      setActiveId(nextEnvironment?.id ?? null);
+      setEnvironment(nextEnvironment);
+      notifications.show({
+        color: "green",
+        title: "Example garden imported",
+        message: `${message} A copy was saved to ${examplePath}.`,
+      });
+    },
+    onError: (e) => {
+      notifications.show({
+        color: "red",
+        title: "Example garden import failed",
+        message: String(e),
+      });
+    },
+  });
+
+  const handleImportDemoGarden = () => {
+    const confirmed = window.confirm(
+      "This replaces your current DirtOS workspace with the bundled example garden backup. Continue?",
+    );
+
+    if (!confirmed) return;
+    importDemoGardenMutation.mutate();
+  };
+
   return (
     <Stack p="md" maw={720}>
       <Title order={2}>Settings</Title>
@@ -351,7 +399,8 @@ function SettingsPage() {
               onSave={(values) =>
                 updateMutation.mutateAsync({ id: env.id, values })
               }
-              onDelete={() => deleteMutation.mutate(env.id)}              busy={updateMutation.isPending || deleteMutation.isPending}
+              onDelete={() => deleteMutation.mutate(env.id)}
+              busy={updateMutation.isPending || deleteMutation.isPending}
             />
           ))}
           {!isLoading && environments.length === 0 && !creatingNew && (
@@ -360,6 +409,27 @@ function SettingsPage() {
             </Text>
           )}
         </Stack>
+      </Card>
+
+      <Card withBorder>
+        <Group justify="space-between" align="flex-start" gap="md">
+          <Stack gap={4} maw={520}>
+            <Title order={4}>Starter Gardens</Title>
+            <Text size="sm" c="dimmed">
+              Create a fresh DirtOS workspace from the bundled demo garden backup. This saves a
+              copy to your Documents folder and replaces the current local garden data with the
+              example workspace.
+            </Text>
+          </Stack>
+          <Button
+            color="orange"
+            variant="light"
+            onClick={handleImportDemoGarden}
+            loading={importDemoGardenMutation.isPending}
+          >
+            Create new garden from demo
+          </Button>
+        </Group>
       </Card>
 
       {/* ---- Issue Labels section ---- */}

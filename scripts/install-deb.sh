@@ -21,6 +21,7 @@ PROJECT_DIR="$(dirname "$PWD")/${PROJECT_NAME}"
 ROOT="${PROJECT_DIR}"
 ARCH="$(dpkg --print-architecture)"
 VERSION=$(<"$PROJECT_DIR/VERSION")
+EXAMPLE_PATH="$HOME/Documents/DirtOS/Examples/DirtOS-Example-Garden.json"
 
 cd "$PROJECT_DIR"
 
@@ -40,4 +41,14 @@ fi
 # ── Install with dpkg ───────────────────────────────────────────────────────
 echo "$BLUE_NEUTRAL Installing DirtOS version $VERSION for architecture $ARCH..."
 sudo dpkg -i "$ROOT/src-tauri/target/release/bundle/deb/DirtOS_${VERSION}_${ARCH}.deb"
+
+if [[ ! -f "$EXAMPLE_PATH" ]] && command -v dirtos &> /dev/null; then
+    echo "$BLUE_NEUTRAL Installing example garden to $EXAMPLE_PATH..."
+    if dirtos --write-example-garden "$EXAMPLE_PATH" >/dev/null 2>&1; then
+        echo "$GREEN_FADED Example garden installed to $EXAMPLE_PATH."
+    else
+        echo "$ORANGE_NEUTRAL Warning: DirtOS installed, but the example garden could not be written automatically."
+    fi
+fi
+
 echo "$GREEN_FADED DirtOS version $VERSION has been installed successfully."

@@ -3,6 +3,34 @@ use sqlx::SqlitePool;
 use super::models::{Harvest, HarvestSummary, NewHarvest, Pagination, ReportData, ReportDataPoint, Season, SeedLot, NewSeason};
 use crate::services::asset_tag;
 
+async fn harvest_asset_id_exists(pool: &SqlitePool, asset_id: &str) -> Result<bool, sqlx::Error> {
+    let count = sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(1) FROM harvests WHERE asset_id = ?",
+    )
+    .bind(asset_id)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(count > 0)
+}
+
+async fn next_harvest_asset_id(
+    pool: &SqlitePool,
+    plant_asset_id: Option<&str>,
+) -> Result<String, sqlx::Error> {
+    let preferred_tag = asset_tag::harvest_tag_from_plant(plant_asset_id);
+    if !harvest_asset_id_exists(pool, &preferred_tag).await? {
+        return Ok(preferred_tag);
+    }
+
+    loop {
+        let fallback_tag = asset_tag::generate_tag("LOT");
+        if !harvest_asset_id_exists(pool, &fallback_tag).await? {
+            return Ok(fallback_tag);
+        }
+    }
+}
+
 pub async fn list_harvests(
     pool: &SqlitePool,
     plant_id: i64,
@@ -65,7 +93,7 @@ pub async fn create_harvest(
     .fetch_optional(pool)
     .await?
     .flatten();
-    let tag = asset_tag::harvest_tag_from_plant(plant_tag.as_deref());
+    let tag = next_harvest_asset_id(pool, plant_tag.as_deref()).await?;
 
     let result = sqlx::query(
         "INSERT INTO harvests (plant_id, harvest_date, quantity, unit, quality_rating, notes, asset_id)

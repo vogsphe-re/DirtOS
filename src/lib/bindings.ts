@@ -1684,6 +1684,14 @@ async seedDemoGarden() : Promise<Result<number, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async saveExampleGarden() : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("save_example_garden") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async lookupAssetTag(tag: string) : Promise<Result<AssetTagLookup | null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("lookup_asset_tag", { tag }) };

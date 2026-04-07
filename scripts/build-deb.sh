@@ -3,6 +3,10 @@ set -euo pipefail
 
 PROJECT_NAME="DirtOS"
 PROJECT_DIR="$(dirname "$PWD")/${PROJECT_NAME}"
+VERSION="$(<"$PROJECT_DIR/VERSION")"
+ARCH="$(dpkg --print-architecture)"
+DEB_PATH="$PROJECT_DIR/src-tauri/target/release/bundle/deb/DirtOS_${VERSION}_${ARCH}.deb"
+POSTINST_SRC="$PROJECT_DIR/scripts/deb-postinst.sh"
 
 cd "$PROJECT_DIR"
 
@@ -48,6 +52,15 @@ fi
 pnpm install
 echo "Running clean build..."
 pnpm build --bundles deb
+
+echo "Injecting Debian post-install hook..."
+DEB_ROOT="$(mktemp -d)"
+trap 'rm -rf "$DEB_ROOT"' EXIT
+dpkg-deb -R "$DEB_PATH" "$DEB_ROOT"
+install -Dm755 "$POSTINST_SRC" "$DEB_ROOT/DEBIAN/postinst"
+fakeroot dpkg-deb -b "$DEB_ROOT" "$DEB_PATH"
+rm -rf "$DEB_ROOT"
+trap - EXIT
 
 echo ""
 echo "Done."
