@@ -44,4 +44,3 @@ description: "Technical architecture overview of DirtOS frontend, backend, and d
 - [SQLite](glossary.md#sqlite)
 - [Migration](glossary.md#migration)
 - [Backup Export](glossary.md#backup-export)
-- [REST API](glossary.md#rest-api)

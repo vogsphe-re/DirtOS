@@ -20,12 +20,12 @@ if command -v node &> /dev/null; then
         echo "Node.js version $INSTALLED_NODE_VERSION is already installed and matches the required version $NPM_VERSION."
     else
         echo "Node.js version $INSTALLED_NODE_VERSION is installed but does not match the required version $NPM_VERSION. Installing the correct version..."
-        curl -fsSL https://deb.nodesource.com/setup_${NPM_VERSION}.x | sudo bash -
+        curl -fsSL "https://deb.nodesource.com/setup_${NPM_VERSION}.x" | sudo bash -
         sudo apt install -y nodejs
     fi
 else
     echo "Node.js is not installed. Installing Node.js version $NPM_VERSION..."
-    curl -fsSL https://deb.nodesource.com/setup_${NPM_VERSION}.x | sudo bash -
+    curl -fsSL "https://deb.nodesource.com/setup_${NPM_VERSION}.x" | sudo bash -
     sudo apt install -y nodejs
 fi
 

@@ -26,6 +26,7 @@ if ! command -v nvm &> /dev/null; then
     echo "NVM is not installed. Installing NVM..."
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
     export NVM_DIR="$HOME/.nvm"
+    # shellcheck disable=SC1091
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 else
     echo "NVM is already installed."

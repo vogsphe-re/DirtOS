@@ -3,10 +3,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$SCRIPT_DIR/.."
-GIT_URL="https://code.dev.nativeit.net/sdavis/DirtOS.git"
-GIT_BRANCH="main"
-
-
 
 cd "$ROOT"
 
