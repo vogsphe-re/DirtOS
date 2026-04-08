@@ -29,6 +29,7 @@ use crate::db::{self, integrations, models::IntegrationProvider};
 // ── Config structs ─────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[allow(dead_code)]
 struct HaAuthConfig {
     pub url: Option<String>,
     pub token: Option<String>,
@@ -45,6 +46,7 @@ struct HaMqttSettings {
 // ── Device info published in HA discovery payloads ─────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 struct HaDevice {
     pub identifiers: Vec<String>,
     pub name: String,
@@ -434,8 +436,8 @@ async fn handle_command(
     pool: &SqlitePool,
     topic: &str,
     payload: &[u8],
-    prefix: &str,
-    instance_id: &str,
+    _prefix: &str,
+    _instance_id: &str,
     _app: &AppHandle,
 ) -> Result<(), String> {
     let parts: Vec<&str> = topic.split('/').collect();

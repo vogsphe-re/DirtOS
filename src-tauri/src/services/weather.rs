@@ -122,7 +122,9 @@ struct OpenMeteoDaily {
 struct OpenMeteoResponse {
     #[allow(dead_code)]
     latitude: Option<f64>,
+    #[allow(dead_code)]
     longitude: Option<f64>,
+    #[allow(dead_code)]
     timezone: Option<String>,
     current: Option<OpenMeteoCurrent>,
     hourly: Option<OpenMeteoHourly>,

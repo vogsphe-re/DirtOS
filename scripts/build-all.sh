@@ -46,7 +46,7 @@ pnpm install
 echo "Building documentation..."
 pnpm docsmd
 echo "Running clean build..."
-pnpm build --no-bundle
+pnpm build
 
 echo ""
 echo "Done."
