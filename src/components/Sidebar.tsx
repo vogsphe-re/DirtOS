@@ -24,7 +24,7 @@ import { useAppStore } from "../stores/appStore";
 
 const NAV_ITEMS = [
   { label: "Dashboard", icon: IconLayoutDashboard, to: "/" as const },
-  { label: "Garden", icon: IconMap2, to: "/garden" as const },
+  { label: "Garden", icon: IconMap2, to: "/garden/plots" as const },
   { label: "Plants", icon: IconLeaf, to: "/plants" as const },
   { label: "Seedlings", icon: IconSeeding, to: "/plants/seedlings" as const },
   { label: "Trays", icon: IconGridDots, to: "/plants/trays" as const },
@@ -117,6 +117,8 @@ function SidebarItem({ item, collapsed }: { item: NavItem; collapsed: boolean })
   const isActive =
     item.to === "/"
       ? location.pathname === "/"
+      : item.to === "/garden/plots"
+        ? location.pathname === "/garden" || location.pathname.startsWith("/garden/")
       : location.pathname === item.to || location.pathname.startsWith(item.to + "/");
 
   const Icon = item.icon;
