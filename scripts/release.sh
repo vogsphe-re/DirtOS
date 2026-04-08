@@ -2,9 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$SCRIPT_DIR/.."
 
-cd "$ROOT"
+cd "$SCRIPT_DIR/.."
 
 prompt_tag_comment() {
   local version="$1"
@@ -37,8 +36,10 @@ echo "New version:     $NEW_VERSION"
 
 # ── Determine documentation release version ──────────────────────────────────
 # Docs can be versioned independently by overriding DOCS_VERSION_ID/LABEL.
-CURRENT_DOCS_VERSION="$(node -p "require('./docs.versions.json').current.id")"
-CURRENT_DOCS_LABEL="$(node -p "require('./docs.versions.json').current.label")"
+# CURRENT_DOCS_VERSION="$(node -p "require('./docs.versions.json').current.id")"
+CURRENT_DOCS_VERSION=$(jq -r '.current.id' ./docs.versions.json)
+# CURRENT_DOCS_LABEL="$(node -p "require('./docs.versions.json').current.label")"
+CURRENT_DOCS_LABEL=$(jq -r '.current.label' ./docs.versions.json)
 DOCS_VERSION_ID="${DOCS_VERSION_ID:-$CURRENT_DOCS_VERSION}"
 DOCS_VERSION_LABEL="${DOCS_VERSION_LABEL:-$CURRENT_DOCS_LABEL}"
 DOCS_ARCHIVE_DIR=""
