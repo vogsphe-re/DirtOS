@@ -18,6 +18,46 @@ prompt_tag_comment() {
   fi
 }
 
+trim_whitespace() {
+  local value="$1"
+
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+
+  printf '%s' "$value"
+}
+
+normalize_docs_value() {
+  local name="$1"
+  local raw_value="$2"
+  local fallback="$3"
+  local trimmed_value=""
+
+  trimmed_value="$(trim_whitespace "$raw_value")"
+
+  if [[ -z "$trimmed_value" ]]; then
+    printf '%s' "$fallback"
+    return
+  fi
+
+  if [[ "$trimmed_value" == *'$('* || "$trimmed_value" == *'`'* ]]; then
+    echo "Warning: $name looks like an unevaluated shell expression. Falling back to $fallback." >&2
+    printf '%s' "$fallback"
+    return
+  fi
+
+  printf '%s' "$trimmed_value"
+}
+
+validate_docs_version_id() {
+  local docs_version_id="$1"
+
+  if [[ ! "$docs_version_id" =~ ^[[:alnum:]][[:alnum:].-]*$ ]]; then
+    echo "Error: docs version ID '$docs_version_id' is invalid. Use letters, numbers, dots, or hyphens." >&2
+    exit 1
+  fi
+}
+
 # ── Require clean working tree ────────────────────────────────────────────────
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "Error: working tree is not clean. Commit or stash your changes first." >&2
@@ -40,9 +80,11 @@ echo "New version:     $NEW_VERSION"
 CURRENT_DOCS_VERSION=$(jq -r '.current.id' ./docs.versions.json)
 # CURRENT_DOCS_LABEL="$(node -p "require('./docs.versions.json').current.label")"
 CURRENT_DOCS_LABEL=$(jq -r '.current.label' ./docs.versions.json)
-DOCS_VERSION_ID="${DOCS_VERSION_ID:-$CURRENT_DOCS_VERSION}"
-DOCS_VERSION_LABEL="${DOCS_VERSION_LABEL:-$CURRENT_DOCS_LABEL}"
+DOCS_VERSION_ID="$(normalize_docs_value "DOCS_VERSION_ID" "${DOCS_VERSION_ID:-}" "$CURRENT_DOCS_VERSION")"
+DOCS_VERSION_LABEL="$(normalize_docs_value "DOCS_VERSION_LABEL" "${DOCS_VERSION_LABEL:-}" "$CURRENT_DOCS_LABEL")"
 DOCS_ARCHIVE_DIR=""
+
+validate_docs_version_id "$DOCS_VERSION_ID"
 
 echo "Current docs:    $CURRENT_DOCS_VERSION"
 echo "New docs:        $DOCS_VERSION_LABEL ($DOCS_VERSION_ID)"
