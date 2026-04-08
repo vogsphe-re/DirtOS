@@ -6,6 +6,19 @@ ROOT="$SCRIPT_DIR/.."
 
 cd "$ROOT"
 
+prompt_tag_comment() {
+  local version="$1"
+  local comment=""
+
+  read -r -p "Tag comment for v${version} (optional): " comment
+
+  if [[ -n "${comment// }" ]]; then
+    printf 'Release v%s\n\n%s\n' "$version" "$comment"
+  else
+    printf 'Release v%s\n' "$version"
+  fi
+}
+
 # ── Require clean working tree ────────────────────────────────────────────────
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "Error: working tree is not clean. Commit or stash your changes first." >&2
@@ -32,6 +45,8 @@ DOCS_ARCHIVE_DIR=""
 
 echo "Current docs:    $CURRENT_DOCS_VERSION"
 echo "New docs:        $DOCS_VERSION_LABEL ($DOCS_VERSION_ID)"
+
+TAG_MESSAGE="$(prompt_tag_comment "$NEW_VERSION")"
 
 # ── Update package.json ──────────────────────────────────────────────────────
 node -e "
@@ -88,7 +103,7 @@ fi
 
 git add "${GIT_ADD_PATHS[@]}"
 git commit -m "chore: bump version to $NEW_VERSION"
-git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
+git tag -a "v$NEW_VERSION" -m "$TAG_MESSAGE"
 
 echo ""
 echo "Done. Tagged commit as v$NEW_VERSION"
