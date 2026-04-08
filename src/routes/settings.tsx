@@ -19,7 +19,6 @@ import { notifications } from "@mantine/notifications";
 import { IconDeviceDesktop, IconMoon, IconPlus, IconSun, IconTrash } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { readTextFile } from "@tauri-apps/plugin-fs";
 import { useState } from "react";
 import { commands } from "../lib/bindings";
 import {
@@ -250,19 +249,15 @@ function SettingsPage() {
 
   const importDemoGardenMutation = useMutation({
     mutationFn: async () => {
-      const examplePathResult = await commands.saveExampleGarden();
-      if (examplePathResult.status !== "ok") throw new Error(examplePathResult.error);
-
-      const content = await readTextFile(examplePathResult.data);
-      const importResult = await commands.importFullGardenData(content);
+      const importResult = await commands.importExampleGarden();
       if (importResult.status !== "ok") throw new Error(importResult.error);
 
       const environmentsResult = await commands.listEnvironments();
       if (environmentsResult.status !== "ok") throw new Error(environmentsResult.error);
 
       return {
-        examplePath: examplePathResult.data,
-        message: importResult.data,
+        examplePath: importResult.data.output_path,
+        message: importResult.data.message,
         environments: environmentsResult.data as Environment[],
       };
     },

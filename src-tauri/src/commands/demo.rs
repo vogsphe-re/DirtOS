@@ -1,5 +1,7 @@
 use chrono::{Datelike, Duration, NaiveDate, Utc};
+use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
+use specta::Type;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State};
@@ -48,6 +50,12 @@ struct PlantTemplate<'a> {
     notes: &'a str,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ExampleGardenImportResult {
+    pub output_path: String,
+    pub message: String,
+}
+
 /// Seed a comprehensive demonstration garden with sample data across every
 /// feature area. Idempotent: returns the existing environment's id if an
 /// environment named `DirtOS Example Garden` already exists.
@@ -65,6 +73,25 @@ pub async fn save_example_garden(app: AppHandle) -> Result<String, String> {
     let output_path = default_example_output_path(&app)?;
     let written = write_example_garden_to_path(&output_path).await?;
     Ok(written.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn import_example_garden(
+    pool: State<'_, SqlitePool>,
+    app: AppHandle,
+) -> Result<ExampleGardenImportResult, String> {
+    let output_path = default_example_output_path(&app)?;
+    let content = build_example_garden_content().await?;
+    let written = write_example_file(&output_path, &content)?;
+
+    let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    export::import_garden_data_json(&pool, &app_data_dir, &content).await?;
+
+    Ok(ExampleGardenImportResult {
+        output_path: written.to_string_lossy().into_owned(),
+        message: "Garden data imported successfully".to_string(),
+    })
 }
 
 pub async fn write_example_garden_to_path(output_path: &Path) -> Result<PathBuf, String> {
@@ -1542,4 +1569,49 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
     .await?;
 
     Ok(eid)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn example_garden_backup_imports_into_clean_database() {
+        let temp_root = std::env::temp_dir().join(format!("dirtos-demo-import-test-{}", Uuid::new_v4()));
+        let app_data_dir = temp_root.join("app-data");
+
+        let result = async {
+            let content = build_example_garden_content().await?;
+            let pool = crate::db::init_db(&app_data_dir)
+                .await
+                .map_err(|e| e.to_string())?;
+
+            crate::services::export::import_garden_data_json(&pool, &app_data_dir, &content).await?;
+
+            let environment_count = sqlx::query_scalar::<_, i64>(
+                "SELECT COUNT(1) FROM environments",
+            )
+            .fetch_one(&pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+            let plant_count = sqlx::query_scalar::<_, i64>(
+                "SELECT COUNT(1) FROM plants",
+            )
+            .fetch_one(&pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+            pool.close().await;
+
+            Ok::<(i64, i64), String>((environment_count, plant_count))
+        }
+        .await;
+
+        let _ = std::fs::remove_dir_all(&temp_root);
+
+        let (environment_count, plant_count) = result.expect("demo garden import should succeed");
+        assert!(environment_count > 0, "expected imported environments");
+        assert!(plant_count > 0, "expected imported plants");
+    }
 }

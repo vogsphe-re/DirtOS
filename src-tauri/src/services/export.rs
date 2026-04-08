@@ -4,7 +4,10 @@ use base64::{engine::general_purpose::STANDARD, Engine as _};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use sqlx::{sqlite::{SqliteArguments, SqliteRow}, Column, Row, Sqlite, SqlitePool, TypeInfo, ValueRef};
+use sqlx::{
+    sqlite::{SqliteArguments, SqliteConnection, SqliteRow},
+    Column, Row, Sqlite, SqlitePool, TypeInfo, ValueRef,
+};
 
 const INTERNAL_TABLES: &[&str] = &["_sqlx_migrations", "sqlite_sequence"];
 
@@ -167,7 +170,12 @@ fn bind_value<'a>(
     Ok(query)
 }
 
-async fn insert_row(pool: &SqlitePool, table: &str, row: &Map<String, Value>, app_data_dir: &Path) -> Result<(), String> {
+async fn insert_row(
+    conn: &mut SqliteConnection,
+    table: &str,
+    row: &Map<String, Value>,
+    app_data_dir: &Path,
+) -> Result<(), String> {
     let columns = row.keys().cloned().collect::<Vec<_>>();
     let escaped_columns = columns
         .iter()
@@ -194,42 +202,64 @@ async fn insert_row(pool: &SqlitePool, table: &str, row: &Map<String, Value>, ap
         )?;
     }
 
-    query.execute(pool).await.map_err(|e| e.to_string())?;
+    query.execute(&mut *conn).await.map_err(|e| e.to_string())?;
     Ok(())
 }
 
 pub async fn import_garden_data_json(pool: &SqlitePool, app_data_dir: &Path, content: &str) -> Result<(), String> {
     let backup: GardenBackup = serde_json::from_str(content).map_err(|e| e.to_string())?;
     let table_names = list_user_tables(pool).await?;
+    let mut conn = pool.acquire().await.map_err(|e| e.to_string())?;
 
     sqlx::query("PRAGMA foreign_keys = OFF")
-        .execute(pool)
+        .execute(&mut *conn)
         .await
         .map_err(|e| e.to_string())?;
 
-    for table in table_names.iter().rev() {
-        let sql = format!("DELETE FROM \"{}\"", table.replace('"', "\"\""));
-        sqlx::query(&sql)
-            .execute(pool)
+    sqlx::query("BEGIN IMMEDIATE")
+        .execute(&mut *conn)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let import_result = async {
+        for table in table_names.iter().rev() {
+            let sql = format!("DELETE FROM \"{}\"", table.replace('"', "\"\""));
+            sqlx::query(&sql)
+                .execute(&mut *conn)
+                .await
+                .map_err(|e| e.to_string())?;
+        }
+
+        for (table, rows) in &backup.tables {
+            if !table_names.iter().any(|name| name == table) {
+                continue;
+            }
+
+            for row in rows {
+                let object = row
+                    .as_object()
+                    .ok_or_else(|| format!("Table {} contains a non-object row", table))?;
+                insert_row(&mut conn, table, object, app_data_dir).await?;
+            }
+        }
+
+        sqlx::query("COMMIT")
+            .execute(&mut *conn)
             .await
             .map_err(|e| e.to_string())?;
+
+        Ok::<(), String>(())
     }
+    .await;
 
-    for (table, rows) in &backup.tables {
-        if !table_names.iter().any(|name| name == table) {
-            continue;
-        }
-
-        for row in rows {
-            let object = row
-                .as_object()
-                .ok_or_else(|| format!("Table {} contains a non-object row", table))?;
-            insert_row(pool, table, object, app_data_dir).await?;
-        }
+    if let Err(err) = import_result {
+        let _ = sqlx::query("ROLLBACK").execute(&mut *conn).await;
+        let _ = sqlx::query("PRAGMA foreign_keys = ON").execute(&mut *conn).await;
+        return Err(err);
     }
 
     sqlx::query("PRAGMA foreign_keys = ON")
-        .execute(pool)
+        .execute(&mut *conn)
         .await
         .map_err(|e| e.to_string())?;
 

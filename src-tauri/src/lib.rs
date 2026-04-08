@@ -277,6 +277,7 @@ fn specta_builder() -> Builder<tauri::Wry> {
         // Demo
         commands::seed_demo_garden,
         commands::save_example_garden,
+        commands::import_example_garden,
     ])
 }
 

@@ -1692,6 +1692,14 @@ async saveExampleGarden() : Promise<Result<string, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async importExampleGarden() : Promise<Result<ExampleGardenImportResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("import_example_garden") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async lookupAssetTag(tag: string) : Promise<Result<AssetTagLookup | null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("lookup_asset_tag", { tag }) };
@@ -1821,6 +1829,7 @@ link: string | null;
  * Short context snippet provided by the search index.
  */
 snippet: string | null }
+export type ExampleGardenImportResult = { output_path: string; message: string }
 export type ExportPayload = { format: BackupFormat; filename: string; content: string; is_base64: boolean }
 export type ForecastItem = { dt: number; temperature_c: number; feels_like_c: number; humidity: number; wind_speed_ms: number; cloud_cover_pct: number; precipitation_mm: number | null; precipitation_prob: number | null; description: string; icon: string; wind_gust_ms: number | null; wind_direction_deg: number | null }
 /**
