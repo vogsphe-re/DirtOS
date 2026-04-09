@@ -28,13 +28,13 @@ the network.
 
 ```bash
 curl http://127.0.0.1:7272/api/v1/health
-# → {"status":"ok","version":"0.2.4"}
+# → {"status":"ok","version":"0.4.0"}
 ```
 
 ## Resources
 
 All endpoints are prefixed with `/api/v1/`. Timestamps are ISO 8601 UTC strings.
-Enum values use lowercase snake_case.
+Most enum values use lowercase snake_case. `LocationType` values are PascalCase.
 
 | Resource | Collection URL | Item URL |
 | --- | --- | --- |
@@ -48,6 +48,13 @@ Enum values use lowercase snake_case.
 | Issues | `/api/v1/issues` | `/api/v1/issues/{id}` |
 | Journal | `/api/v1/journal` | `/api/v1/journal/{id}` |
 | Harvests | `/api/v1/harvests` | `/api/v1/harvests/{id}` |
+
+Location types currently supported by `LocationType`:
+`Plot`, `Space`, `Tent`, `Tray`, `Pot`, `Shed`, `OutdoorSite`, `IndoorSite`,
+`PlotGroup`, and `SeedlingArea`.
+
+Plant payloads include lifecycle metadata fields:
+`is_harvestable` and `lifecycle_override` (`annual`, `perennial`, `biennial`).
 
 ### Standard HTTP methods
 

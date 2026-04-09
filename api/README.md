@@ -11,7 +11,7 @@ DirtOS exposes a local REST API for plugin development and 3rd-party integration
 
 ```bash
 curl http://127.0.0.1:7272/api/v1/health
-# → {"status":"ok","version":"0.2.4"}
+# → {"status":"ok","version":"0.4.0"}
 ```
 
 ## Port
@@ -41,6 +41,13 @@ DIRTOS_API_PORT=8080 pnpm dev
 Collection endpoints that are scoped to an environment require the
 `environment_id` query parameter. Harvests additionally support `date_from` and
 `date_to` (YYYY-MM-DD) filters.
+
+Location type values are serialized as:
+`Plot`, `Space`, `Tent`, `Tray`, `Pot`, `Shed`, `OutdoorSite`, `IndoorSite`,
+`PlotGroup`, and `SeedlingArea`.
+
+Plant create/update payloads support lifecycle metadata:
+`is_harvestable` and `lifecycle_override` (`annual`, `perennial`, `biennial`).
 
 All collection endpoints support `limit` (default 100) and `offset` pagination
 parameters.

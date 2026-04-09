@@ -376,8 +376,15 @@ async fn create_template_plants(
                 name: tpl.name.to_string(),
                 label: Some(format!("{}-{:02}", label_prefix, idx + 1)),
                 planted_date: Some(planted.format("%Y-%m-%d").to_string()),
-                is_harvestable: Some(false),
-                lifecycle_override: None,
+                is_harvestable: Some(
+                    matches!(tpl.status, PlantStatus::Harvested)
+                        || matches!(tpl.context, PlantContext::Perennial)
+                            && matches!(tpl.status, PlantStatus::Active),
+                ),
+                lifecycle_override: match tpl.context {
+                    PlantContext::Perennial => Some("perennial".to_string()),
+                    _ => None,
+                },
                 notes: Some(tpl.notes.to_string()),
                 canvas_object_id: None,
             },
@@ -645,6 +652,60 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
     )
     .await?;
 
+    let kitchen_blocks = locations::create_location(
+        pool,
+        NewLocation {
+            environment_id: eid,
+            parent_id: Some(outdoor_site.id),
+            location_type: LocationType::PlotGroup,
+            name: "Kitchen Blocks".to_string(),
+            label: Some("KB".to_string()),
+            position_x: Some(680.0),
+            position_y: Some(240.0),
+            width: Some(181.0),
+            height: Some(108.0),
+            canvas_data_json: None,
+            notes: Some("2x3 grouped micro-beds for succession planting and quick-turn crops.".to_string()),
+            grid_rows: Some(2),
+            grid_cols: Some(3),
+        },
+    )
+    .await?;
+
+    let mut kitchen_block_spaces = Vec::new();
+    for row in 0..2 {
+        for col in 0..3 {
+            let row_label = (b'A' + row as u8) as char;
+            let space_label = format!("KB {}{}", row_label, col + 1);
+            let space = locations::create_location(
+                pool,
+                NewLocation {
+                    environment_id: eid,
+                    parent_id: Some(kitchen_blocks.id),
+                    location_type: LocationType::Space,
+                    name: format!("Kitchen Block {}{}", row_label, col + 1),
+                    label: Some(space_label),
+                    position_x: Some(680.0 + (col as f64 * 63.0)),
+                    position_y: Some(240.0 + (row as f64 * 58.0)),
+                    width: Some(55.0),
+                    height: Some(50.0),
+                    canvas_data_json: None,
+                    notes: Some("Child space in Kitchen Blocks plot group.".to_string()),
+                    grid_rows: None,
+                    grid_cols: None,
+                },
+            )
+            .await?;
+
+            kitchen_block_spaces.push(space);
+        }
+    }
+
+    let kitchen_block_primary = kitchen_block_spaces
+        .first()
+        .map(|space| space.id)
+        .unwrap_or(kitchen_blocks.id);
+
     let herb_terrace = locations::create_location(
         pool,
         NewLocation {
@@ -842,13 +903,18 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
     ];
 
     let herb_templates = vec![
-        PlantTemplate { aliases: &["Basil"], name: "Italian Basil Cluster", status: PlantStatus::Active, context: PlantContext::Perennial, notes: "Frequent pinching for bushy growth and pesto harvest." },
+        PlantTemplate { aliases: &["Basil"], name: "Italian Basil Cluster", status: PlantStatus::Harvested, context: PlantContext::Perennial, notes: "Recent heavy cut-and-come-again harvest; candidate for perennial cycle." },
         PlantTemplate { aliases: &["Thyme"], name: "Common Thyme", status: PlantStatus::Active, context: PlantContext::Perennial, notes: "Dry upper terrace section." },
         PlantTemplate { aliases: &["Rosemary"], name: "Tuscan Blue Rosemary", status: PlantStatus::Active, context: PlantContext::Perennial, notes: "Established woody shrub with winter carry-over." },
         PlantTemplate { aliases: &["Oregano"], name: "Greek Oregano", status: PlantStatus::Active, context: PlantContext::Perennial, notes: "Perennial mat trimmed monthly." },
         PlantTemplate { aliases: &["Chives"], name: "Garlic Chives", status: PlantStatus::Active, context: PlantContext::Perennial, notes: "Clump division completed last season." },
         PlantTemplate { aliases: &["Spearmint", "Peppermint"], name: "Spearmint Contained Pot", status: PlantStatus::Active, context: PlantContext::Perennial, notes: "Container sunk in terrace to prevent spread." },
         PlantTemplate { aliases: &["Lavender"], name: "English Lavender", status: PlantStatus::Active, context: PlantContext::Perennial, notes: "Pollinator support and border fragrance." },
+    ];
+
+    let kitchen_block_templates = vec![
+        PlantTemplate { aliases: &["Arugula"], name: "Kitchen Arugula Block", status: PlantStatus::Active, context: PlantContext::Outdoor, notes: "Fast-turn greens in grouped micro-bed layout." },
+        PlantTemplate { aliases: &["Butterhead Lettuce", "Lettuce"], name: "Kitchen Lettuce Succession", status: PlantStatus::Planned, context: PlantContext::Outdoor, notes: "Next succession batch for the grouped kitchen beds." },
     ];
 
     let tent_a_templates = vec![
@@ -966,6 +1032,18 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
     )
     .await?;
 
+    let kitchen_block_plants = create_template_plants(
+        pool,
+        eid,
+        kitchen_block_primary,
+        "KB",
+        &kitchen_block_templates,
+        &species_index,
+        today,
+        progress,
+    )
+    .await?;
+
     let mut all_plants = Vec::new();
     all_plants.extend(bed_east_plants.clone());
     all_plants.extend(bed_west_plants.clone());
@@ -973,6 +1051,7 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
     all_plants.extend(tent_a_plants.clone());
     all_plants.extend(tent_b_plants.clone());
     all_plants.extend(propagation_plants.clone());
+    all_plants.extend(kitchen_block_plants.clone());
 
     let tray_a = seedling_trays::create_tray(
         pool,

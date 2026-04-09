@@ -23,7 +23,7 @@ tags:
   - name: Environments
     description: Garden environments (outdoor plots, indoor grow spaces, etc.)
   - name: Locations
-    description: Named locations within an environment (beds, tents, pots, trays)
+    description: Named locations within an environment (sites, beds, groups, spaces, tents, pots, trays)
   - name: Species
     description: Plant species catalog
   - name: Plants
@@ -61,7 +61,7 @@ paths:
                     example: ok
                   version:
                     type: string
-                    example: "0.2.4"
+                    example: "0.4.0"
 
   # ---------------------------------------------------------------------------
   # Environments
@@ -947,7 +947,8 @@ components:
     # -------------------------------------------------------------------------
     LocationType:
       type: string
-      enum: [plot, space, tent, tray, pot, shed]
+      description: Location enum serialized by the backend.
+      enum: [Plot, Space, Tent, Tray, Pot, Shed, OutdoorSite, IndoorSite, PlotGroup, SeedlingArea]
 
     Location:
       type: object
@@ -981,11 +982,22 @@ components:
         height:
           type: number
           nullable: true
+        canvas_data_json:
+          type: string
+          nullable: true
         notes:
           type: string
           nullable: true
         asset_id:
           type: string
+          nullable: true
+        grid_rows:
+          type: integer
+          format: int64
+          nullable: true
+        grid_cols:
+          type: integer
+          format: int64
           nullable: true
         created_at:
           type: string
@@ -1024,8 +1036,19 @@ components:
         height:
           type: number
           nullable: true
+        canvas_data_json:
+          type: string
+          nullable: true
         notes:
           type: string
+          nullable: true
+        grid_rows:
+          type: integer
+          format: int64
+          nullable: true
+        grid_cols:
+          type: integer
+          format: int64
           nullable: true
 
     UpdateLocation:
@@ -1055,8 +1078,19 @@ components:
         height:
           type: number
           nullable: true
+        canvas_data_json:
+          type: string
+          nullable: true
         notes:
           type: string
+          nullable: true
+        grid_rows:
+          type: integer
+          format: int64
+          nullable: true
+        grid_cols:
+          type: integer
+          format: int64
           nullable: true
 
     # -------------------------------------------------------------------------
@@ -1240,7 +1274,34 @@ components:
           type: string
           format: date
           nullable: true
+        parent_plant_id:
+          type: integer
+          format: int64
+          nullable: true
+        seed_lot_id:
+          type: integer
+          format: int64
+          nullable: true
+        purchase_source:
+          type: string
+          nullable: true
+        purchase_date:
+          type: string
+          format: date
+          nullable: true
+        purchase_price:
+          type: number
+          nullable: true
+        is_harvestable:
+          type: boolean
+        lifecycle_override:
+          type: string
+          enum: [annual, perennial, biennial]
+          nullable: true
         notes:
+          type: string
+          nullable: true
+        canvas_object_id:
           type: string
           nullable: true
         created_at:
@@ -1276,7 +1337,17 @@ components:
           type: string
           format: date
           nullable: true
+        is_harvestable:
+          type: boolean
+          nullable: true
+        lifecycle_override:
+          type: string
+          enum: [annual, perennial, biennial]
+          nullable: true
         notes:
+          type: string
+          nullable: true
+        canvas_object_id:
           type: string
           nullable: true
 
@@ -1314,6 +1385,31 @@ components:
         removed_date:
           type: string
           format: date
+          nullable: true
+        parent_plant_id:
+          type: integer
+          format: int64
+          nullable: true
+        seed_lot_id:
+          type: integer
+          format: int64
+          nullable: true
+        purchase_source:
+          type: string
+          nullable: true
+        purchase_date:
+          type: string
+          format: date
+          nullable: true
+        purchase_price:
+          type: number
+          nullable: true
+        is_harvestable:
+          type: boolean
+          nullable: true
+        lifecycle_override:
+          type: string
+          enum: [annual, perennial, biennial]
           nullable: true
         notes:
           type: string
