@@ -27,6 +27,10 @@
 /// | TRY    | Tray location or seedling tray   |
 /// | POT    | Pot location                     |
 /// | SHD    | Shed location                    |
+/// | OST    | Outdoor site location            |
+/// | IST    | Indoor site location             |
+/// | PGR    | Plot-group location              |
+/// | SDA    | Seedling-area location           |
 /// | PLA    | Individual plant                 |
 /// | SED    | Seed lot / seed package          |
 /// | LOT    | Harvest lot (derived from plant) |
@@ -72,7 +76,8 @@ pub fn harvest_tag_from_plant(plant_asset_id: Option<&str>) -> String {
 /// Return the asset-tag prefix for a `LocationType` variant.
 ///
 /// The `location_type` string follows the `snake_case` serialisation used in
-/// the database (`plot`, `space`, `tent`, `tray`, `pot`, `shed`).
+/// the database (`plot`, `space`, `tent`, `tray`, `pot`, `shed`,
+/// `outdoor_site`, `indoor_site`, `plot_group`, `seedling_area`).
 pub fn prefix_for_location_type(location_type: &str) -> &'static str {
     match location_type {
         "plot"  => "PLT",
@@ -81,6 +86,10 @@ pub fn prefix_for_location_type(location_type: &str) -> &'static str {
         "tray"  => "TRY",
         "pot"   => "POT",
         "shed"  => "SHD",
+        "outdoor_site" => "OST",
+        "indoor_site" => "IST",
+        "plot_group" => "PGR",
+        "seedling_area" => "SDA",
         _       => "LOC",
     }
 }

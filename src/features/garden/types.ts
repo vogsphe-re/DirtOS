@@ -19,6 +19,7 @@ export type ToolType =
   | 'eraser';
 
 export type ObjectType =
+  | 'plot-group'
   | 'plot'
   | 'space'
   | 'plant'
@@ -113,6 +114,7 @@ export const OBJECT_DEFAULTS: Record<
   ObjectType,
   { fill: string; stroke: string; strokeWidth: number; layer: LayerName }
 > = {
+  'plot-group': { fill: 'rgba(221,160,221,0.14)', stroke: '#7f4f9b', strokeWidth: 2, layer: 'plots' },
   plot: { fill: 'rgba(144,238,144,0.12)', stroke: '#2d7a2d', strokeWidth: 2, layer: 'plots' },
   space: { fill: 'rgba(173,216,230,0.2)', stroke: '#4a9ebe', strokeWidth: 1, layer: 'spaces' },
   plant: { fill: 'rgba(93, 156, 89, 0.78)', stroke: '#356b36', strokeWidth: 2, layer: 'plants' },

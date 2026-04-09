@@ -4,7 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { IndoorSetup } from "../features/indoor/IndoorSetup";
-import { commands, type IndoorEnvironmentSummary } from "../lib/bindings";
+import { commands, type IndoorEnvironmentSummary, type Location } from "../lib/bindings";
 import { useAppStore } from "../stores/appStore";
 
 export const Route = createFileRoute("/indoor/")({
@@ -27,6 +27,19 @@ function IndoorIndex() {
     },
     enabled: !!activeEnvironmentId,
   });
+
+  const locationsQuery = useQuery<Location[]>({
+    queryKey: ["locations", activeEnvironmentId],
+    queryFn: async () => {
+      if (!activeEnvironmentId) return [];
+      const res = await commands.listLocations(activeEnvironmentId);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data;
+    },
+    enabled: !!activeEnvironmentId,
+  });
+
+  const locationsById = new Map((locationsQuery.data ?? []).map((location) => [location.id, location]));
 
   return (
     <Stack p="md">
@@ -74,6 +87,9 @@ function IndoorIndex() {
               <Text fw={600}>{item.location.name}</Text>
               <Text c="dimmed" size="sm">
                 {item.indoor_environment.grow_method ?? "Unknown method"}
+              </Text>
+              <Text c="dimmed" size="xs">
+                Site: {locationsById.get(item.location.parent_id ?? -1)?.name ?? "Unassigned"}
               </Text>
             </div>
             <Button

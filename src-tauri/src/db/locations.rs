@@ -18,6 +18,20 @@ pub async fn list_locations(
     .await
 }
 
+pub async fn list_locations_by_type(
+    pool: &SqlitePool,
+    environment_id: i64,
+    location_type: super::models::LocationType,
+) -> Result<Vec<Location>, sqlx::Error> {
+    sqlx::query_as::<_, Location>(
+        "SELECT * FROM locations WHERE environment_id = ? AND type = ? ORDER BY name ASC",
+    )
+    .bind(environment_id)
+    .bind(location_type)
+    .fetch_all(pool)
+    .await
+}
+
 pub async fn list_child_locations(
     pool: &SqlitePool,
     parent_id: i64,
@@ -51,8 +65,9 @@ pub async fn create_location(
     let result = sqlx::query(
         "INSERT INTO locations
             (environment_id, parent_id, type, name, label,
-             position_x, position_y, width, height, canvas_data_json, notes, asset_id)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+             position_x, position_y, width, height, canvas_data_json, notes,
+             asset_id, grid_rows, grid_cols)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
     )
     .bind(input.environment_id)
     .bind(input.parent_id)
@@ -66,6 +81,8 @@ pub async fn create_location(
     .bind(&input.canvas_data_json)
     .bind(&input.notes)
     .bind(&tag)
+    .bind(input.grid_rows)
+    .bind(input.grid_cols)
     .execute(pool)
     .await?;
 
@@ -91,6 +108,8 @@ pub async fn update_location(
             height           = COALESCE(?, height),
             canvas_data_json = COALESCE(?, canvas_data_json),
             notes            = COALESCE(?, notes),
+                grid_rows        = COALESCE(?, grid_rows),
+                grid_cols        = COALESCE(?, grid_cols),
             updated_at       = datetime('now')
          WHERE id = ?",
     )
@@ -104,6 +123,8 @@ pub async fn update_location(
     .bind(input.height)
     .bind(input.canvas_data_json)
     .bind(input.notes)
+    .bind(input.grid_rows)
+    .bind(input.grid_cols)
     .bind(id)
     .execute(pool)
     .await?;

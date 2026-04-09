@@ -10,22 +10,25 @@ import { OBJECT_DEFAULTS } from './types';
 export function SpaceEditor() {
   const [generatorOpen, setGeneratorOpen] = useState(false);
   const editingPlotId = useCanvasStore((s) => s.editingPlotId);
+  const editingPlotGroupId = useCanvasStore((s) => s.editingPlotGroupId);
   const objects = useCanvasStore((s) => s.objects);
   const gridConfig = useCanvasStore((s) => s.gridConfig);
   const selectedId = useCanvasStore((s) => s.selectedId);
   const setEditingPlotId = useCanvasStore((s) => s.setEditingPlotId);
+  const setEditingPlotGroupId = useCanvasStore((s) => s.setEditingPlotGroupId);
   const addObject = useCanvasStore((s) => s.addObject);
   const setObjects = useCanvasStore((s) => s.setObjects);
   const setActiveTool = useCanvasStore((s) => s.setActiveTool);
   const setSelectedId = useCanvasStore((s) => s.setSelectedId);
   const setDirty = useCanvasStore((s) => s.setDirty);
 
-  const plot = objects.find((o) => o.id === editingPlotId);
-  if (!editingPlotId || !plot) return null;
+  const editingParentId = editingPlotGroupId ?? editingPlotId;
+  const parentObject = objects.find((o) => o.id === editingParentId);
+  if (!editingParentId || !parentObject) return null;
 
-  const spaces = objects.filter((o) => o.type === 'space' && o.parentId === editingPlotId);
+  const spaces = objects.filter((o) => o.type === 'space' && o.parentId === editingParentId);
   const selectedSpace = objects.find(
-    (o) => o.id === selectedId && o.type === 'space' && o.parentId === editingPlotId,
+    (o) => o.id === selectedId && o.type === 'space' && o.parentId === editingParentId,
   );
 
   const addSpace = () => {
@@ -35,8 +38,8 @@ export function SpaceEditor() {
       id,
       type: 'space',
       layer: def.layer,
-      x: (plot.x ?? 0) + 10,
-      y: (plot.y ?? 0) + 10,
+      x: (parentObject.x ?? 0) + 10,
+      y: (parentObject.y ?? 0) + 10,
       width: 40,
       height: 40,
       fill: def.fill,
@@ -46,7 +49,7 @@ export function SpaceEditor() {
       rotation: 0,
       label: '',
       notes: '',
-      parentId: editingPlotId,
+      parentId: editingParentId,
     });
     setSelectedId(id);
     setDirty(true);
@@ -63,8 +66,8 @@ export function SpaceEditor() {
   }) => {
     const generatedSpaces = buildRectGridObjects({
       objectType: 'space',
-      originX: plot.x,
-      originY: plot.y,
+      originX: parentObject.x,
+      originY: parentObject.y,
       rows: layout.rows,
       columns: layout.columns,
       cellWidthPx: layout.cellWidthPx,
@@ -74,11 +77,11 @@ export function SpaceEditor() {
       gapYPx: layout.pathwayYPx,
       gapEveryColumns: layout.pathwayEveryColumns,
       gapEveryRows: layout.pathwayEveryRows,
-      parentId: editingPlotId,
+      parentId: editingParentId,
     });
 
     const nextObjects = replaceExistingSpaces
-      ? [...objects.filter((object) => !(object.type === 'space' && object.parentId === editingPlotId)), ...generatedSpaces]
+      ? [...objects.filter((object) => !(object.type === 'space' && object.parentId === editingParentId)), ...generatedSpaces]
       : [...objects, ...generatedSpaces];
 
     setObjects(nextObjects);
@@ -111,6 +114,7 @@ export function SpaceEditor() {
           variant="subtle"
           onClick={() => {
             setEditingPlotId(null);
+            setEditingPlotGroupId(null);
             setSelectedId(null);
             setActiveTool('select');
           }}
@@ -120,7 +124,7 @@ export function SpaceEditor() {
       </Tooltip>
 
       <Text size="sm" fw={500}>
-        Editing spaces in: <strong>{plot.label || 'Unnamed plot'}</strong>
+        Editing spaces in: <strong>{parentObject.label || 'Unnamed area'}</strong>
       </Text>
 
       <Text size="xs" c="dimmed">
@@ -173,13 +177,13 @@ export function SpaceEditor() {
         opened={generatorOpen}
         onClose={() => setGeneratorOpen(false)}
         onGenerate={generateSpaces}
-        title={`Generate areas in ${plot.label || 'plot'}`}
-        description="Generate spaces directly in the canvas while editing this plot. The canvas remains unsaved until you save it."
+        title={`Generate areas in ${parentObject.label || 'area'}`}
+        description="Generate spaces directly in the canvas while editing this area. The canvas remains unsaved until you save it."
         unit={gridConfig.unit}
         pixelsPerUnit={gridConfig.pixelsPerUnit}
-        containerWidthPx={plot.width ?? 0}
-        containerHeightPx={plot.height ?? 0}
-        defaultLabelPrefix="Space"
+        containerWidthPx={parentObject.width ?? 0}
+        containerHeightPx={parentObject.height ?? 0}
+        defaultLabelPrefix={parentObject.type === 'plot-group' ? (parentObject.label || 'Space') : 'Space'}
         submitLabel="Insert areas"
         replaceExistingHelpText="Replacing spaces updates the canvas immediately. Save the canvas when you are ready to persist the layout."
       />

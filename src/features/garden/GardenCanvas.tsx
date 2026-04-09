@@ -334,6 +334,7 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
   const layerVisibility = useCanvasStore((s) => s.layerVisibility);
   const gridConfig = useCanvasStore((s) => s.gridConfig);
   const editingPlotId = useCanvasStore((s) => s.editingPlotId);
+  const editingPlotGroupId = useCanvasStore((s) => s.editingPlotGroupId);
   const pendingPlantAssignId = useCanvasStore((s) => s.pendingPlantAssignId);
   const stageX = useCanvasStore((s) => s.stageX);
   const stageY = useCanvasStore((s) => s.stageY);
@@ -610,11 +611,12 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
       return;
     }
     // Exit space editing if clicking outside shapes in edit mode
-    if (editingPlotId && e.target === stageRef.current) {
+    if ((editingPlotId || editingPlotGroupId) && e.target === stageRef.current) {
       useCanvasStore.getState().setEditingPlotId(null);
+      useCanvasStore.getState().setEditingPlotGroupId(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drawState, previewObj, objects, editingPlotId]);
+  }, [drawState, previewObj, objects, editingPlotId, editingPlotGroupId]);
 
   const handleShapeClick = useCallback((obj: CanvasObject) => {
     if (activeTool === 'eraser') {
@@ -631,10 +633,21 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
     if (activeTool !== 'select') return;
     if (obj.type === 'plot') {
       useCanvasStore.getState().setEditingPlotId(obj.id);
+      useCanvasStore.getState().setEditingPlotGroupId(null);
+    } else if (obj.type === 'plot-group') {
+      useCanvasStore.getState().setEditingPlotGroupId(obj.id);
+      useCanvasStore.getState().setEditingPlotId(null);
     } else if (PLANT_ASSIGNABLE_TYPES.has(obj.type)) {
       // Enter the parent plot's editing mode if not already there
       if (obj.type === 'space' && obj.parentId) {
-        useCanvasStore.getState().setEditingPlotId(obj.parentId);
+        const parent = useCanvasStore.getState().objects.find((candidate) => candidate.id === obj.parentId);
+        if (parent?.type === 'plot-group') {
+          useCanvasStore.getState().setEditingPlotGroupId(obj.parentId);
+          useCanvasStore.getState().setEditingPlotId(null);
+        } else {
+          useCanvasStore.getState().setEditingPlotId(obj.parentId);
+          useCanvasStore.getState().setEditingPlotGroupId(null);
+        }
       }
       // Always open the plant assignment modal
       setAssignModalSpace({
@@ -662,12 +675,13 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
   }, [size.height, size.width, stageScale, stageX, stageY]);
 
   const visibleObjects = useMemo(() => {
-    const baseObjects = editingPlotId
-      ? objects.filter((o) => o.id === editingPlotId || o.parentId === editingPlotId)
+    const activeParentId = editingPlotGroupId ?? editingPlotId;
+    const baseObjects = activeParentId
+      ? objects.filter((o) => o.id === activeParentId || o.parentId === activeParentId)
       : objects;
 
     return baseObjects.filter((obj) => obj.id === selectedId || isObjectVisible(obj, viewportBounds));
-  }, [editingPlotId, objects, selectedId, viewportBounds]);
+  }, [editingPlotGroupId, editingPlotId, objects, selectedId, viewportBounds]);
 
   const byLayer = useMemo(
     () => Object.fromEntries(
@@ -718,7 +732,25 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
                   draggable={activeTool === 'select'}
                   onDragEnd={(updates) => {
                     pushSnapshot(objects);
-                    updateObject(obj.id, updates);
+                    if (obj.type === 'plot-group' && (updates.x != null || updates.y != null)) {
+                      const nextX = updates.x ?? obj.x;
+                      const nextY = updates.y ?? obj.y;
+                      const dx = nextX - obj.x;
+                      const dy = nextY - obj.y;
+
+                      updateObject(obj.id, updates);
+
+                      if (dx !== 0 || dy !== 0) {
+                        for (const child of objects.filter((candidate) => candidate.parentId === obj.id)) {
+                          updateObject(child.id, {
+                            x: child.x + dx,
+                            y: child.y + dy,
+                          });
+                        }
+                      }
+                    } else {
+                      updateObject(obj.id, updates);
+                    }
                     setDirty(true);
                   }}
                   onTransformEnd={(updates) => {

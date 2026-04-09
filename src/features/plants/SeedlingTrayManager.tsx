@@ -27,9 +27,10 @@ import {
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   commands,
+  type Location,
   type SeedlingTray,
   type SeedlingTrayCell,
   type SeedlingObservation,
@@ -46,13 +47,15 @@ interface TrayFormModalProps {
   opened: boolean;
   onClose: () => void;
   tray?: SeedlingTray | null;
+  seedlingAreas: Location[];
 }
 
-function TrayFormModal({ opened, onClose, tray }: TrayFormModalProps) {
+function TrayFormModal({ opened, onClose, tray, seedlingAreas }: TrayFormModalProps) {
   const activeEnvId = useAppStore((s) => s.activeEnvironmentId);
   const queryClient = useQueryClient();
 
   const [name, setName] = useState(tray?.name ?? "");
+  const [locationId, setLocationId] = useState<string | null>(tray?.location_id != null ? String(tray.location_id) : null);
   const [rows, setRows] = useState<number | string>(tray?.rows ?? 4);
   const [cols, setCols] = useState<number | string>(tray?.cols ?? 6);
   const [cellSize, setCellSize] = useState<number | string>(tray?.cell_size_cm ?? "");
@@ -62,6 +65,7 @@ function TrayFormModal({ opened, onClose, tray }: TrayFormModalProps) {
     mutationFn: async () => {
       if (tray) {
         const res = await commands.updateSeedlingTray(tray.id, {
+          location_id: locationId ? Number(locationId) : null,
           name: name || null,
           rows: rows !== "" ? Number(rows) : null,
           cols: cols !== "" ? Number(cols) : null,
@@ -73,6 +77,7 @@ function TrayFormModal({ opened, onClose, tray }: TrayFormModalProps) {
       } else {
         const res = await commands.createSeedlingTray({
           environment_id: activeEnvId!,
+          location_id: locationId ? Number(locationId) : null,
           name,
           rows: Number(rows) || 4,
           cols: Number(cols) || 6,
@@ -96,6 +101,14 @@ function TrayFormModal({ opened, onClose, tray }: TrayFormModalProps) {
     <Modal opened={opened} onClose={onClose} title={tray ? "Edit tray" : "New seedling tray"} size="sm">
       <Stack gap="sm">
         <TextInput label="Name" required value={name} onChange={(e) => setName(e.currentTarget.value)} />
+        <Select
+          label="Seedling Area"
+          placeholder="No area linked"
+          clearable
+          data={seedlingAreas.map((area) => ({ value: String(area.id), label: area.name }))}
+          value={locationId}
+          onChange={setLocationId}
+        />
         <SimpleGrid cols={2} spacing="sm">
           <NumberInput label="Rows" value={rows} onChange={setRows} min={1} max={20} />
           <NumberInput label="Columns" value={cols} onChange={setCols} min={1} max={20} />
@@ -315,6 +328,15 @@ function TrayGridView({ tray, onBack }: TrayGridViewProps) {
   const [assignTarget, setAssignTarget] = useState<{ row: number; col: number } | null>(null);
   const [transplantTarget, setTransplantTarget] = useState<Plant | null>(null);
 
+  const { data: seedlingAreas = [] } = useQuery({
+    queryKey: ["seedling-areas", tray.environment_id],
+    queryFn: async () => {
+      const res = await commands.listLocations(tray.environment_id);
+      if (res.status === "error") throw new Error(res.error);
+      return (res.data as Location[]).filter((location) => location.location_type === "SeedlingArea");
+    },
+  });
+
   // Load tray cells
   const { data: cells = [] } = useQuery({
     queryKey: ["tray-cells", tray.id],
@@ -465,7 +487,12 @@ function TrayGridView({ tray, onBack }: TrayGridViewProps) {
 
       {/* Edit tray modal */}
       {editOpen && (
-        <TrayFormModal opened={editOpen} onClose={() => setEditOpen(false)} tray={tray} />
+        <TrayFormModal
+          opened={editOpen}
+          onClose={() => setEditOpen(false)}
+          tray={tray}
+          seedlingAreas={seedlingAreas}
+        />
       )}
 
       {/* Assign cell modal */}
@@ -526,6 +553,41 @@ export function SeedlingTrayManager() {
     },
     enabled: activeEnvId != null,
   });
+
+  const { data: seedlingAreas = [] } = useQuery({
+    queryKey: ["seedling-areas", activeEnvId],
+    queryFn: async () => {
+      const res = await commands.listLocations(activeEnvId!);
+      if (res.status === "error") throw new Error(res.error);
+      return (res.data as Location[]).filter((location) => location.location_type === "SeedlingArea");
+    },
+    enabled: activeEnvId != null,
+  });
+
+  const areaNameById = useMemo(
+    () => new Map(seedlingAreas.map((area) => [area.id, area.name])),
+    [seedlingAreas],
+  );
+
+  const groupedTrays = useMemo(() => {
+    const groups = new Map<string, { key: string; title: string; trays: SeedlingTray[] }>();
+
+    for (const tray of trays) {
+      const key = tray.location_id != null ? String(tray.location_id) : "__unassigned__";
+      const title = tray.location_id != null
+        ? areaNameById.get(tray.location_id) ?? "Unknown Seedling Area"
+        : "Unassigned Trays";
+
+      const existing = groups.get(key);
+      if (existing) {
+        existing.trays.push(tray);
+      } else {
+        groups.set(key, { key, title, trays: [tray] });
+      }
+    }
+
+    return Array.from(groups.values()).sort((left, right) => left.title.localeCompare(right.title));
+  }, [areaNameById, trays]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -592,57 +654,71 @@ export function SeedlingTrayManager() {
           </Text>
         </Box>
       ) : (
-        <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
-          {trays.map((tray) => (
-            <Card
-              key={tray.id}
-              shadow="xs"
-              padding="md"
-              radius="md"
-              withBorder
-              style={{ cursor: "pointer" }}
-              onClick={() => setActiveTray(tray)}
-            >
-              <Stack gap="xs">
-                <Group justify="space-between">
-                  <Text fw={600}>{tray.name}</Text>
-                  <ActionIcon
-                    size="sm"
-                    variant="subtle"
-                    color="red"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteMutation.mutate(tray.id);
-                    }}
+        <Stack gap="md">
+          {groupedTrays.map((group) => (
+            <Stack key={group.key} gap="xs">
+              <Group gap="sm">
+                <Text fw={600}>{group.title}</Text>
+                <Badge variant="light" size="sm">{group.trays.length}</Badge>
+              </Group>
+              <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
+                {group.trays.map((tray) => (
+                  <Card
+                    key={tray.id}
+                    shadow="xs"
+                    padding="md"
+                    radius="md"
+                    withBorder
+                    style={{ cursor: "pointer" }}
+                    onClick={() => setActiveTray(tray)}
                   >
-                    <IconTrash size={14} />
-                  </ActionIcon>
-                </Group>
-                <Group gap="sm">
-                  <Badge variant="light" size="sm">
-                    {tray.rows} × {tray.cols}
-                  </Badge>
-                  <Text size="xs" c="dimmed">
-                    {tray.rows * tray.cols} cells
-                  </Text>
-                  {tray.cell_size_cm && (
-                    <Text size="xs" c="dimmed">{tray.cell_size_cm} cm</Text>
-                  )}
-                </Group>
-                {tray.notes && (
-                  <Text size="xs" c="dimmed" lineClamp={2}>{tray.notes}</Text>
-                )}
-                {tray.asset_id && (
-                  <Text size="xs" c="dimmed">Tag: <AssetTagInline tag={tray.asset_id} /></Text>
-                )}
-              </Stack>
-            </Card>
+                    <Stack gap="xs">
+                      <Group justify="space-between">
+                        <Text fw={600}>{tray.name}</Text>
+                        <ActionIcon
+                          size="sm"
+                          variant="subtle"
+                          color="red"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteMutation.mutate(tray.id);
+                          }}
+                        >
+                          <IconTrash size={14} />
+                        </ActionIcon>
+                      </Group>
+                      <Group gap="sm">
+                        <Badge variant="light" size="sm">
+                          {tray.rows} × {tray.cols}
+                        </Badge>
+                        <Text size="xs" c="dimmed">
+                          {tray.rows * tray.cols} cells
+                        </Text>
+                        {tray.cell_size_cm && (
+                          <Text size="xs" c="dimmed">{tray.cell_size_cm} cm</Text>
+                        )}
+                      </Group>
+                      {tray.notes && (
+                        <Text size="xs" c="dimmed" lineClamp={2}>{tray.notes}</Text>
+                      )}
+                      {tray.asset_id && (
+                        <Text size="xs" c="dimmed">Tag: <AssetTagInline tag={tray.asset_id} /></Text>
+                      )}
+                    </Stack>
+                  </Card>
+                ))}
+              </SimpleGrid>
+            </Stack>
           ))}
-        </SimpleGrid>
+        </Stack>
       )}
 
       {createOpen && (
-        <TrayFormModal opened={createOpen} onClose={() => setCreateOpen(false)} />
+        <TrayFormModal
+          opened={createOpen}
+          onClose={() => setCreateOpen(false)}
+          seedlingAreas={seedlingAreas}
+        />
       )}
     </Stack>
   );

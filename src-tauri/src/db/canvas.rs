@@ -54,7 +54,8 @@ pub async fn list_locations_for_env(
 }
 
 pub use super::locations::{
-    create_location, delete_location, get_location, list_child_locations, update_location,
+    create_location, delete_location, get_location, list_child_locations, list_locations_by_type,
+    update_location,
 };
 
 #[allow(dead_code)]

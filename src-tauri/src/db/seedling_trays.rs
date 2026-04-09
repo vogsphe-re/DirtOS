@@ -34,10 +34,11 @@ pub async fn create_tray(
 ) -> Result<SeedlingTray, sqlx::Error> {
     let tag = asset_tag::generate_tag("TRY");
     let result = sqlx::query(
-        "INSERT INTO seedling_trays (environment_id, name, rows, cols, cell_size_cm, notes, asset_id)
-         VALUES (?,?,?,?,?,?,?)",
+        "INSERT INTO seedling_trays (environment_id, location_id, name, rows, cols, cell_size_cm, notes, asset_id)
+         VALUES (?,?,?,?,?,?,?,?)",
     )
     .bind(input.environment_id)
+    .bind(input.location_id)
     .bind(&input.name)
     .bind(input.rows)
     .bind(input.cols)
@@ -59,6 +60,7 @@ pub async fn update_tray(
 ) -> Result<Option<SeedlingTray>, sqlx::Error> {
     sqlx::query(
         "UPDATE seedling_trays SET
+            location_id  = COALESCE(?, location_id),
             name         = COALESCE(?, name),
             rows         = COALESCE(?, rows),
             cols         = COALESCE(?, cols),
@@ -67,6 +69,7 @@ pub async fn update_tray(
             updated_at   = datetime('now')
          WHERE id = ?",
     )
+    .bind(input.location_id)
     .bind(&input.name)
     .bind(input.rows)
     .bind(input.cols)

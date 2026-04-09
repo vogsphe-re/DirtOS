@@ -701,6 +701,30 @@ async transitionPlantStatus(plantId: number, newStatus: PlantStatus) : Promise<R
     else return { status: "error", error: e  as any };
 }
 },
+async markHarvestable(plantId: number) : Promise<Result<Plant, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("mark_harvestable", { plantId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async unmarkHarvestable(plantId: number) : Promise<Result<Plant, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("unmark_harvestable", { plantId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async cyclePerennialPlant(plantId: number) : Promise<Result<Plant, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("cycle_perennial_plant", { plantId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 /**
  * Assign an existing plant to a canvas space object, linking them in the DB.
  * Optionally also sets location_id if the space has a DB location record.
@@ -914,6 +938,30 @@ async deleteLocation(id: number) : Promise<Result<boolean, string>> {
 async listChildLocations(parentId: number) : Promise<Result<Location[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("list_child_locations", { parentId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createPlotGroup(input: CreatePlotGroupInput) : Promise<Result<PlotGroupCreateResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_plot_group", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listPlotGroups(environmentId: number) : Promise<Result<Location[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_plot_groups", { environmentId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async movePlotGroup(id: number, positionX: number, positionY: number) : Promise<Result<Location, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("move_plot_group", { id, positionX, positionY }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -1215,7 +1263,7 @@ async getWeather(environmentId: number) : Promise<Result<WeatherData | null, str
 }
 },
 /**
- * Force a fresh fetch from OpenWeather, bypassing the cache.
+ * Force a fresh fetch from Open-Meteo, bypassing the cache.
  * Also evaluates weather-based alerts after a successful fetch.
  */
 async refreshWeather(environmentId: number) : Promise<Result<WeatherData | null, string>> {
@@ -1228,6 +1276,7 @@ async refreshWeather(environmentId: number) : Promise<Result<WeatherData | null,
 },
 /**
  * Return the stored OpenWeather API key, or None if not set.
+ * (Kept for backward compat; no longer required for Open-Meteo fetches.)
  */
 async getWeatherApiKey() : Promise<Result<string | null, string>> {
     try {
@@ -1238,7 +1287,7 @@ async getWeatherApiKey() : Promise<Result<string | null, string>> {
 }
 },
 /**
- * Persist the OpenWeather API key in app_settings.
+ * Persist the OpenWeather API key (used for radar tile overlays).
  */
 async setWeatherApiKey(apiKey: string) : Promise<Result<null, string>> {
     try {
@@ -1631,6 +1680,37 @@ async getRecommendations(environmentId: number) : Promise<Result<Recommendation[
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Look up any entity by its asset tag.
+ * 
+ * Searches environments, locations, plants, harvests, seed_lots, and
+ * seedling_trays in priority order and returns the first matching record.
+ * 
+ * Returns `None` when no entity carries the given tag.
+ */
+async lookupAssetTag(tag: string) : Promise<Result<AssetTagLookup | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("lookup_asset_tag", { tag }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Return all tagged entities for the barcode label print page.
+ * 
+ * Each entry in the result can be rendered as a 2" × 1.5" label in the
+ * browser's print view.  Pass `entity_types` as a comma-separated filter
+ * ("plant,seed_lot") or an empty string / `None` for all types.
+ */
+async listAssetTags(entityTypes: string | null) : Promise<Result<AssetTagLookup[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_asset_tags", { entityTypes }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async listDashboards(environmentId: number) : Promise<Result<Dashboard[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("list_dashboards", { environmentId }) };
@@ -1674,7 +1754,7 @@ async deleteDashboard(id: number) : Promise<Result<boolean, string>> {
 /**
  * Seed a comprehensive demonstration garden with sample data across every
  * feature area. Idempotent: returns the existing environment's id if an
- * environment named "Demo Garden" already exists.
+ * environment named `DirtOS Example Garden` already exists.
  */
 async seedDemoGarden() : Promise<Result<number, string>> {
     try {
@@ -1684,6 +1764,10 @@ async seedDemoGarden() : Promise<Result<number, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Build a clean example garden backup and save it to:
+ * `~/Documents/DirtOS/Examples/DirtOS-Example-Garden.json`.
+ */
 async saveExampleGarden() : Promise<Result<string, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("save_example_garden") };
@@ -1695,22 +1779,6 @@ async saveExampleGarden() : Promise<Result<string, string>> {
 async importExampleGarden() : Promise<Result<ExampleGardenImportResult, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("import_example_garden") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async lookupAssetTag(tag: string) : Promise<Result<AssetTagLookup | null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("lookup_asset_tag", { tag }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async listAssetTags(entityTypes: string | null) : Promise<Result<AssetTagLookup[], string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("list_asset_tags", { entityTypes }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -1731,7 +1799,6 @@ async listAssetTags(entityTypes: string | null) : Promise<Result<AssetTagLookup[
 export type Additive = { id: number; name: string; additive_type: AdditiveType; npk_n: number | null; npk_p: number | null; npk_k: number | null; application_rate: number | null; application_unit: string | null; notes: string | null }
 export type AdditiveType = "Fertilizer" | "Amendment" | "Pesticide" | "Fungicide" | "Other"
 export type AppStartupStatus = { ready: boolean; recovering: boolean; recovered_from_backup: boolean; message: string | null }
-export type AssetTagLookup = { asset_tag: string; entity_type: string; entity_id: number; display_name: string; description: string | null }
 /**
  * Selective enrichment: user picks which fields to apply.
  */
@@ -1748,6 +1815,31 @@ cached_json: string | null;
  * Source-specific identifier.
  */
 source_id: string | null; scientific_name: string | null; family: string | null; genus: string | null; image_url: string | null; description: string | null; eol_description: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; habitat: string | null; native_range: string | null; establishment_means: string | null; min_temperature_c: number | null; max_temperature_c: number | null; rooting_depth: string | null; uses: string | null; tags: string | null; gbif_accepted_name: string | null }
+/**
+ * The result returned when scanning or looking up an asset tag.
+ */
+export type AssetTagLookup = { 
+/**
+ * The scanned / queried asset tag string.
+ */
+asset_tag: string; 
+/**
+ * Entity category: "plant", "environment", "location", "harvest",
+ * "seed_lot", or "seedling_tray".
+ */
+entity_type: string; 
+/**
+ * Primary-key ID of the matching record.
+ */
+entity_id: number; 
+/**
+ * Human-readable display name for the entity.
+ */
+display_name: string; 
+/**
+ * Optional secondary description (e.g. environment name for a plant).
+ */
+description: string | null }
 export type AssignTrayCell = { tray_id: number; row: number; col: number; plant_id: number | null; notes: string | null }
 export type AutoEnrichResult = { 
 /**
@@ -1764,6 +1856,7 @@ export type BackupJob = { id: number; name: string; schedule_cron: string | null
 export type BackupRun = { id: number; backup_job_id: number | null; status: string; format: BackupFormat; output_ref: string | null; bytes_written: number | null; error_message: string | null; started_at: string; finished_at: string | null }
 export type CalendarEvent = { id: string; event_type: CalendarEventType; date: string; title: string; color: string | null; plant_id: number | null; schedule_id: number | null; issue_id: number | null }
 export type CalendarEventType = "Schedule" | "PlantingDate" | "HarvestDate" | "IssueCreated"
+export type CreatePlotGroupInput = { environment_id: number; parent_id: number | null; name: string; label_prefix: string | null; rows: number; cols: number; origin_x: number | null; origin_y: number | null; cell_width: number | null; cell_height: number | null; gap_x: number | null; gap_y: number | null; notes: string | null }
 export type CurrentWeather = { temperature_c: number; feels_like_c: number; humidity: number; pressure_hpa: number; wind_speed_ms: number; wind_direction_deg: number; cloud_cover_pct: number; description: string; icon: string; sunrise: number | null; sunset: number | null; dt: number; uv_index: number | null; visibility_m: number | null; dew_point_c: number | null; wind_gust_ms: number | null; is_day: boolean | null }
 export type CustomField = { id: number; entity_type: CustomFieldEntityType; entity_id: number; field_name: string; field_value: string | null; field_type: CustomFieldType; created_at: string }
 export type CustomFieldEntityType = "Species" | "Plant" | "Location" | "SoilTest"
@@ -1891,8 +1984,8 @@ export type IssueLabel = { id: number; name: string; color: string | null; icon:
 export type IssuePriority = "low" | "medium" | "high" | "critical"
 export type IssueStatus = "new" | "open" | "in_progress" | "closed"
 export type JournalEntry = { id: number; environment_id: number | null; plant_id: number | null; location_id: number | null; title: string; body: string | null; conditions_json: string | null; created_at: string; updated_at: string }
-export type Location = { id: number; environment_id: number; parent_id: number | null; location_type: LocationType; name: string; label: string | null; position_x: number | null; position_y: number | null; width: number | null; height: number | null; canvas_data_json: string | null; notes: string | null; asset_id: string | null; created_at: string; updated_at: string }
-export type LocationType = "Plot" | "Space" | "Tent" | "Tray" | "Pot" | "Shed"
+export type Location = { id: number; environment_id: number; parent_id: number | null; location_type: LocationType; name: string; label: string | null; position_x: number | null; position_y: number | null; width: number | null; height: number | null; canvas_data_json: string | null; notes: string | null; asset_id: string | null; grid_rows: number | null; grid_cols: number | null; created_at: string; updated_at: string }
+export type LocationType = "Plot" | "Space" | "Tent" | "Tray" | "Pot" | "Shed" | "OutdoorSite" | "IndoorSite" | "PlotGroup" | "SeedlingArea"
 export type MapPrivacyLevel = "private" | "obfuscated" | "shared"
 export type Media = { id: number; entity_type: string; entity_id: number; file_path: string; file_name: string; mime_type: string | null; thumbnail_path: string | null; caption: string | null; created_at: string }
 export type MediaBase64 = { id: number; mime_type: string; data: string; is_thumbnail: boolean }
@@ -1905,21 +1998,22 @@ export type NewIndoorReading = { indoor_environment_id: number; water_temp: numb
 export type NewIssue = { environment_id: number | null; plant_id: number | null; location_id: number | null; title: string; description: string | null; status: IssueStatus | null; priority: IssuePriority | null }
 export type NewIssueLabel = { name: string; color: string | null; icon: string | null }
 export type NewJournalEntry = { environment_id: number | null; plant_id: number | null; location_id: number | null; title: string; body: string | null; conditions_json: string | null }
-export type NewLocation = { environment_id: number; parent_id: number | null; location_type: LocationType; name: string; label: string | null; position_x: number | null; position_y: number | null; width: number | null; height: number | null; canvas_data_json: string | null; notes: string | null }
-export type NewPlant = { species_id: number | null; location_id: number | null; environment_id: number; status: PlantStatus | null; name: string; label: string | null; planted_date: string | null; notes: string | null; canvas_object_id?: string | null }
+export type NewLocation = { environment_id: number; parent_id: number | null; location_type: LocationType; name: string; label: string | null; position_x: number | null; position_y: number | null; width: number | null; height: number | null; canvas_data_json: string | null; notes: string | null; grid_rows?: number | null; grid_cols?: number | null }
+export type NewPlant = { species_id: number | null; location_id: number | null; environment_id: number; status: PlantStatus | null; name: string; label: string | null; planted_date: string | null; is_harvestable?: boolean | null; lifecycle_override?: string | null; notes: string | null; canvas_object_id?: string | null }
 export type NewPlantGroup = { environment_id: number; name: string; description: string | null; group_type: string | null; color: string | null }
 export type NewSchedule = { environment_id: number | null; plant_id: number | null; location_id: number | null; schedule_type: ScheduleType; title: string; cron_expression: string | null; next_run_at: string | null; is_active: boolean | null; additive_id: number | null; notes: string | null }
 export type NewSeason = { environment_id: number; name: string; start_date: string; end_date: string; notes: string | null }
 export type NewSeedLot = { species_id: number | null; parent_plant_id: number | null; harvest_id: number | null; lot_label: string | null; quantity: number | null; viability_pct: number | null; storage_location: string | null; collected_date: string | null; source_type: string | null; vendor: string | null; purchase_date: string | null; expiration_date: string | null; packet_info: string | null; notes: string | null }
 export type NewSeedlingObservation = { plant_id: number; observed_at: string | null; height_cm: number | null; stem_thickness_mm: number | null; leaf_node_count: number | null; leaf_node_spacing_mm: number | null; notes: string | null }
-export type NewSeedlingTray = { environment_id: number; name: string; rows: number; cols: number; cell_size_cm: number | null; notes: string | null }
+export type NewSeedlingTray = { environment_id: number; location_id?: number | null; name: string; rows: number; cols: number; cell_size_cm: number | null; notes: string | null }
 export type NewSensor = { environment_id: number | null; location_id: number | null; plant_id: number | null; name: string; sensor_type: SensorType; connection_type: SensorConnectionType; connection_config_json: string | null; poll_interval_seconds: number | null; is_active: boolean | null }
 export type NewSoilTest = { location_id: number; test_date: string; ph: number | null; nitrogen_ppm: number | null; phosphorus_ppm: number | null; potassium_ppm: number | null; moisture_pct: number | null; organic_matter_pct: number | null; notes: string | null }
 export type NewSpecies = { common_name: string; scientific_name: string | null; family: string | null; genus: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; description: string | null; image_url: string | null; is_user_added: boolean | null }
 export type OSMPlaceResult = { display_name: string; latitude: number; longitude: number; osm_type: string | null; osm_id: number | null }
-export type Plant = { id: number; species_id: number | null; location_id: number | null; environment_id: number; status: PlantStatus; name: string; label: string | null; asset_id: string | null; planted_date: string | null; germinated_date: string | null; transplanted_date: string | null; removed_date: string | null; parent_plant_id: number | null; seed_lot_id: number | null; purchase_source: string | null; purchase_date: string | null; purchase_price: number | null; notes: string | null; canvas_object_id: string | null; created_at: string; updated_at: string }
+export type Plant = { id: number; species_id: number | null; location_id: number | null; environment_id: number; status: PlantStatus; name: string; label: string | null; asset_id: string | null; planted_date: string | null; germinated_date: string | null; transplanted_date: string | null; removed_date: string | null; parent_plant_id: number | null; seed_lot_id: number | null; purchase_source: string | null; purchase_date: string | null; purchase_price: number | null; is_harvestable: boolean; lifecycle_override: string | null; notes: string | null; canvas_object_id: string | null; created_at: string; updated_at: string }
 export type PlantGroup = { id: number; environment_id: number; name: string; description: string | null; group_type: string | null; filter_criteria_json: string | null; color: string | null; created_at: string; updated_at: string }
 export type PlantStatus = "planned" | "seedling" | "active" | "harvested" | "removed" | "dead"
+export type PlotGroupCreateResult = { group: Location; spaces: Location[] }
 export type Recommendation = { category: string; title: string; description: string; confidence: number; action_suggestion: string | null; plant_id: number | null; species_id: number | null }
 export type ReportData = { report_type: string; date_from: string | null; date_to: string | null; points: ReportDataPoint[]; unit: string | null }
 /**
@@ -1935,7 +2029,7 @@ export type ScheduleType = "water" | "feed" | "maintenance" | "treatment" | "sam
 export type Season = { id: number; environment_id: number; name: string; start_date: string; end_date: string; notes: string | null; created_at: string }
 export type SeedLot = { id: number; parent_plant_id: number | null; harvest_id: number | null; species_id: number | null; lot_label: string | null; quantity: number | null; viability_pct: number | null; storage_location: string | null; collected_date: string | null; source_type: string; asset_id: string | null; vendor: string | null; purchase_date: string | null; expiration_date: string | null; packet_info: string | null; notes: string | null; created_at: string; updated_at: string }
 export type SeedlingObservation = { id: number; plant_id: number; observed_at: string; height_cm: number | null; stem_thickness_mm: number | null; leaf_node_count: number | null; leaf_node_spacing_mm: number | null; notes: string | null; created_at: string }
-export type SeedlingTray = { id: number; environment_id: number; name: string; rows: number; cols: number; cell_size_cm: number | null; notes: string | null; asset_id: string | null; created_at: string; updated_at: string }
+export type SeedlingTray = { id: number; environment_id: number; location_id: number | null; name: string; rows: number; cols: number; cell_size_cm: number | null; notes: string | null; asset_id: string | null; created_at: string; updated_at: string }
 export type SeedlingTrayCell = { id: number; tray_id: number; row: number; col: number; plant_id: number | null; notes: string | null; created_at: string; updated_at: string }
 export type Sensor = { id: number; environment_id: number | null; location_id: number | null; plant_id: number | null; name: string; sensor_type: SensorType; connection_type: SensorConnectionType; connection_config_json: string | null; poll_interval_seconds: number | null; is_active: boolean; created_at: string; updated_at: string }
 export type SensorConnectionType = "serial" | "usb" | "mqtt" | "http" | "manual" | "home_assistant"
@@ -1988,19 +2082,38 @@ export type UpdateIndoorEnvironment = { grow_method: GrowMethod | null; light_ty
 export type UpdateIssue = { title: string | null; description: string | null; status: IssueStatus | null; priority: IssuePriority | null; plant_id: number | null; location_id: number | null }
 export type UpdateIssueLabel = { name: string | null; color: string | null; icon: string | null }
 export type UpdateJournalEntry = { title: string | null; body: string | null; conditions_json: string | null }
-export type UpdateLocation = { parent_id: number | null; location_type: LocationType | null; name: string | null; label: string | null; position_x: number | null; position_y: number | null; width: number | null; height: number | null; canvas_data_json: string | null; notes: string | null }
-export type UpdatePlant = { species_id: number | null; location_id: number | null; status: PlantStatus | null; name: string | null; label: string | null; planted_date: string | null; germinated_date: string | null; transplanted_date: string | null; removed_date: string | null; parent_plant_id: number | null; seed_lot_id: number | null; purchase_source: string | null; purchase_date: string | null; purchase_price: number | null; notes: string | null }
+export type UpdateLocation = { parent_id: number | null; location_type: LocationType | null; name: string | null; label: string | null; position_x: number | null; position_y: number | null; width: number | null; height: number | null; canvas_data_json: string | null; notes: string | null; grid_rows?: number | null; grid_cols?: number | null }
+export type UpdatePlant = { species_id: number | null; location_id: number | null; status: PlantStatus | null; name: string | null; label: string | null; planted_date: string | null; germinated_date: string | null; transplanted_date: string | null; removed_date: string | null; parent_plant_id: number | null; seed_lot_id: number | null; purchase_source: string | null; purchase_date: string | null; purchase_price: number | null; is_harvestable?: boolean | null; lifecycle_override?: string | null; notes: string | null }
 export type UpdatePlantGroup = { name: string | null; description: string | null; group_type: string | null; color: string | null }
 export type UpdateSchedule = { schedule_type: ScheduleType | null; title: string | null; cron_expression: string | null; is_active: boolean | null; plant_id: number | null; location_id: number | null; additive_id: number | null; notes: string | null }
 export type UpdateSeedLot = { species_id: number | null; lot_label: string | null; quantity: number | null; viability_pct: number | null; storage_location: string | null; collected_date: string | null; source_type: string | null; vendor: string | null; purchase_date: string | null; expiration_date: string | null; packet_info: string | null; notes: string | null }
-export type UpdateSeedlingTray = { name: string | null; rows: number | null; cols: number | null; cell_size_cm: number | null; notes: string | null }
+export type UpdateSeedlingTray = { location_id?: number | null; name: string | null; rows: number | null; cols: number | null; cell_size_cm: number | null; notes: string | null }
 export type UpdateSensor = { name: string | null; sensor_type: SensorType | null; connection_type: SensorConnectionType | null; connection_config_json: string | null; poll_interval_seconds: number | null; location_id: number | null; plant_id: number | null; is_active: boolean | null }
 export type UpdateSpecies = { common_name: string | null; scientific_name: string | null; family: string | null; genus: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; description: string | null; image_url: string | null }
 export type UpsertEnvironmentMapSetting = { latitude: number | null; longitude: number | null; zoom_level: number | null; geocode_json: string | null; weather_overlay: boolean; soil_overlay: boolean; boundaries_geojson: string | null; privacy_level: MapPrivacyLevel; allow_sharing: boolean }
 export type UpsertIndoorReservoirTarget = { ph_min: number | null; ph_max: number | null; ec_min: number | null; ec_max: number | null; ppm_min: number | null; ppm_max: number | null }
 export type UpsertIntegrationConfig = { enabled: boolean; auth_json: string | null; settings_json: string | null; sync_interval_minutes: number | null; cache_ttl_minutes: number | null; rate_limit_per_minute: number | null }
+/**
+ * Configurable thresholds for weather-based issue creation.
+ */
+export type WeatherAlertSettings = { 
+/**
+ * Create issue when forecast high exceeds this (°C). 0 = disabled.
+ */
+heat_max_c: number; 
+/**
+ * Create issue when forecast low drops to or below this (°C).
+ */
+frost_min_c: number; 
+/**
+ * Create issue when max wind speed exceeds this (m/s). 0 = disabled.
+ */
+wind_max_ms: number; 
+/**
+ * Create issue when precipitation probability exceeds this (0–1). 0 = disabled.
+ */
+precip_prob_threshold: number; alerts_enabled: boolean }
 export type WeatherData = { current: CurrentWeather; hourly: ForecastItem[]; daily: DailyForecast[]; from_cache: boolean; fetched_at: string; location_name: string | null; latitude: number | null; longitude: number | null }
-export type WeatherAlertSettings = { heat_max_c: number; frost_min_c: number; wind_max_ms: number; precip_prob_threshold: number; alerts_enabled: boolean }
 /**
  * A candidate article returned by the fuzzy OpenSearch API.
  */

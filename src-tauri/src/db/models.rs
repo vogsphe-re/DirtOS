@@ -16,6 +16,10 @@ pub enum LocationType {
     Tray,
     Pot,
     Shed,
+    OutdoorSite,
+    IndoorSite,
+    PlotGroup,
+    SeedlingArea,
 }
 
 #[derive(Debug, Clone, PartialEq, sqlx::Type, Serialize, Deserialize, Type)]
@@ -230,6 +234,8 @@ pub struct Location {
     pub canvas_data_json: Option<String>,
     pub notes: Option<String>,
     pub asset_id: Option<String>,
+    pub grid_rows: Option<i64>,
+    pub grid_cols: Option<i64>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -247,6 +253,10 @@ pub struct NewLocation {
     pub height: Option<f64>,
     pub canvas_data_json: Option<String>,
     pub notes: Option<String>,
+    #[serde(default)]
+    pub grid_rows: Option<i64>,
+    #[serde(default)]
+    pub grid_cols: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -261,6 +271,10 @@ pub struct UpdateLocation {
     pub height: Option<f64>,
     pub canvas_data_json: Option<String>,
     pub notes: Option<String>,
+    #[serde(default)]
+    pub grid_rows: Option<i64>,
+    #[serde(default)]
+    pub grid_cols: Option<i64>,
 }
 
 // ---------------------------------------------------------------------------
@@ -381,6 +395,8 @@ pub struct Plant {
     pub purchase_source: Option<String>,
     pub purchase_date: Option<String>,
     pub purchase_price: Option<f64>,
+    pub is_harvestable: bool,
+    pub lifecycle_override: Option<String>,
     pub notes: Option<String>,
     pub canvas_object_id: Option<String>,
     pub created_at: NaiveDateTime,
@@ -396,6 +412,10 @@ pub struct NewPlant {
     pub name: String,
     pub label: Option<String>,
     pub planted_date: Option<String>,
+    #[serde(default)]
+    pub is_harvestable: Option<bool>,
+    #[serde(default)]
+    pub lifecycle_override: Option<String>,
     pub notes: Option<String>,
     #[serde(default)]
     pub canvas_object_id: Option<String>,
@@ -417,6 +437,10 @@ pub struct UpdatePlant {
     pub purchase_source: Option<String>,
     pub purchase_date: Option<String>,
     pub purchase_price: Option<f64>,
+    #[serde(default)]
+    pub is_harvestable: Option<bool>,
+    #[serde(default)]
+    pub lifecycle_override: Option<String>,
     pub notes: Option<String>,
 }
 
@@ -1668,6 +1692,7 @@ pub struct UpdateDashboard {
 pub struct SeedlingTray {
     pub id: i64,
     pub environment_id: i64,
+    pub location_id: Option<i64>,
     pub name: String,
     pub rows: i64,
     pub cols: i64,
@@ -1681,6 +1706,8 @@ pub struct SeedlingTray {
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct NewSeedlingTray {
     pub environment_id: i64,
+    #[serde(default)]
+    pub location_id: Option<i64>,
     pub name: String,
     pub rows: i64,
     pub cols: i64,
@@ -1690,6 +1717,8 @@ pub struct NewSeedlingTray {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct UpdateSeedlingTray {
+    #[serde(default)]
+    pub location_id: Option<i64>,
     pub name: Option<String>,
     pub rows: Option<i64>,
     pub cols: Option<i64>,

@@ -211,6 +211,8 @@ function IndoorPlantsTab({
         name: name.trim(),
         label: null,
         planted_date: null,
+        is_harvestable: false,
+        lifecycle_override: null,
         notes: null,
       });
       if (res.status === "error") throw new Error(res.error);

@@ -63,11 +63,12 @@ pub async fn create_plant(
     asset_id: Option<String>,
 ) -> Result<Plant, sqlx::Error> {
     let status = input.status.unwrap_or(PlantStatus::Planned);
+    let is_harvestable = input.is_harvestable.unwrap_or(false);
     let result = sqlx::query(
         "INSERT INTO plants
             (species_id, location_id, environment_id, status, name, label, asset_id,
-             planted_date, notes, canvas_object_id)
-         VALUES (?,?,?,?,?,?,?,?,?,?)",
+             planted_date, is_harvestable, lifecycle_override, notes, canvas_object_id)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
     )
     .bind(input.species_id)
     .bind(input.location_id)
@@ -77,6 +78,8 @@ pub async fn create_plant(
     .bind(&input.label)
     .bind(&asset_id)
     .bind(&input.planted_date)
+    .bind(is_harvestable)
+    .bind(&input.lifecycle_override)
     .bind(&input.notes)
     .bind(&input.canvas_object_id)
     .execute(pool)
@@ -108,6 +111,8 @@ pub async fn update_plant(
             purchase_source   = COALESCE(?, purchase_source),
             purchase_date     = COALESCE(?, purchase_date),
             purchase_price    = COALESCE(?, purchase_price),
+                is_harvestable    = COALESCE(?, is_harvestable),
+                lifecycle_override = COALESCE(?, lifecycle_override),
             notes             = COALESCE(?, notes),
             updated_at        = datetime('now')
          WHERE id = ?",
@@ -126,6 +131,8 @@ pub async fn update_plant(
     .bind(input.purchase_source)
     .bind(input.purchase_date)
     .bind(input.purchase_price)
+    .bind(input.is_harvestable)
+    .bind(input.lifecycle_override)
     .bind(input.notes)
     .bind(id)
     .execute(pool)
@@ -180,6 +187,16 @@ pub async fn transition_plant_status(
     to: PlantStatus,
 ) -> Result<Plant, sqlx::Error> {
     match (&from, &to) {
+        (PlantStatus::Harvested, PlantStatus::Seedling) => {
+            // Perennial cycle: clear removal marker so the plant can re-enter active growth.
+            sqlx::query(
+                "UPDATE plants SET status = ?, removed_date = NULL, updated_at = datetime('now') WHERE id = ?",
+            )
+            .bind(&to)
+            .bind(id)
+            .execute(pool)
+            .await?;
+        }
         (_, PlantStatus::Seedling) => {
             sqlx::query(
                 "UPDATE plants SET status = ?, germinated_date = COALESCE(germinated_date, date('now')), updated_at = datetime('now') WHERE id = ?",
@@ -317,4 +334,41 @@ pub async fn change_plant_status(
         .await?;
     }
     get_plant(pool, id).await
+}
+
+pub async fn mark_harvestable(
+    pool: &SqlitePool,
+    id: i64,
+    harvestable: bool,
+) -> Result<Plant, sqlx::Error> {
+    sqlx::query(
+        "UPDATE plants SET is_harvestable = ?, updated_at = datetime('now') WHERE id = ?",
+    )
+    .bind(harvestable)
+    .bind(id)
+    .execute(pool)
+    .await?;
+
+    get_plant(pool, id)
+        .await?
+        .ok_or(sqlx::Error::RowNotFound)
+}
+
+pub async fn cycle_perennial_plant(pool: &SqlitePool, id: i64) -> Result<Plant, sqlx::Error> {
+    sqlx::query(
+        "UPDATE plants
+         SET status = 'seedling',
+             location_id = NULL,
+             transplanted_date = COALESCE(transplanted_date, date('now')),
+             removed_date = NULL,
+             updated_at = datetime('now')
+         WHERE id = ?",
+    )
+    .bind(id)
+    .execute(pool)
+    .await?;
+
+    get_plant(pool, id)
+        .await?
+        .ok_or(sqlx::Error::RowNotFound)
 }

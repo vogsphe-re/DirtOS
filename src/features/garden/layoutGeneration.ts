@@ -69,7 +69,7 @@ interface GridFromCountsInput {
 }
 
 interface BuildRectGridObjectsInput {
-  objectType: "plot" | "space";
+  objectType: "plot" | "space" | "plot-group";
   originX: number;
   originY: number;
   rows: number;
@@ -510,7 +510,8 @@ export function buildRectGridObjects({
   parentId,
 }: BuildRectGridObjectsInput): CanvasObject[] {
   const defaults = OBJECT_DEFAULTS[objectType];
-  const prefix = labelPrefix.trim() || (objectType === "plot" ? "Plot" : "Space");
+  const prefix = labelPrefix.trim()
+    || (objectType === "plot" ? "Plot" : objectType === "plot-group" ? "Group" : "Space");
   const generatedCount = ensureObjectCount(rows, columns, DEFAULT_MAX_OBJECTS);
 
   if (generatedCount < 1) {
@@ -542,4 +543,73 @@ export function buildRectGridObjects({
   }
 
   return objects;
+}
+
+interface BuildPlotGroupObjectsInput {
+  originX: number;
+  originY: number;
+  rows: number;
+  columns: number;
+  cellWidthPx: number;
+  cellHeightPx: number;
+  labelPrefix: string;
+  gapXPx?: number;
+  gapYPx?: number;
+  gapEveryColumns?: number;
+  gapEveryRows?: number;
+}
+
+export function buildPlotGroupObjects({
+  originX,
+  originY,
+  rows,
+  columns,
+  cellWidthPx,
+  cellHeightPx,
+  labelPrefix,
+  gapXPx = 0,
+  gapYPx = 0,
+  gapEveryColumns = 0,
+  gapEveryRows = 0,
+}: BuildPlotGroupObjectsInput): { group: CanvasObject; spaces: CanvasObject[] } {
+  const groupDefaults = OBJECT_DEFAULTS["plot-group"];
+  const groupId = crypto.randomUUID();
+  const contentWidth = getGridSpan(columns, cellWidthPx, gapXPx, gapEveryColumns);
+  const contentHeight = getGridSpan(rows, cellHeightPx, gapYPx, gapEveryRows);
+  const groupLabel = labelPrefix.trim() || "Plot Group";
+
+  const group: CanvasObject = {
+    id: groupId,
+    type: "plot-group",
+    layer: groupDefaults.layer,
+    x: originX,
+    y: originY,
+    width: contentWidth,
+    height: contentHeight,
+    fill: groupDefaults.fill,
+    stroke: groupDefaults.stroke,
+    strokeWidth: groupDefaults.strokeWidth,
+    opacity: 1,
+    rotation: 0,
+    label: groupLabel,
+    notes: "",
+  };
+
+  const spaces = buildRectGridObjects({
+    objectType: "space",
+    originX,
+    originY,
+    rows,
+    columns,
+    cellWidthPx,
+    cellHeightPx,
+    labelPrefix: groupLabel,
+    gapXPx,
+    gapYPx,
+    gapEveryColumns,
+    gapEveryRows,
+    parentId: groupId,
+  });
+
+  return { group, spaces };
 }

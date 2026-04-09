@@ -97,6 +97,8 @@ export function PlantAssignmentModal({
         name: newName.trim(),
         label: null,
         planted_date: null,
+        is_harvestable: false,
+        lifecycle_override: null,
         notes: null,
         canvas_object_id: spaceId,
       });

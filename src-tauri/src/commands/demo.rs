@@ -376,6 +376,8 @@ async fn create_template_plants(
                 name: tpl.name.to_string(),
                 label: Some(format!("{}-{:02}", label_prefix, idx + 1)),
                 planted_date: Some(planted.format("%Y-%m-%d").to_string()),
+                is_harvestable: Some(false),
+                lifecycle_override: None,
                 notes: Some(tpl.notes.to_string()),
                 canvas_object_id: None,
             },
@@ -563,11 +565,51 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
 
     seed_settings_and_integrations(pool, eid, &settings).await?;
 
-    let bed_east = locations::create_location(
+    let outdoor_site = locations::create_location(
         pool,
         NewLocation {
             environment_id: eid,
             parent_id: None,
+            location_type: LocationType::OutdoorSite,
+            name: "Primary Outdoor Site".to_string(),
+            label: Some("OUT-A".to_string()),
+            position_x: Some(40.0),
+            position_y: Some(40.0),
+            width: Some(900.0),
+            height: Some(420.0),
+            canvas_data_json: None,
+            notes: Some("Main outdoor area for raised beds and open-air spaces.".to_string()),
+            grid_rows: None,
+            grid_cols: None,
+        },
+    )
+    .await?;
+
+    let indoor_site = locations::create_location(
+        pool,
+        NewLocation {
+            environment_id: eid,
+            parent_id: None,
+            location_type: LocationType::IndoorSite,
+            name: "Primary Indoor Site".to_string(),
+            label: Some("IND-A".to_string()),
+            position_x: Some(320.0),
+            position_y: Some(240.0),
+            width: Some(560.0),
+            height: Some(220.0),
+            canvas_data_json: None,
+            notes: Some("Main indoor area for tents and seedling propagation.".to_string()),
+            grid_rows: None,
+            grid_cols: None,
+        },
+    )
+    .await?;
+
+    let bed_east = locations::create_location(
+        pool,
+        NewLocation {
+            environment_id: eid,
+            parent_id: Some(outdoor_site.id),
             location_type: LocationType::Plot,
             name: "Raised Bed East".to_string(),
             label: Some("Warm-season vegetables".to_string()),
@@ -577,6 +619,8 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
             height: Some(140.0),
             canvas_data_json: None,
             notes: Some("South-facing bed with drip irrigation and trellis line.".to_string()),
+            grid_rows: None,
+            grid_cols: None,
         },
     )
     .await?;
@@ -585,7 +629,7 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
         pool,
         NewLocation {
             environment_id: eid,
-            parent_id: None,
+            parent_id: Some(outdoor_site.id),
             location_type: LocationType::Plot,
             name: "Raised Bed West".to_string(),
             label: Some("Greens and roots".to_string()),
@@ -595,6 +639,8 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
             height: Some(140.0),
             canvas_data_json: None,
             notes: Some("Cool-season crop rotation bed with shade cloth mounts.".to_string()),
+            grid_rows: None,
+            grid_cols: None,
         },
     )
     .await?;
@@ -603,7 +649,7 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
         pool,
         NewLocation {
             environment_id: eid,
-            parent_id: None,
+            parent_id: Some(outdoor_site.id),
             location_type: LocationType::Space,
             name: "Herb Terrace".to_string(),
             label: Some("Culinary perennials".to_string()),
@@ -613,6 +659,8 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
             height: Some(160.0),
             canvas_data_json: None,
             notes: Some("Tiered planters with mixed drainage for mediterranean and moist herbs.".to_string()),
+            grid_rows: None,
+            grid_cols: None,
         },
     )
     .await?;
@@ -621,7 +669,7 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
         pool,
         NewLocation {
             environment_id: eid,
-            parent_id: None,
+            parent_id: Some(indoor_site.id),
             location_type: LocationType::Tent,
             name: "Indoor Tent A".to_string(),
             label: Some("Leafy hydro DWC".to_string()),
@@ -631,6 +679,8 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
             height: Some(120.0),
             canvas_data_json: None,
             notes: Some("2x2 tent with DWC tote and full-spectrum LED.".to_string()),
+            grid_rows: None,
+            grid_cols: None,
         },
     )
     .await?;
@@ -639,7 +689,7 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
         pool,
         NewLocation {
             environment_id: eid,
-            parent_id: None,
+            parent_id: Some(indoor_site.id),
             location_type: LocationType::Tent,
             name: "Indoor Tent B".to_string(),
             label: Some("Nursery finishing".to_string()),
@@ -649,6 +699,8 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
             height: Some(120.0),
             canvas_data_json: None,
             notes: Some("2x2 tent for finishing transplants before outdoor move.".to_string()),
+            grid_rows: None,
+            grid_cols: None,
         },
     )
     .await?;
@@ -657,8 +709,8 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
         pool,
         NewLocation {
             environment_id: eid,
-            parent_id: None,
-            location_type: LocationType::Space,
+            parent_id: Some(indoor_site.id),
+            location_type: LocationType::SeedlingArea,
             name: "Propagation Bench".to_string(),
             label: Some("Seedling trays".to_string()),
             position_x: Some(640.0),
@@ -667,6 +719,8 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
             height: Some(140.0),
             canvas_data_json: None,
             notes: Some("Heated propagation bench with humidity dome and 5000K strip lights.".to_string()),
+            grid_rows: None,
+            grid_cols: None,
         },
     )
     .await?;
@@ -675,7 +729,7 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
         pool,
         NewLocation {
             environment_id: eid,
-            parent_id: None,
+            parent_id: Some(outdoor_site.id),
             location_type: LocationType::Shed,
             name: "Tool Shed".to_string(),
             label: Some("Storage".to_string()),
@@ -685,6 +739,8 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
             height: Some(90.0),
             canvas_data_json: None,
             notes: Some("Stores amendments, spare drippers, and propagation media.".to_string()),
+            grid_rows: None,
+            grid_cols: None,
         },
     )
     .await?;
@@ -922,6 +978,7 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
         pool,
         NewSeedlingTray {
             environment_id: eid,
+            location_id: Some(propagation_bench.id),
             name: "Propagation Tray A".to_string(),
             rows: 4,
             cols: 8,
@@ -935,6 +992,7 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
         pool,
         NewSeedlingTray {
             environment_id: eid,
+            location_id: Some(propagation_bench.id),
             name: "Propagation Tray B".to_string(),
             rows: 4,
             cols: 6,

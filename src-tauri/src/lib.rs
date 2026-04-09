@@ -137,6 +137,9 @@ fn specta_builder() -> Builder<tauri::Wry> {
         commands::delete_plant,
         commands::change_plant_status,
         commands::transition_plant_status,
+        commands::mark_harvestable,
+        commands::unmark_harvestable,
+        commands::cycle_perennial_plant,
         // Canvas plant assignment
         commands::assign_plant_to_canvas_object,
         commands::unassign_plant_from_canvas_object,
@@ -168,6 +171,9 @@ fn specta_builder() -> Builder<tauri::Wry> {
         commands::update_location,
         commands::delete_location,
         commands::list_child_locations,
+        commands::create_plot_group,
+        commands::list_plot_groups,
+        commands::move_plot_group,
         // Issues
         commands::list_issues,
         commands::get_issue,

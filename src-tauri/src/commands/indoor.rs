@@ -36,6 +36,8 @@ pub async fn create_indoor_environment(
             height: input.tent_depth,
             canvas_data_json: None,
             notes: input.notes.clone(),
+            grid_rows: None,
+            grid_cols: None,
         },
     )
     .await

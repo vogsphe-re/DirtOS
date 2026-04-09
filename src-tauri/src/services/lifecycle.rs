@@ -18,3 +18,23 @@ pub fn validate_transition(from: &PlantStatus, to: &PlantStatus) -> Result<(), S
         ))
     }
 }
+
+pub fn is_perennial(lifecycle: Option<&str>) -> bool {
+    lifecycle
+        .map(|value| value.eq_ignore_ascii_case("perennial"))
+        .unwrap_or(false)
+}
+
+/// Validate transitions while allowing perennial plants to cycle from
+/// harvested back to seedling.
+pub fn validate_transition_with_lifecycle(
+    from: &PlantStatus,
+    to: &PlantStatus,
+    lifecycle: Option<&str>,
+) -> Result<(), String> {
+    if matches!((from, to), (PlantStatus::Harvested, PlantStatus::Seedling)) && is_perennial(lifecycle) {
+        return Ok(());
+    }
+
+    validate_transition(from, to)
+}

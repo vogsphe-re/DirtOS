@@ -7,6 +7,28 @@ use crate::db::{
 };
 use crate::services::{lifecycle, plant_category};
 
+async fn resolve_plant_lifecycle(
+    pool: &SqlitePool,
+    plant: &Plant,
+) -> Result<Option<String>, sqlx::Error> {
+    if let Some(override_value) = plant.lifecycle_override.clone() {
+        return Ok(Some(override_value));
+    }
+
+    if let Some(species_id) = plant.species_id {
+        let growth_type = sqlx::query_scalar::<_, Option<String>>(
+            "SELECT growth_type FROM species WHERE id = ?",
+        )
+        .bind(species_id)
+        .fetch_optional(pool)
+        .await?
+        .flatten();
+        return Ok(growth_type);
+    }
+
+    Ok(None)
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn list_plants(
@@ -148,9 +170,63 @@ pub async fn transition_plant_status(
         .map_err(|e| e.to_string())?
         .ok_or_else(|| format!("Plant {} not found", plant_id))?;
 
-    lifecycle::validate_transition(&plant.status, &new_status)?;
+    let lifecycle_type = resolve_plant_lifecycle(&pool, &plant)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    lifecycle::validate_transition_with_lifecycle(
+        &plant.status,
+        &new_status,
+        lifecycle_type.as_deref(),
+    )?;
 
     plants::transition_plant_status(&pool, plant_id, &plant.status, new_status)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn mark_harvestable(
+    pool: State<'_, SqlitePool>,
+    plant_id: i64,
+) -> Result<Plant, String> {
+    plants::mark_harvestable(&pool, plant_id, true)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn unmark_harvestable(
+    pool: State<'_, SqlitePool>,
+    plant_id: i64,
+) -> Result<Plant, String> {
+    plants::mark_harvestable(&pool, plant_id, false)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn cycle_perennial_plant(
+    pool: State<'_, SqlitePool>,
+    plant_id: i64,
+) -> Result<Plant, String> {
+    let plant = plants::get_plant(&pool, plant_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Plant {} not found", plant_id))?;
+
+    let lifecycle_type = resolve_plant_lifecycle(&pool, &plant)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !lifecycle::is_perennial(lifecycle_type.as_deref()) {
+        return Err("Only perennial plants can be cycled back to seedling stage".to_string());
+    }
+
+    plants::cycle_perennial_plant(&pool, plant_id)
         .await
         .map_err(|e| e.to_string())
 }

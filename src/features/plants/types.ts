@@ -72,6 +72,8 @@ export interface Plant {
   purchase_source: string | null;
   purchase_date: string | null;
   purchase_price: number | null;
+  is_harvestable: boolean;
+  lifecycle_override: string | null;
   notes: string | null;
   canvas_object_id: string | null;
   created_at: string;

@@ -5,10 +5,14 @@ import {
   Button,
   Card,
   Group,
+  Modal,
+  NumberInput,
   ScrollArea,
+  Select,
   SimpleGrid,
   Stack,
   Text,
+  TextInput,
   Title,
   Tooltip,
 } from "@mantine/core";
@@ -17,7 +21,7 @@ import { IconArrowLeft, IconExternalLink, IconLayoutGridAdd, IconMap2, IconPlant
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { commands, type Plant } from "../../lib/bindings";
+import { commands, type Location, type Plant } from "../../lib/bindings";
 import { useAppStore } from "../../stores/appStore";
 import type { Species } from "../plants/types";
 import { PLANT_STATUS_COLORS, PLANT_STATUS_LABELS } from "../plants/types";
@@ -277,6 +281,12 @@ export function OutdoorPlotManager() {
   const [activePlotId, setActivePlotId] = useState<string | null>(null);
   const [assigningSpaceId, setAssigningSpaceId] = useState<string | null>(null);
   const [subdivideOpen, setSubdivideOpen] = useState(false);
+  const [createPlotGroupOpen, setCreatePlotGroupOpen] = useState(false);
+  const [plotGroupName, setPlotGroupName] = useState("");
+  const [plotGroupPrefix, setPlotGroupPrefix] = useState("");
+  const [plotGroupRows, setPlotGroupRows] = useState<number | string>(2);
+  const [plotGroupCols, setPlotGroupCols] = useState<number | string>(4);
+  const [plotGroupSiteId, setPlotGroupSiteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeEnvironmentId != null) {
@@ -339,6 +349,17 @@ export function OutdoorPlotManager() {
       const result = await commands.listSpecies(null, null, null, null, 500, 0);
       if (result.status === "error") throw new Error(result.error);
       return result.data as Species[];
+    },
+    enabled: activeEnvironmentId != null,
+  });
+
+  const { data: hierarchyLocations = [] } = useQuery({
+    queryKey: ["locations", activeEnvironmentId],
+    queryFn: async () => {
+      if (activeEnvironmentId == null) return [] as Location[];
+      const result = await commands.listLocations(activeEnvironmentId);
+      if (result.status === "error") throw new Error(result.error);
+      return result.data as Location[];
     },
     enabled: activeEnvironmentId != null,
   });
@@ -434,11 +455,71 @@ export function OutdoorPlotManager() {
     },
   });
 
+  const createPlotGroup = useMutation({
+    mutationFn: async () => {
+      if (!activeEnvironmentId) throw new Error("No active environment");
+      if (!plotGroupName.trim()) throw new Error("Plot group name is required");
+
+      const rows = Number(plotGroupRows);
+      const cols = Number(plotGroupCols);
+      if (!Number.isInteger(rows) || rows <= 0) throw new Error("Rows must be a whole number > 0");
+      if (!Number.isInteger(cols) || cols <= 0) throw new Error("Columns must be a whole number > 0");
+
+      const result = await (commands as any).createPlotGroup({
+        environment_id: activeEnvironmentId,
+        parent_id: plotGroupSiteId ? Number(plotGroupSiteId) : null,
+        name: plotGroupName.trim(),
+        label_prefix: plotGroupPrefix.trim() || plotGroupName.trim(),
+        rows,
+        cols,
+        origin_x: null,
+        origin_y: null,
+        cell_width: gridConfig.spacingPx,
+        cell_height: gridConfig.spacingPx,
+        gap_x: 0,
+        gap_y: 0,
+        notes: null,
+      });
+
+      if (result.status === "error") throw new Error(result.error);
+      return result.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["locations", activeEnvironmentId] });
+      notifications.show({ color: "green", message: "Plot group created." });
+      setCreatePlotGroupOpen(false);
+      setPlotGroupName("");
+      setPlotGroupPrefix("");
+      setPlotGroupRows(2);
+      setPlotGroupCols(4);
+      setPlotGroupSiteId(null);
+    },
+    onError: (error: Error) => {
+      notifications.show({ color: "red", title: "Plot group creation failed", message: error.message });
+    },
+  });
+
   const envPlants = useMemo(
     () => allPlants.filter((plant) => plant.environment_id === activeEnvironmentId),
     [activeEnvironmentId, allPlants],
   );
   const speciesById = useMemo(() => new Map(speciesList.map((species) => [species.id, species])), [speciesList]);
+  const outdoorSites = useMemo(
+    () => hierarchyLocations.filter((location) => location.location_type === "OutdoorSite"),
+    [hierarchyLocations],
+  );
+  const plotGroups = useMemo(
+    () => hierarchyLocations.filter((location) => location.location_type === "PlotGroup"),
+    [hierarchyLocations],
+  );
+  const plotGroupSpaceCounts = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (const location of hierarchyLocations) {
+      if (location.location_type !== "Space" || location.parent_id == null) continue;
+      counts.set(location.parent_id, (counts.get(location.parent_id) ?? 0) + 1);
+    }
+    return counts;
+  }, [hierarchyLocations]);
   const canvasPlantsBySpace = useMemo(() => {
     const map = new Map<string, Plant[]>();
     for (const plant of canvasPlants) {
@@ -491,6 +572,46 @@ export function OutdoorPlotManager() {
           Open Garden Canvas
         </Button>
       </Group>
+
+      <Card withBorder padding="md" radius="md">
+        <Stack gap="sm">
+          <Group justify="space-between" wrap="wrap">
+            <div>
+              <Title order={4}>Plot Groups</Title>
+              <Text size="sm" c="dimmed">
+                Database hierarchy for outdoor beds grouped by label prefix.
+              </Text>
+            </div>
+            <Button size="xs" leftSection={<IconPlus size={14} />} onClick={() => setCreatePlotGroupOpen(true)}>
+              Create Plot Group
+            </Button>
+          </Group>
+
+          {plotGroups.length === 0 ? (
+            <Text size="sm" c="dimmed">No plot groups yet.</Text>
+          ) : (
+            <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="sm">
+              {plotGroups.map((group) => {
+                const site = outdoorSites.find((candidate) => candidate.id === group.parent_id);
+                return (
+                  <Card key={group.id} withBorder padding="sm" radius="md">
+                    <Stack gap={4}>
+                      <Group justify="space-between" wrap="nowrap">
+                        <Text fw={600} lineClamp={1}>{group.name}</Text>
+                        <Badge variant="light" size="xs">{plotGroupSpaceCounts.get(group.id) ?? 0} spaces</Badge>
+                      </Group>
+                      <Text size="xs" c="dimmed">Prefix: {group.label || "—"}</Text>
+                      <Text size="xs" c="dimmed">
+                        Site: {site?.name ?? "Unassigned"}
+                      </Text>
+                    </Stack>
+                  </Card>
+                );
+              })}
+            </SimpleGrid>
+          )}
+        </Stack>
+      </Card>
 
       {plots.length === 0 ? (
         <Box
@@ -681,6 +802,46 @@ export function OutdoorPlotManager() {
           No plants exist in this environment yet. Create one from an assignment dialog or from the plants workspace.
         </Text>
       )}
+
+      <Modal
+        opened={createPlotGroupOpen}
+        onClose={() => setCreatePlotGroupOpen(false)}
+        title="Create Plot Group"
+        size="sm"
+      >
+        <Stack gap="sm">
+          <TextInput
+            label="Group Name"
+            required
+            value={plotGroupName}
+            onChange={(event) => setPlotGroupName(event.currentTarget.value)}
+          />
+          <TextInput
+            label="Label Prefix"
+            value={plotGroupPrefix}
+            onChange={(event) => setPlotGroupPrefix(event.currentTarget.value)}
+            placeholder="Defaults to group name"
+          />
+          <Select
+            label="Outdoor Site"
+            placeholder="Unassigned"
+            clearable
+            value={plotGroupSiteId}
+            onChange={setPlotGroupSiteId}
+            data={outdoorSites.map((site) => ({ value: String(site.id), label: site.name }))}
+          />
+          <SimpleGrid cols={2} spacing="sm">
+            <NumberInput label="Rows" min={1} value={plotGroupRows} onChange={setPlotGroupRows} />
+            <NumberInput label="Columns" min={1} value={plotGroupCols} onChange={setPlotGroupCols} />
+          </SimpleGrid>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setCreatePlotGroupOpen(false)}>Cancel</Button>
+            <Button loading={createPlotGroup.isPending} onClick={() => createPlotGroup.mutate()}>
+              Create
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }

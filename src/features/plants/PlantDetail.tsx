@@ -1,6 +1,7 @@
 import {
   Badge,
   Button,
+  Checkbox,
   Divider,
   Group,
   Loader,
@@ -72,6 +73,37 @@ export function PlantDetail({ plantId }: PlantDetailProps) {
       notifications.show({ title: "Error", message: err.message, color: "red" }),
   });
 
+  const toggleHarvestable = useMutation({
+    mutationFn: async (nextValue: boolean) => {
+      const fn = nextValue ? (commands as any).markHarvestable : (commands as any).unmarkHarvestable;
+      const res = await fn(plantId);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data as Plant;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["plant", plantId] });
+      queryClient.invalidateQueries({ queryKey: ["plants-all"] });
+      notifications.show({ message: "Harvestable flag updated.", color: "green" });
+    },
+    onError: (err: Error) =>
+      notifications.show({ title: "Error", message: err.message, color: "red" }),
+  });
+
+  const cyclePerennial = useMutation({
+    mutationFn: async () => {
+      const res = await (commands as any).cyclePerennialPlant(plantId);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data as Plant;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["plant", plantId] });
+      queryClient.invalidateQueries({ queryKey: ["plants-all"] });
+      notifications.show({ message: "Plant moved back to seedling stage.", color: "green" });
+    },
+    onError: (err: Error) =>
+      notifications.show({ title: "Error", message: err.message, color: "red" }),
+  });
+
   const deletePlant = useMutation({
     mutationFn: async () => {
       const res = await (commands as any).deletePlant(plantId);
@@ -89,6 +121,10 @@ export function PlantDetail({ plantId }: PlantDetailProps) {
 
   if (isLoading) return <Loader m="xl" />;
   if (isError || !plant) return <Text c="red" p="md">Plant not found.</Text>;
+
+  const effectiveLifecycle = plant.lifecycle_override ?? species?.growth_type ?? null;
+  const canCyclePerennial =
+    effectiveLifecycle?.toLowerCase() === "perennial" && plant.status === "harvested";
 
   return (
     <Stack p="md" gap="md">
@@ -131,6 +167,24 @@ export function PlantDetail({ plantId }: PlantDetailProps) {
             onChange={(v) => v && changeStatus.mutate(v as PlantStatus)}
             w={140}
           />
+          <Checkbox
+            size="xs"
+            label="Harvestable"
+            checked={plant.is_harvestable}
+            onChange={(event) => toggleHarvestable.mutate(event.currentTarget.checked)}
+            disabled={toggleHarvestable.isPending}
+          />
+          {canCyclePerennial && (
+            <Button
+              size="xs"
+              variant="light"
+              color="grape"
+              loading={cyclePerennial.isPending}
+              onClick={() => cyclePerennial.mutate()}
+            >
+              Cycle to Seedling
+            </Button>
+          )}
           <Tooltip label="Delete plant">
             <Button
               size="xs"
@@ -193,6 +247,8 @@ export function PlantDetail({ plantId }: PlantDetailProps) {
                     </Badge>
                   }
                 />
+                <InfoItem label="Lifecycle" value={effectiveLifecycle} />
+                <InfoItem label="Harvestable" value={plant.is_harvestable ? "Yes" : "No"} />
                 <InfoItem label="Planted date" value={plant.planted_date} />
                 <InfoItem label="Germinated date" value={plant.germinated_date} />
                 <InfoItem label="Transplanted date" value={plant.transplanted_date} />
@@ -273,6 +329,13 @@ function PlantEditForm({
   onSaved: (updated: Plant) => void;
   onCancel: () => void;
 }) {
+  const lifecycleOptions = [
+    { value: "__species__", label: "Use species default" },
+    { value: "annual", label: "Annual" },
+    { value: "perennial", label: "Perennial" },
+    { value: "biennial", label: "Biennial" },
+  ];
+
   const [values, setValues] = useState({
     name: plant.name,
     label: plant.label ?? "",
@@ -283,8 +346,10 @@ function PlantEditForm({
     purchase_source: plant.purchase_source ?? "",
     purchase_date: plant.purchase_date ?? "",
     purchase_price: plant.purchase_price != null ? String(plant.purchase_price) : "",
+    lifecycle_override: plant.lifecycle_override ?? "__species__",
     notes: plant.notes ?? "",
   });
+  const [isHarvestable, setIsHarvestable] = useState(plant.is_harvestable);
 
   const [speciesId, setSpeciesId] = useState<string | null>(
     plant.species_id ? String(plant.species_id) : null,
@@ -316,6 +381,11 @@ function PlantEditForm({
         purchase_source: values.purchase_source.trim() || null,
         purchase_date: values.purchase_date || null,
         purchase_price: values.purchase_price ? parseFloat(values.purchase_price) : null,
+        is_harvestable: isHarvestable,
+        lifecycle_override:
+          values.lifecycle_override === "__species__"
+            ? null
+            : values.lifecycle_override,
         notes: values.notes.trim() || null,
       });
       if (res.status === "error") throw new Error(res.error);
@@ -355,6 +425,18 @@ function PlantEditForm({
         <TextInput label="Purchase source" {...f("purchase_source")} />
         <TextInput label="Purchase date" type="date" {...f("purchase_date")} />
         <TextInput label="Purchase price" type="number" {...f("purchase_price")} />
+        <Select
+          label="Lifecycle Override"
+          data={lifecycleOptions}
+          value={values.lifecycle_override}
+          onChange={(value) => setValues((prev) => ({ ...prev, lifecycle_override: value ?? "__species__" }))}
+        />
+        <Checkbox
+          mt="xl"
+          label="Harvestable"
+          checked={isHarvestable}
+          onChange={(event) => setIsHarvestable(event.currentTarget.checked)}
+        />
       </SimpleGrid>
       <Textarea label="Notes" autosize minRows={2} {...f("notes")} />
       <Group justify="flex-end">

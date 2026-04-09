@@ -245,6 +245,8 @@ export function AddPlantModal({
         name: name.trim(),
         label: label.trim() || null,
         planted_date: plantedDate || null,
+        is_harvestable: false,
+        lifecycle_override: null,
         notes: notes.trim() || null,
       });
       if (res.status === "error") throw new Error(res.error);

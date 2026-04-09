@@ -109,6 +109,8 @@ export function IndoorCanvasTools({
         height: null,
         canvas_data_json: JSON.stringify(payload),
         notes: null,
+        grid_rows: null,
+        grid_cols: null,
       });
       if (res.status === "error") throw new Error(res.error);
       return res.data;
