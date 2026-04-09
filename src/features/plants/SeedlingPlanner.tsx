@@ -22,6 +22,7 @@ import { useState } from "react";
 import { commands, type SeedlingObservation } from "../../lib/bindings";
 import { useAppStore } from "../../stores/appStore";
 import type { Plant, Species } from "./types";
+import { TransplantAssignmentModal } from "./TransplantAssignmentModal";
 
 // ---------------------------------------------------------------------------
 // Types (mirrors DB)
@@ -291,22 +292,6 @@ export function SeedlingPlanner() {
     obsByPlant.set(obs.plant_id, arr);
   }
 
-  // Transition to active (transplant)
-  const transplantMutation = useMutation({
-    mutationFn: async (plantId: number) => {
-      const res = await commands.transitionPlantStatus(plantId, "active");
-      if (res.status === "error") throw new Error(res.error);
-      return res.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["plants-all"] });
-      notifications.show({ message: "Plant transplanted to Active.", color: "green" });
-      setTransplantTarget(null);
-    },
-    onError: (err: Error) =>
-      notifications.show({ title: "Error", message: err.message, color: "red" }),
-  });
-
   if (!activeEnvId) {
     return (
       <Stack p="md">
@@ -378,36 +363,12 @@ export function SeedlingPlanner() {
         />
       )}
 
-      {/* Transplant confirmation */}
-      <Modal
+      <TransplantAssignmentModal
         opened={transplantTarget != null}
+        environmentId={activeEnvId}
+        plant={transplantTarget}
         onClose={() => setTransplantTarget(null)}
-        title="Confirm transplant"
-        size="xs"
-      >
-        <Stack gap="sm">
-          <Text size="sm">
-            Move <strong>{transplantTarget?.name}</strong> to "Active" status?
-          </Text>
-          <Text size="xs" c="dimmed">
-            This will set today's date as the transplant date and transition the plant to active
-            growing.
-          </Text>
-          <Group justify="flex-end">
-            <Button variant="default" size="xs" onClick={() => setTransplantTarget(null)}>
-              Cancel
-            </Button>
-            <Button
-              color="blue"
-              size="xs"
-              loading={transplantMutation.isPending}
-              onClick={() => transplantTarget && transplantMutation.mutate(transplantTarget.id)}
-            >
-              Transplant
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+      />
     </Stack>
   );
 }

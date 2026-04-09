@@ -38,6 +38,7 @@ import {
 import { useAppStore } from "../../stores/appStore";
 import type { Plant, Species } from "./types";
 import { AssetTagInline } from "../../components/AssetTagBadge";
+import { TransplantAssignmentModal } from "./TransplantAssignmentModal";
 
 // ---------------------------------------------------------------------------
 // Create / edit tray modal
@@ -415,23 +416,6 @@ function TrayGridView({ tray, onBack }: TrayGridViewProps) {
     },
   });
 
-  // Transplant
-  const transplantMutation = useMutation({
-    mutationFn: async (plantId: number) => {
-      const res = await commands.transitionPlantStatus(plantId, "active");
-      if (res.status === "error") throw new Error(res.error);
-      return res.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tray-cells", tray.id] });
-      queryClient.invalidateQueries({ queryKey: ["plants-all"] });
-      notifications.show({ message: "Plant transplanted to Active." });
-      setTransplantTarget(null);
-    },
-    onError: (err: Error) =>
-      notifications.show({ title: "Error", message: err.message, color: "red" }),
-  });
-
   // Build the grid
   const gridRows: React.ReactNode[] = [];
   for (let r = 0; r < tray.rows; r++) {
@@ -508,28 +492,12 @@ function TrayGridView({ tray, onBack }: TrayGridViewProps) {
         />
       )}
 
-      {/* Transplant confirmation */}
-      <Modal opened={transplantTarget != null} onClose={() => setTransplantTarget(null)} title="Confirm transplant" size="xs">
-        <Stack gap="sm">
-          <Text size="sm">
-            Move <strong>{transplantTarget?.name}</strong> to "Active" status and remove from tray?
-          </Text>
-          <Text size="xs" c="dimmed">
-            This sets today as the transplant date and transitions the plant to active growing.
-          </Text>
-          <Group justify="flex-end">
-            <Button variant="default" size="xs" onClick={() => setTransplantTarget(null)}>Cancel</Button>
-            <Button
-              color="blue"
-              size="xs"
-              loading={transplantMutation.isPending}
-              onClick={() => transplantTarget && transplantMutation.mutate(transplantTarget.id)}
-            >
-              Transplant
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+      <TransplantAssignmentModal
+        opened={transplantTarget != null}
+        environmentId={tray.environment_id}
+        plant={transplantTarget}
+        onClose={() => setTransplantTarget(null)}
+      />
     </Stack>
   );
 }
