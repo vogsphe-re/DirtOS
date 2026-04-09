@@ -12,7 +12,8 @@ import {
   Text,
   Transformer,
 } from 'react-konva';
-import { Box, Text as MText, useComputedColorScheme } from '@mantine/core';
+import { ActionIcon, Box, Text as MText, Tooltip, useComputedColorScheme } from '@mantine/core';
+import { IconArrowBackUp, IconArrowForwardUp } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useCanvasStore } from './canvasStore';
 import { useCanvasHistory } from './hooks/useCanvasHistory';
@@ -346,7 +347,7 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
     setSelectedId, setStageNode, setStageTransform, setDirty,
   } = useCanvasStore();
 
-  const { pushSnapshot, undo, redo } = useCanvasHistory();
+  const { pushSnapshot, undo, redo, canUndo, canRedo } = useCanvasHistory();
   const { saveCanvas, loadCanvas } = useCanvasPersistence();
 
   // Canvas plant assignments — keyed by canvas object UUID
@@ -404,6 +405,28 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [environmentId]);
 
+  const removeObjectWithChildren = useCallback((rootId: string) => {
+    const idsToRemove = new Set<string>();
+    const stack = [rootId];
+
+    while (stack.length > 0) {
+      const currentId = stack.pop()!;
+      if (idsToRemove.has(currentId)) continue;
+
+      idsToRemove.add(currentId);
+
+      for (const obj of objects) {
+        if (obj.parentId === currentId && !idsToRemove.has(obj.id)) {
+          stack.push(obj.id);
+        }
+      }
+    }
+
+    for (const id of idsToRemove) {
+      removeObject(id);
+    }
+  }, [objects, removeObject]);
+
   // Attach transformer to selected node
   useEffect(() => {
     setStageNode(stageRef.current);
@@ -438,7 +461,7 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
       }
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
         pushSnapshot(objects);
-        removeObject(selectedId);
+        removeObjectWithChildren(selectedId);
         setDirty(true);
       }
       if (e.key === 'Escape') {
@@ -460,7 +483,7 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
       window.removeEventListener('keyup', onKeyUp);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, drawState, objects, environmentId]);
+  }, [selectedId, drawState, objects, environmentId, removeObjectWithChildren]);
 
   // Wheel zoom
   const handleWheel = useCallback((e: KonvaEventObject<WheelEvent>) => {
@@ -621,13 +644,13 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
   const handleShapeClick = useCallback((obj: CanvasObject) => {
     if (activeTool === 'eraser') {
       pushSnapshot(objects);
-      removeObject(obj.id);
+      removeObjectWithChildren(obj.id);
       setDirty(true);
       return;
     }
     setSelectedId(obj.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTool, objects]);
+  }, [activeTool, objects, removeObjectWithChildren]);
 
   const handleShapeDblClick = useCallback((obj: CanvasObject) => {
     if (activeTool !== 'select') return;
@@ -696,7 +719,7 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
     <Box
       ref={containerRef}
       role='application'
-      aria-label='Garden canvas editor. Use mouse or trackpad to pan and zoom, and keyboard shortcuts for save, undo, redo, and delete.'
+      aria-label='Garden canvas editor. Use mouse or trackpad to pan and zoom, and keyboard shortcuts for undo, redo, and delete. Changes auto-save.'
       style={{ flex: 1, position: 'relative', overflow: 'hidden', background: 'var(--dirtos-bg)', cursor: cursorStyle }}
     >
       <Stage
@@ -754,6 +777,7 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
                     setDirty(true);
                   }}
                   onTransformEnd={(updates) => {
+                    pushSnapshot(objects);
                     updateObject(obj.id, updates);
                     setDirty(true);
                   }}
@@ -806,6 +830,43 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
         {coordLabel}
       </Box>
 
+      <Box
+        style={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          display: 'flex',
+          gap: 6,
+          background: 'var(--app-shell-panel)',
+          border: '1px solid var(--app-shell-border)',
+          borderRadius: 6,
+          padding: '4px',
+        }}
+      >
+        <Tooltip label="Undo (Ctrl+Z)">
+          <ActionIcon
+            size="sm"
+            variant="subtle"
+            onClick={() => undo()}
+            disabled={!canUndo}
+            aria-label="Undo"
+          >
+            <IconArrowBackUp size={14} />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label="Redo (Ctrl+Y)">
+          <ActionIcon
+            size="sm"
+            variant="subtle"
+            onClick={() => redo()}
+            disabled={!canRedo}
+            aria-label="Redo"
+          >
+            <IconArrowForwardUp size={14} />
+          </ActionIcon>
+        </Tooltip>
+      </Box>
+
       {isDirty && (
         <Box
           style={{
@@ -814,7 +875,7 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
             borderRadius: 4, fontSize: 11, color: 'var(--dirtos-bg)', pointerEvents: 'none',
           }}
         >
-          <MText size="xs">Unsaved · Ctrl+S to save</MText>
+          <MText size="xs">Unsaved · Auto-saving...</MText>
         </Box>
       )}
 
@@ -827,6 +888,7 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
           currentPlantId={assignModalSpace.assignedPlantId}
           onClose={() => setAssignModalSpace(null)}
           onAssigned={(plantId) => {
+            pushSnapshot(objects);
             updateObject(assignModalSpace.id, { assignedPlantId: plantId ?? undefined });
             setDirty(true);
             void refetchCanvasPlants();

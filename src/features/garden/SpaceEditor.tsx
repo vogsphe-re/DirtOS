@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { AreaGeneratorModal } from './AreaGeneratorModal';
 import { buildRectGridObjects, type RectGridLayout } from './layoutGeneration';
 import { useCanvasStore } from './canvasStore';
+import { useCanvasHistory } from './hooks/useCanvasHistory';
 import { OBJECT_DEFAULTS } from './types';
 
 /** Banner + controls shown when in space-editing mode for a specific plot. */
@@ -21,6 +22,7 @@ export function SpaceEditor() {
   const setActiveTool = useCanvasStore((s) => s.setActiveTool);
   const setSelectedId = useCanvasStore((s) => s.setSelectedId);
   const setDirty = useCanvasStore((s) => s.setDirty);
+  const { pushSnapshot } = useCanvasHistory();
 
   const editingParentId = editingPlotGroupId ?? editingPlotId;
   const parentObject = objects.find((o) => o.id === editingParentId);
@@ -32,6 +34,8 @@ export function SpaceEditor() {
   );
 
   const addSpace = () => {
+    pushSnapshot(objects);
+
     const id = crypto.randomUUID();
     const def = OBJECT_DEFAULTS['space'];
     addObject({
@@ -84,6 +88,7 @@ export function SpaceEditor() {
       ? [...objects.filter((object) => !(object.type === 'space' && object.parentId === editingParentId)), ...generatedSpaces]
       : [...objects, ...generatedSpaces];
 
+    pushSnapshot(objects);
     setObjects(nextObjects);
     setSelectedId(generatedSpaces[0]?.id ?? null);
     setDirty(true);
@@ -178,14 +183,14 @@ export function SpaceEditor() {
         onClose={() => setGeneratorOpen(false)}
         onGenerate={generateSpaces}
         title={`Generate areas in ${parentObject.label || 'area'}`}
-        description="Generate spaces directly in the canvas while editing this area. The canvas remains unsaved until you save it."
+        description="Generate spaces directly in the canvas while editing this area. Changes are auto-saved."
         unit={gridConfig.unit}
         pixelsPerUnit={gridConfig.pixelsPerUnit}
         containerWidthPx={parentObject.width ?? 0}
         containerHeightPx={parentObject.height ?? 0}
         defaultLabelPrefix={parentObject.type === 'plot-group' ? (parentObject.label || 'Space') : 'Space'}
         submitLabel="Insert areas"
-        replaceExistingHelpText="Replacing spaces updates the canvas immediately. Save the canvas when you are ready to persist the layout."
+        replaceExistingHelpText="Replacing spaces updates the canvas immediately and the layout is auto-saved."
       />
     </Box>
   );

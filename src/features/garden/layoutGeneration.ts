@@ -537,7 +537,7 @@ export function buildRectGridObjects({
         rotation: 0,
         label: `${prefix} ${toGridRowLabel(rowIndex)}${columnIndex + 1}`,
         notes: "",
-        parentId: objectType === "space" ? parentId ?? null : undefined,
+        parentId: objectType === "space" || objectType === "plot" ? parentId ?? null : undefined,
       });
     }
   }
@@ -553,6 +553,7 @@ interface BuildPlotGroupObjectsInput {
   cellWidthPx: number;
   cellHeightPx: number;
   labelPrefix: string;
+  childObjectType?: "space" | "plot";
   gapXPx?: number;
   gapYPx?: number;
   gapEveryColumns?: number;
@@ -567,11 +568,12 @@ export function buildPlotGroupObjects({
   cellWidthPx,
   cellHeightPx,
   labelPrefix,
+  childObjectType = "space",
   gapXPx = 0,
   gapYPx = 0,
   gapEveryColumns = 0,
   gapEveryRows = 0,
-}: BuildPlotGroupObjectsInput): { group: CanvasObject; spaces: CanvasObject[] } {
+}: BuildPlotGroupObjectsInput): { group: CanvasObject; members: CanvasObject[] } {
   const groupDefaults = OBJECT_DEFAULTS["plot-group"];
   const groupId = crypto.randomUUID();
   const contentWidth = getGridSpan(columns, cellWidthPx, gapXPx, gapEveryColumns);
@@ -595,8 +597,8 @@ export function buildPlotGroupObjects({
     notes: "",
   };
 
-  const spaces = buildRectGridObjects({
-    objectType: "space",
+  const members = buildRectGridObjects({
+    objectType: childObjectType,
     originX,
     originY,
     rows,
@@ -611,5 +613,5 @@ export function buildPlotGroupObjects({
     parentId: groupId,
   });
 
-  return { group, spaces };
+  return { group, members };
 }

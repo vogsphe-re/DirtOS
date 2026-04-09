@@ -12,6 +12,7 @@ import {
 } from '@mantine/core';
 import { IconX } from '@tabler/icons-react';
 import { useCanvasStore } from './canvasStore';
+import { useCanvasHistory } from './hooks/useCanvasHistory';
 
 export function PropertiesPanel() {
   const selectedId = useCanvasStore((s) => s.selectedId);
@@ -19,11 +20,13 @@ export function PropertiesPanel() {
   const updateObject = useCanvasStore((s) => s.updateObject);
   const setSelectedId = useCanvasStore((s) => s.setSelectedId);
   const setDirty = useCanvasStore((s) => s.setDirty);
+  const { pushSnapshot } = useCanvasHistory();
 
   const obj = objects.find((o) => o.id === selectedId);
   if (!obj) return null;
 
   const update = (changes: Parameters<typeof updateObject>[1]) => {
+    pushSnapshot(objects);
     updateObject(obj.id, changes);
     setDirty(true);
   };

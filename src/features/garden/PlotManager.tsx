@@ -16,7 +16,8 @@ import { notifications } from '@mantine/notifications';
 import { IconEdit, IconLayoutGridAdd, IconPlus, IconRefresh, IconTarget, IconTrash } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useCanvasStore } from './canvasStore';
-import { buildRectGridObjects } from './layoutGeneration';
+import { buildPlotGroupObjects } from './layoutGeneration';
+import { useCanvasHistory } from './hooks/useCanvasHistory';
 import { generatePlotPrefix } from './plotNameGenerator';
 import { OBJECT_DEFAULTS } from './types';
 
@@ -34,6 +35,7 @@ export function PlotManager({ onFocusObject }: PlotManagerProps) {
   const setSelectedId = useCanvasStore((s) => s.setSelectedId);
   const gridConfig = useCanvasStore((s) => s.gridConfig);
   const setDirty = useCanvasStore((s) => s.setDirty);
+  const { pushSnapshot } = useCanvasHistory();
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -55,6 +57,8 @@ export function PlotManager({ onFocusObject }: PlotManagerProps) {
   const plots = objects.filter((o) => o.type === 'plot');
 
   const createPlot = () => {
+    pushSnapshot(objects);
+
     const id = crypto.randomUUID();
     const def = OBJECT_DEFAULTS['plot'];
     addObject({
@@ -83,12 +87,15 @@ export function PlotManager({ onFocusObject }: PlotManagerProps) {
   };
 
   const commitRename = (id: string) => {
+    pushSnapshot(objects);
     updateObject(id, { label: editName.trim() || 'Unnamed plot' });
     setEditingId(null);
     setDirty(true);
   };
 
   const deletePlot = (id: string) => {
+    pushSnapshot(objects);
+
     // Remove plot and its child spaces
     objects
       .filter((o) => o.id === id || o.parentId === id)
@@ -131,26 +138,28 @@ export function PlotManager({ onFocusObject }: PlotManagerProps) {
         throw new Error('Plot gaps cannot be negative.');
       }
 
-      const generatedPlots = buildRectGridObjects({
-        objectType: 'plot',
+      const normalizedPrefix = labelPrefix.trim() || 'Plot';
+      const { group, members: generatedPlots } = buildPlotGroupObjects({
         originX,
         originY,
         rows,
         columns,
         cellWidthPx: widthUnits * gridConfig.pixelsPerUnit,
         cellHeightPx: heightUnits * gridConfig.pixelsPerUnit,
+        childObjectType: 'plot',
         gapXPx,
         gapYPx,
-        labelPrefix,
+        labelPrefix: normalizedPrefix,
       });
 
-      setObjects([...objects, ...generatedPlots]);
+      pushSnapshot(objects);
+      setObjects([...objects, group, ...generatedPlots]);
       setSelectedId(generatedPlots[0]?.id ?? null);
       setDirty(true);
       setGeneratorOpen(false);
       notifications.show({
         color: 'green',
-        message: `Created ${generatedPlots.length} plots in a ${rows} x ${columns} layout.`,
+        message: `Created group "${group.label}" with ${generatedPlots.length} plots (${rows} x ${columns}).`,
       });
     } catch (error) {
       notifications.show({

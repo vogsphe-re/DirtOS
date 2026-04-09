@@ -2,6 +2,11 @@ import { useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
 import { commands } from '../../../lib/bindings';
 import { useCanvasStore } from '../canvasStore';
+import { clearCanvasHistory } from './useCanvasHistory';
+
+interface SaveCanvasOptions {
+  silent?: boolean;
+}
 
 /** Handles saving and loading the canvas state to/from the Tauri backend. */
 export function useCanvasPersistence() {
@@ -12,15 +17,26 @@ export function useCanvasPersistence() {
   const setDirty = useCanvasStore((s) => s.setDirty);
 
   const saveCanvas = useCallback(
-    async (environmentId: number) => {
+    async (environmentId: number, options?: SaveCanvasOptions) => {
+      const silent = options?.silent === true;
+
       try {
         const payload = JSON.stringify({ objects, gridConfig });
         const result = await commands.saveCanvas(environmentId, payload);
         if (result.status !== 'ok') throw new Error(result.error);
         setDirty(false);
-        notifications.show({ color: 'green', message: 'Canvas saved' });
+
+        if (!silent) {
+          notifications.show({ color: 'green', message: 'Canvas saved' });
+        }
+
+        return true;
       } catch (e) {
-        notifications.show({ color: 'red', title: 'Save failed', message: String(e) });
+        if (!silent) {
+          notifications.show({ color: 'red', title: 'Save failed', message: String(e) });
+        }
+
+        return false;
       }
     },
     [objects, gridConfig, setDirty],
@@ -55,6 +71,7 @@ export function useCanvasPersistence() {
         setObjects(objects);
         if (gridCfg) updateGridConfig(gridCfg);
         setDirty(false);
+        clearCanvasHistory();
       } catch (e) {
         notifications.show({
           color: 'orange',

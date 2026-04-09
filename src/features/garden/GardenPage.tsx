@@ -3,7 +3,7 @@ import { SegmentedControl } from '@mantine/core';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { IconCode, IconDeviceFloppy, IconLayoutSidebar, IconPhoto, IconZoomIn, IconZoomOut, IconZoomReset } from '@tabler/icons-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { notifications } from '@mantine/notifications';
 import { useNavigate } from '@tanstack/react-router';
 import { useAppStore } from '../../stores/appStore';
@@ -47,6 +47,7 @@ export function GardenPage({ locationId: _locationId }: GardenPageProps) {
   const setStageTransform = useCanvasStore((s) => s.setStageTransform);
   const isDirty = useCanvasStore((s) => s.isDirty);
   const { saveCanvas, loadCanvas } = useCanvasPersistence();
+  const autoSaveTimerRef = useRef<number | null>(null);
 
   const [showRight, setShowRight] = useState(readRightPanel);
   const [panelMode, setPanelMode] = useState<GardenPanelMode>('layout');
@@ -60,6 +61,28 @@ export function GardenPage({ locationId: _locationId }: GardenPageProps) {
       loadCanvas(activeEnvironmentId);
     }
   }, [activeEnvironmentId, loadCanvas]);
+
+  useEffect(() => {
+    if (autoSaveTimerRef.current != null) {
+      window.clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+
+    if (!isDirty || activeEnvironmentId == null) {
+      return;
+    }
+
+    autoSaveTimerRef.current = window.setTimeout(() => {
+      void saveCanvas(activeEnvironmentId, { silent: true });
+    }, 900);
+
+    return () => {
+      if (autoSaveTimerRef.current != null) {
+        window.clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+      }
+    };
+  }, [activeEnvironmentId, isDirty, saveCanvas]);
 
   const handleFocusObject = useCallback(
     (id: string) => {
@@ -165,7 +188,7 @@ export function GardenPage({ locationId: _locationId }: GardenPageProps) {
             <GridSettings />
           </>
         )}
-        <Tooltip label={isDirty ? 'Save canvas (Ctrl+S)' : 'No unsaved changes'}>
+        <Tooltip label={isDirty ? 'Save now (auto-save enabled)' : 'No unsaved changes'}>
           <ActionIcon
             size="sm"
             variant={isDirty ? 'filled' : 'subtle'}
