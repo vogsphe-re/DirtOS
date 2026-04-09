@@ -1,5 +1,6 @@
 pub mod asset_tag;
 pub mod backup;
+pub mod ean_search;
 pub mod eol;
 pub mod export;
 pub mod plant_category;

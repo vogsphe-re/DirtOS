@@ -1257,6 +1257,7 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
                 purchase_date: None,
                 expiration_date: Some((today + Duration::days(540)).format("%Y-%m-%d").to_string()),
                 packet_info: None,
+                ean_code: None,
                 notes: Some("Saved from selected heads for repeat spring sowing.".to_string()),
             },
         )
@@ -1310,6 +1311,7 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
             purchase_date: Some((today - Duration::days(52)).format("%Y-%m-%d").to_string()),
             expiration_date: Some((today + Duration::days(610)).format("%Y-%m-%d").to_string()),
             packet_info: Some("Packet #KS-410".to_string()),
+            ean_code: None,
             notes: Some("Used for bed west and tent hardening succession.".to_string()),
         },
     )

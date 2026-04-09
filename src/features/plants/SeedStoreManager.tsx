@@ -20,6 +20,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import {
   IconPackage,
+  IconBarcode,
   IconPlus,
   IconEdit,
   IconTrash,
@@ -35,6 +36,7 @@ import {
   type SowSeedInput,
   type SeedlingTray,
   type SeedlingTrayCell,
+  type SeedLotScanResult,
 } from "../../lib/bindings";
 import { useAppStore } from "../../stores/appStore";
 import type { Species } from "./types";
@@ -65,6 +67,7 @@ function SeedFormModal({ opened, onClose, seedLot, speciesList }: SeedFormModalP
     seedLot?.species_id?.toString() ?? null,
   );
   const [lotLabel, setLotLabel] = useState(seedLot?.lot_label ?? "");
+  const [eanCode, setEanCode] = useState(seedLot?.ean_code ?? "");
   const [quantity, setQuantity] = useState<number | string>(seedLot?.quantity ?? "");
   const [viabilityPct, setViabilityPct] = useState<number | string>(
     seedLot?.viability_pct ?? "",
@@ -111,6 +114,7 @@ function SeedFormModal({ opened, onClose, seedLot, speciesList }: SeedFormModalP
         input: {
           species_id: sid,
           lot_label: lotLabel || null,
+          ean_code: eanCode || null,
           quantity: qty,
           viability_pct: viab,
           storage_location: storageLocation || null,
@@ -129,6 +133,7 @@ function SeedFormModal({ opened, onClose, seedLot, speciesList }: SeedFormModalP
         parent_plant_id: null,
         harvest_id: null,
         lot_label: lotLabel || null,
+        ean_code: eanCode || null,
         quantity: qty,
         viability_pct: viab,
         storage_location: storageLocation || null,
@@ -168,6 +173,12 @@ function SeedFormModal({ opened, onClose, seedLot, speciesList }: SeedFormModalP
           placeholder="e.g. Tomato Roma 2025"
           value={lotLabel}
           onChange={(e) => setLotLabel(e.currentTarget.value)}
+        />
+        <TextInput
+          label="EAN / UPC"
+          placeholder="Scan or enter packet barcode"
+          value={eanCode}
+          onChange={(e) => setEanCode(e.currentTarget.value)}
         />
         <Group grow>
           <NumberInput
@@ -502,9 +513,24 @@ function SeedStoreCard({
             {lot.viability_pct}% viable
           </Badge>
         )}
+        {lot.ean_code && (
+          <Badge size="sm" variant="outline" color="blue">
+            EAN {lot.ean_code}
+          </Badge>
+        )}
       </Group>
 
       <Stack gap={2} mt={8}>
+        {lot.ean_product_name && (
+          <Text size="xs" c="dimmed">
+            Product: {lot.ean_product_name}
+          </Text>
+        )}
+        {(lot.ean_category_name || lot.ean_issuing_country) && (
+          <Text size="xs" c="dimmed">
+            EAN meta: {[lot.ean_category_name, lot.ean_issuing_country].filter(Boolean).join(" | ")}
+          </Text>
+        )}
         {lot.vendor && (
           <Text size="xs" c="dimmed">
             Vendor: {lot.vendor}
@@ -557,6 +583,7 @@ export default function SeedStoreManager() {
   const [sowLot, setSowLot] = useState<SeedLot | null>(null);
   const [filterSource, setFilterSource] = useState<string | null>(null);
   const [searchText, setSearchText] = useState("");
+  const [eanScanInput, setEanScanInput] = useState("");
 
   // Fetch seed store inventory
   const { data: storeResult, isLoading } = useQuery({
@@ -584,6 +611,42 @@ export default function SeedStoreManager() {
     },
   });
 
+  const scanEanMut = useMutation({
+    mutationFn: async (barcode: string) => {
+      const res = await commands.scanSeedPacketEan(barcode);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data as SeedLotScanResult;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["seed-store"] });
+
+      const actionLabel =
+        data.action === "created"
+          ? "created"
+          : data.action === "enriched"
+            ? "enriched"
+            : "matched";
+
+      const lotName = data.seed_lot.lot_label ?? `Lot #${data.seed_lot.id}`;
+      const lookupMessage = data.lookup?.message ? ` · ${data.lookup.message}` : "";
+
+      notifications.show({
+        title: `Seed lot ${actionLabel}`,
+        message: `${lotName}${lookupMessage}`,
+        color: data.lookup?.lookup_status === "error" ? "red" : data.lookup?.lookup_status === "token_required" ? "orange" : "green",
+      });
+
+      setEanScanInput("");
+    },
+    onError: (e) => {
+      notifications.show({
+        title: "EAN scan failed",
+        message: String(e),
+        color: "red",
+      });
+    },
+  });
+
   // Apply filters
   const filtered = seedLots.filter((lot) => {
     if (filterSource && lot.source_type !== filterSource) return false;
@@ -591,9 +654,17 @@ export default function SeedStoreManager() {
       const q = searchText.toLowerCase();
       const label = (lot.lot_label ?? "").toLowerCase();
       const vendorStr = (lot.vendor ?? "").toLowerCase();
+      const eanCode = (lot.ean_code ?? "").toLowerCase();
+      const eanName = (lot.ean_product_name ?? "").toLowerCase();
       const sp = speciesList.find((s) => s.id === lot.species_id);
       const speciesName = (sp?.common_name ?? "").toLowerCase();
-      if (!label.includes(q) && !vendorStr.includes(q) && !speciesName.includes(q)) {
+      if (
+        !label.includes(q)
+        && !vendorStr.includes(q)
+        && !speciesName.includes(q)
+        && !eanCode.includes(q)
+        && !eanName.includes(q)
+      ) {
         return false;
       }
     }
@@ -640,6 +711,34 @@ export default function SeedStoreManager() {
             {filtered.length} lot{filtered.length !== 1 && "s"}
           </Text>
         </Group>
+
+        <Card withBorder p="sm">
+          <Group align="flex-end" wrap="wrap">
+            <TextInput
+              label="Scan seed packet EAN/UPC"
+              placeholder="Example: 5099750442227"
+              value={eanScanInput}
+              onChange={(e) => setEanScanInput(e.currentTarget.value)}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                if (!eanScanInput.trim()) return;
+                scanEanMut.mutate(eanScanInput.trim());
+              }}
+              style={{ flex: 1, minWidth: 260 }}
+            />
+            <Button
+              leftSection={<IconBarcode size={16} />}
+              onClick={() => scanEanMut.mutate(eanScanInput.trim())}
+              loading={scanEanMut.isPending}
+              disabled={!eanScanInput.trim()}
+            >
+              Scan Packet
+            </Button>
+          </Group>
+          <Text size="xs" c="dimmed" mt={6}>
+            Scanning creates a new seed lot for unknown barcodes and enriches matching lots when data is available.
+          </Text>
+        </Card>
 
         {isLoading && <Text c="dimmed">Loading seed inventory...</Text>}
 

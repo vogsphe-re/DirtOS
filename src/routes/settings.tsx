@@ -16,10 +16,17 @@ import {
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconDeviceDesktop, IconMoon, IconPlus, IconSun, IconTrash } from "@tabler/icons-react";
+import {
+  IconBarcode,
+  IconDeviceDesktop,
+  IconMoon,
+  IconPlus,
+  IconSun,
+  IconTrash,
+} from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { commands } from "../lib/bindings";
 import {
   BackupManagerPanel,
@@ -438,6 +445,9 @@ function SettingsPage() {
       {/* ---- Trefle API Key section ---- */}
       <TrefleApiKeyCard />
 
+      {/* ---- EAN-Search integration section ---- */}
+      <EanSearchApiCard />
+
       {/* ---- Integrations & Extensions ---- */}
       <IntegrationExtensionsPanel activeEnvironmentId={activeId} />
 
@@ -606,6 +616,168 @@ function TrefleApiKeyCard() {
             <Button onClick={save} loading={saving} disabled={!key.trim()}>
               Save
             </Button>
+          </Group>
+        </Stack>
+      )}
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// EAN-Search integration card
+// ---------------------------------------------------------------------------
+
+function parseEanToken(authJson: string | null | undefined): string | null {
+  if (!authJson) return null;
+
+  try {
+    const parsed = JSON.parse(authJson) as {
+      api_token?: string | null;
+      token?: string | null;
+    };
+
+    const value = (parsed.api_token ?? parsed.token ?? "").trim();
+    return value || null;
+  } catch {
+    return null;
+  }
+}
+
+function EanSearchApiCard() {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [enabled, setEnabled] = useState(true);
+  const [apiToken, setApiToken] = useState("");
+  const [rateLimit, setRateLimit] = useState<number | string>(6);
+  const [saving, setSaving] = useState(false);
+
+  const { data: integrationConfig } = useQuery({
+    queryKey: ["integration-config", "ean_search"],
+    queryFn: async () => {
+      const res = await commands.listIntegrationConfigs();
+      if (res.status === "error") throw new Error(res.error);
+      return res.data.find((cfg) => cfg.provider === "ean_search") ?? null;
+    },
+  });
+
+  const configuredToken = parseEanToken(integrationConfig?.auth_json ?? null);
+
+  useEffect(() => {
+    if (!integrationConfig) {
+      setEnabled(true);
+      setApiToken("");
+      setRateLimit(6);
+      return;
+    }
+
+    setEnabled(integrationConfig.enabled);
+    setApiToken(configuredToken ?? "");
+    setRateLimit(integrationConfig.rate_limit_per_minute ?? "");
+  }, [integrationConfig, configuredToken]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const parsedRate =
+        typeof rateLimit === "number"
+          ? rateLimit
+          : parseInt(String(rateLimit).trim(), 10);
+
+      const normalizedRate =
+        Number.isFinite(parsedRate) && parsedRate > 0
+          ? Math.round(parsedRate)
+          : null;
+
+      const tokenToSave = apiToken.trim();
+      const authJson = tokenToSave
+        ? JSON.stringify({ api_token: tokenToSave })
+        : null;
+
+      const res = await commands.upsertIntegrationConfig("ean_search", {
+        enabled,
+        auth_json: authJson,
+        settings_json: integrationConfig?.settings_json ?? null,
+        sync_interval_minutes: integrationConfig?.sync_interval_minutes ?? null,
+        cache_ttl_minutes: integrationConfig?.cache_ttl_minutes ?? null,
+        rate_limit_per_minute: normalizedRate,
+      });
+
+      if (res.status === "error") throw new Error(res.error);
+
+      qc.invalidateQueries({ queryKey: ["integration-config", "ean_search"] });
+      qc.invalidateQueries({ queryKey: ["integration-configs"] });
+      notifications.show({
+        title: "EAN-Search settings saved",
+        message: "Barcode scan enrichment is updated.",
+        color: "green",
+      });
+      setEditing(false);
+      setApiToken("");
+    } catch (e) {
+      notifications.show({ message: String(e), color: "red", title: "Error" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card withBorder>
+      <Group justify="space-between" mb="sm">
+        <Title order={4}>
+          <Group gap={8}>
+            <IconBarcode size={18} />
+            EAN-Search
+          </Group>
+        </Title>
+        <Button size="xs" variant="subtle" onClick={() => setEditing((v) => !v)}>
+          {editing ? "Cancel" : "Configure"}
+        </Button>
+      </Group>
+
+      <Text size="sm" c="dimmed">
+        Barcode lookup can enrich seed packets by EAN/UPC scan. Without a token,
+        DirtOS uses a conservative public-mode limit (default 6 requests/min).
+      </Text>
+
+      <Group gap="xs" mt="sm">
+        <Badge color={enabled ? "green" : "gray"} variant="light">
+          {enabled ? "Enabled" : "Disabled"}
+        </Badge>
+        <Badge color={configuredToken ? "green" : "orange"} variant="light">
+          {configuredToken ? "Token configured" : "Public mode"}
+        </Badge>
+      </Group>
+
+      {editing && (
+        <Stack gap="sm" mt="sm">
+          <SegmentedControl
+            value={enabled ? "enabled" : "disabled"}
+            onChange={(value) => setEnabled(value === "enabled")}
+            data={[
+              { value: "enabled", label: "Enabled" },
+              { value: "disabled", label: "Disabled" },
+            ]}
+          />
+
+          <PasswordInput
+            label="EAN-Search API token (optional)"
+            description="Add your token to remove default public-mode limits and unlock account-tier quotas."
+            placeholder="Paste token from ean-search.org"
+            value={apiToken}
+            onChange={(e) => setApiToken(e.currentTarget.value)}
+          />
+
+          <NumberInput
+            label="Client-side rate limit (requests/min, optional)"
+            description="Leave blank for default behavior: 6/min in public mode, unlimited when token is set."
+            placeholder="6"
+            min={1}
+            value={rateLimit}
+            onChange={setRateLimit}
+          />
+
+          <Group justify="flex-end">
+            <Button onClick={save} loading={saving}>Save</Button>
           </Group>
         </Stack>
       )}

@@ -26,11 +26,20 @@ import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { useEffect, useMemo, useState } from "react";
 import { commands, type AutomationEvent, type BackupFormat, type BackupJob, type BackupRun, type IntegrationConfig, type IntegrationSyncRun, type IntegrationWebhookToken, type OSMPlaceResult, type SpeciesExternalSource } from "../../lib/bindings";
 
-type Provider = "inaturalist" | "wikipedia" | "osm" | "home_assistant" | "n8n";
+type Provider =
+  | "inaturalist"
+  | "wikipedia"
+  | "eol"
+  | "ean_search"
+  | "osm"
+  | "home_assistant"
+  | "n8n";
 
 const PROVIDERS: { value: Provider; label: string }[] = [
   { value: "inaturalist", label: "iNaturalist" },
   { value: "wikipedia", label: "Wikipedia" },
+  { value: "eol", label: "Encyclopedia of Life" },
+  { value: "ean_search", label: "EAN-Search" },
   { value: "osm", label: "OpenStreetMap" },
   { value: "home_assistant", label: "Home Assistant" },
   { value: "n8n", label: "n8n" },

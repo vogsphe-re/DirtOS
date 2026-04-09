@@ -139,6 +139,7 @@ pub enum IntegrationProvider {
     Inaturalist,
     Wikipedia,
     Eol,
+    EanSearch,
     Osm,
     HomeAssistant,
     #[serde(rename = "n8n")]
@@ -1259,6 +1260,11 @@ pub struct SeedLot {
     pub purchase_date: Option<String>,
     pub expiration_date: Option<String>,
     pub packet_info: Option<String>,
+    pub ean_code: Option<String>,
+    pub ean_product_name: Option<String>,
+    pub ean_category_name: Option<String>,
+    pub ean_issuing_country: Option<String>,
+    pub ean_last_lookup_at: Option<String>,
     pub notes: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
@@ -1279,6 +1285,7 @@ pub struct NewSeedLot {
     pub purchase_date: Option<String>,
     pub expiration_date: Option<String>,
     pub packet_info: Option<String>,
+    pub ean_code: Option<String>,
     pub notes: Option<String>,
 }
 
@@ -1295,7 +1302,44 @@ pub struct UpdateSeedLot {
     pub purchase_date: Option<String>,
     pub expiration_date: Option<String>,
     pub packet_info: Option<String>,
+    pub ean_code: Option<String>,
     pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum SeedEanLookupStatus {
+    Success,
+    NotFound,
+    RateLimited,
+    TokenRequired,
+    Error,
+    Skipped,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum SeedLotScanAction {
+    Created,
+    Enriched,
+    Matched,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct SeedEanLookup {
+    pub ean_code: String,
+    pub product_name: Option<String>,
+    pub category_name: Option<String>,
+    pub issuing_country: Option<String>,
+    pub lookup_status: SeedEanLookupStatus,
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct SeedLotScanResult {
+    pub seed_lot: SeedLot,
+    pub action: SeedLotScanAction,
+    pub lookup: Option<SeedEanLookup>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]

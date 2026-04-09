@@ -1640,6 +1640,14 @@ async sowSeedToTray(input: SowSeedInput) : Promise<Result<number, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async scanSeedPacketEan(barcode: string) : Promise<Result<SeedLotScanResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("scan_seed_packet_ean", { barcode }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async listSeasons(environmentId: number) : Promise<Result<Season[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("list_seasons", { environmentId }) };
@@ -1975,7 +1983,7 @@ export type IndoorReading = { id: number; indoor_environment_id: number; water_t
 export type IndoorReservoirTarget = { id: number; indoor_environment_id: number; ph_min: number | null; ph_max: number | null; ec_min: number | null; ec_max: number | null; ppm_min: number | null; ppm_max: number | null; updated_at: string }
 export type IndoorWaterChange = { id: number; indoor_environment_id: number; volume_liters: number | null; notes: string | null; created_at: string }
 export type IntegrationConfig = { id: number; provider: IntegrationProvider; enabled: boolean; auth_json: string | null; settings_json: string | null; sync_interval_minutes: number | null; cache_ttl_minutes: number | null; rate_limit_per_minute: number | null; last_synced_at: string | null; last_error: string | null; updated_at: string }
-export type IntegrationProvider = "inaturalist" | "wikipedia" | "eol" | "osm" | "home_assistant" | "n8n"
+export type IntegrationProvider = "inaturalist" | "wikipedia" | "eol" | "ean_search" | "osm" | "home_assistant" | "n8n"
 export type IntegrationSyncRun = { id: number; provider: string; operation: string; status: string; records_fetched: number | null; records_upserted: number | null; error_message: string | null; started_at: string; finished_at: string | null }
 export type IntegrationWebhookToken = { id: number; provider: string; name: string; token: string; is_active: boolean; created_at: string }
 export type Issue = { id: number; environment_id: number | null; plant_id: number | null; location_id: number | null; title: string; description: string | null; status: IssueStatus; priority: IssuePriority; created_at: string; updated_at: string; closed_at: string | null }
@@ -2003,7 +2011,7 @@ export type NewPlant = { species_id: number | null; location_id: number | null; 
 export type NewPlantGroup = { environment_id: number; name: string; description: string | null; group_type: string | null; color: string | null }
 export type NewSchedule = { environment_id: number | null; plant_id: number | null; location_id: number | null; schedule_type: ScheduleType; title: string; cron_expression: string | null; next_run_at: string | null; is_active: boolean | null; additive_id: number | null; notes: string | null }
 export type NewSeason = { environment_id: number; name: string; start_date: string; end_date: string; notes: string | null }
-export type NewSeedLot = { species_id: number | null; parent_plant_id: number | null; harvest_id: number | null; lot_label: string | null; quantity: number | null; viability_pct: number | null; storage_location: string | null; collected_date: string | null; source_type: string | null; vendor: string | null; purchase_date: string | null; expiration_date: string | null; packet_info: string | null; notes: string | null }
+export type NewSeedLot = { species_id: number | null; parent_plant_id: number | null; harvest_id: number | null; lot_label: string | null; quantity: number | null; viability_pct: number | null; storage_location: string | null; collected_date: string | null; source_type: string | null; vendor: string | null; purchase_date: string | null; expiration_date: string | null; packet_info: string | null; ean_code: string | null; notes: string | null }
 export type NewSeedlingObservation = { plant_id: number; observed_at: string | null; height_cm: number | null; stem_thickness_mm: number | null; leaf_node_count: number | null; leaf_node_spacing_mm: number | null; notes: string | null }
 export type NewSeedlingTray = { environment_id: number; location_id?: number | null; name: string; rows: number; cols: number; cell_size_cm: number | null; notes: string | null }
 export type NewSensor = { environment_id: number | null; location_id: number | null; plant_id: number | null; name: string; sensor_type: SensorType; connection_type: SensorConnectionType; connection_config_json: string | null; poll_interval_seconds: number | null; is_active: boolean | null }
@@ -2027,7 +2035,11 @@ export type ScheduleRunStatus = "completed" | "skipped" | "missed"
 export type ScheduleSuggestion = { schedule_type: ScheduleType; title: string; cron_expression: string; cron_label: string; notes: string | null }
 export type ScheduleType = "water" | "feed" | "maintenance" | "treatment" | "sample" | "custom"
 export type Season = { id: number; environment_id: number; name: string; start_date: string; end_date: string; notes: string | null; created_at: string }
-export type SeedLot = { id: number; parent_plant_id: number | null; harvest_id: number | null; species_id: number | null; lot_label: string | null; quantity: number | null; viability_pct: number | null; storage_location: string | null; collected_date: string | null; source_type: string; asset_id: string | null; vendor: string | null; purchase_date: string | null; expiration_date: string | null; packet_info: string | null; notes: string | null; created_at: string; updated_at: string }
+export type SeedEanLookup = { ean_code: string; product_name: string | null; category_name: string | null; issuing_country: string | null; lookup_status: SeedEanLookupStatus; message: string | null }
+export type SeedEanLookupStatus = "success" | "not_found" | "rate_limited" | "token_required" | "error" | "skipped"
+export type SeedLot = { id: number; parent_plant_id: number | null; harvest_id: number | null; species_id: number | null; lot_label: string | null; quantity: number | null; viability_pct: number | null; storage_location: string | null; collected_date: string | null; source_type: string; asset_id: string | null; vendor: string | null; purchase_date: string | null; expiration_date: string | null; packet_info: string | null; ean_code: string | null; ean_product_name: string | null; ean_category_name: string | null; ean_issuing_country: string | null; ean_last_lookup_at: string | null; notes: string | null; created_at: string; updated_at: string }
+export type SeedLotScanAction = "created" | "enriched" | "matched"
+export type SeedLotScanResult = { seed_lot: SeedLot; action: SeedLotScanAction; lookup: SeedEanLookup | null }
 export type SeedlingObservation = { id: number; plant_id: number; observed_at: string; height_cm: number | null; stem_thickness_mm: number | null; leaf_node_count: number | null; leaf_node_spacing_mm: number | null; notes: string | null; created_at: string }
 export type SeedlingTray = { id: number; environment_id: number; location_id: number | null; name: string; rows: number; cols: number; cell_size_cm: number | null; notes: string | null; asset_id: string | null; created_at: string; updated_at: string }
 export type SeedlingTrayCell = { id: number; tray_id: number; row: number; col: number; plant_id: number | null; notes: string | null; created_at: string; updated_at: string }
@@ -2086,7 +2098,7 @@ export type UpdateLocation = { parent_id: number | null; location_type: Location
 export type UpdatePlant = { species_id: number | null; location_id: number | null; status: PlantStatus | null; name: string | null; label: string | null; planted_date: string | null; germinated_date: string | null; transplanted_date: string | null; removed_date: string | null; parent_plant_id: number | null; seed_lot_id: number | null; purchase_source: string | null; purchase_date: string | null; purchase_price: number | null; is_harvestable?: boolean | null; lifecycle_override?: string | null; notes: string | null }
 export type UpdatePlantGroup = { name: string | null; description: string | null; group_type: string | null; color: string | null }
 export type UpdateSchedule = { schedule_type: ScheduleType | null; title: string | null; cron_expression: string | null; is_active: boolean | null; plant_id: number | null; location_id: number | null; additive_id: number | null; notes: string | null }
-export type UpdateSeedLot = { species_id: number | null; lot_label: string | null; quantity: number | null; viability_pct: number | null; storage_location: string | null; collected_date: string | null; source_type: string | null; vendor: string | null; purchase_date: string | null; expiration_date: string | null; packet_info: string | null; notes: string | null }
+export type UpdateSeedLot = { species_id: number | null; lot_label: string | null; quantity: number | null; viability_pct: number | null; storage_location: string | null; collected_date: string | null; source_type: string | null; vendor: string | null; purchase_date: string | null; expiration_date: string | null; packet_info: string | null; ean_code: string | null; notes: string | null }
 export type UpdateSeedlingTray = { location_id?: number | null; name: string | null; rows: number | null; cols: number | null; cell_size_cm: number | null; notes: string | null }
 export type UpdateSensor = { name: string | null; sensor_type: SensorType | null; connection_type: SensorConnectionType | null; connection_config_json: string | null; poll_interval_seconds: number | null; location_id: number | null; plant_id: number | null; is_active: boolean | null }
 export type UpdateSpecies = { common_name: string | null; scientific_name: string | null; family: string | null; genus: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; description: string | null; image_url: string | null }
