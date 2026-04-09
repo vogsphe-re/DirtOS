@@ -20,7 +20,7 @@ import { IconArrowLeft, IconEdit, IconTrash } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { commands } from "../../lib/bindings";
+import { commands, type Location, type SeedlingTray, type SeedlingTrayCell } from "../../lib/bindings";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
 import { PlantJournalTab } from "../journal/PlantJournalTab";
 import { HarvestLog } from "./HarvestLog";
@@ -56,6 +56,46 @@ export function PlantDetail({ plantId }: PlantDetailProps) {
       return res.data as Species | null;
     },
     enabled: !!plant?.species_id,
+  });
+
+  const { data: locationLabel = "Unassigned", isLoading: locationLoading } = useQuery({
+    queryKey: ["plant-location-label", plant?.id, plant?.environment_id, plant?.location_id],
+    queryFn: async () => {
+      if (!plant) return "Unassigned";
+
+      const locationsRes = await commands.listLocations(plant.environment_id);
+      if (locationsRes.status === "error") throw new Error(locationsRes.error);
+      const locations = locationsRes.data as Location[];
+      const locationsById = new Map<number, Location>(locations.map((location) => [location.id, location]));
+
+      const traysRes = await commands.listSeedlingTrays(plant.environment_id);
+      if (traysRes.status === "error") throw new Error(traysRes.error);
+      const trays = traysRes.data as SeedlingTray[];
+
+      for (const tray of trays) {
+        const cellsRes = await commands.listSeedlingTrayCells(tray.id);
+        if (cellsRes.status === "error") continue;
+
+        const cells = cellsRes.data as SeedlingTrayCell[];
+        const match = cells.find((cell) => cell.plant_id === plant.id);
+        if (!match) continue;
+
+        const areaName = tray.location_id != null ? locationsById.get(tray.location_id)?.name : null;
+        const trayLabel = `${tray.name} - Row ${match.row + 1}, Col ${match.col + 1}`;
+        return areaName ? `${areaName} / ${trayLabel}` : trayLabel;
+      }
+
+      if (plant.location_id != null) {
+        const location = locationsById.get(plant.location_id);
+        if (location) {
+          return location.label ? `${location.name} (${location.label})` : location.name;
+        }
+        return `Location #${plant.location_id}`;
+      }
+
+      return "Unassigned";
+    },
+    enabled: !!plant,
   });
 
   const changeStatus = useMutation({
@@ -247,6 +287,7 @@ export function PlantDetail({ plantId }: PlantDetailProps) {
                     </Badge>
                   }
                 />
+                <InfoItem label="Location" value={locationLoading ? "Resolving..." : locationLabel} />
                 <InfoItem label="Lifecycle" value={effectiveLifecycle} />
                 <InfoItem label="Harvestable" value={plant.is_harvestable ? "Yes" : "No"} />
                 <InfoItem label="Planted date" value={plant.planted_date} />

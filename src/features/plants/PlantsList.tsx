@@ -17,10 +17,15 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconEdit, IconPlus, IconTrash } from "@tabler/icons-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { commands } from "../../lib/bindings";
+import { useMemo, useState } from "react";
+import {
+  commands,
+  type Location,
+  type SeedlingTray,
+  type SeedlingTrayCell,
+} from "../../lib/bindings";
 import { useAppStore } from "../../stores/appStore";
 import type { Plant, PlantStatus, Species } from "./types";
 import { PLANT_STATUS_COLORS, PLANT_STATUS_LABELS } from "./types";
@@ -59,6 +64,89 @@ export function PlantsList() {
     ? plants.filter((p) => p.status === statusFilter)
     : plants;
 
+  const environmentIds = useMemo(
+    () => Array.from(new Set(plants.map((plant) => plant.environment_id))).sort((a, b) => a - b),
+    [plants],
+  );
+
+  const locationQueries = useQueries({
+    queries: environmentIds.map((environmentId) => ({
+      queryKey: ["locations", environmentId],
+      queryFn: async () => {
+        const res = await commands.listLocations(environmentId);
+        if (res.status === "error") return [] as Location[];
+        return res.data as Location[];
+      },
+    })),
+  });
+
+  const trayQueries = useQueries({
+    queries: environmentIds.map((environmentId) => ({
+      queryKey: ["seedling-trays", environmentId],
+      queryFn: async () => {
+        const res = await commands.listSeedlingTrays(environmentId);
+        if (res.status === "error") return [] as SeedlingTray[];
+        return res.data as SeedlingTray[];
+      },
+    })),
+  });
+
+  const locationsById = new Map<number, Location>();
+  for (const query of locationQueries) {
+    for (const location of query.data ?? []) {
+      locationsById.set(location.id, location);
+    }
+  }
+
+  const trays = trayQueries.flatMap((query) => query.data ?? []);
+  const traysById = new Map<number, SeedlingTray>(trays.map((tray) => [tray.id, tray]));
+  const trayIds = trays.map((tray) => tray.id);
+
+  const trayCellQueries = useQueries({
+    queries: trayIds.map((trayId) => ({
+      queryKey: ["tray-cells", trayId],
+      queryFn: async () => {
+        const res = await commands.listSeedlingTrayCells(trayId);
+        if (res.status === "error") return [] as SeedlingTrayCell[];
+        return res.data as SeedlingTrayCell[];
+      },
+    })),
+  });
+
+  const trayCellByPlant = new Map<number, { trayId: number; row: number; col: number }>();
+  trayCellQueries.forEach((query, index) => {
+    const trayId = trayIds[index];
+    for (const cell of query.data ?? []) {
+      if (cell.plant_id == null) continue;
+      if (!trayCellByPlant.has(cell.plant_id)) {
+        trayCellByPlant.set(cell.plant_id, { trayId, row: cell.row, col: cell.col });
+      }
+    }
+  });
+
+  const resolveLocationLabel = (plant: Plant): string => {
+    const trayCell = trayCellByPlant.get(plant.id);
+    if (trayCell) {
+      const tray = traysById.get(trayCell.trayId);
+      if (tray) {
+        const areaName = tray.location_id != null ? locationsById.get(tray.location_id)?.name : null;
+        const trayLabel = `${tray.name} - Row ${trayCell.row + 1}, Col ${trayCell.col + 1}`;
+        return areaName ? `${areaName} / ${trayLabel}` : trayLabel;
+      }
+      return `Tray #${trayCell.trayId} - Row ${trayCell.row + 1}, Col ${trayCell.col + 1}`;
+    }
+
+    if (plant.location_id != null) {
+      const location = locationsById.get(plant.location_id);
+      if (location) {
+        return location.label ? `${location.name} (${location.label})` : location.name;
+      }
+      return `Location #${plant.location_id}`;
+    }
+
+    return "Unassigned";
+  };
+
   const rows = filtered.map((p) => (
     <Table.Tr
       key={p.id}
@@ -80,9 +168,7 @@ export function PlantsList() {
         <Text size="sm">{p.planted_date ?? "—"}</Text>
       </Table.Td>
       <Table.Td>
-        <Text size="sm" c="dimmed">
-          Env #{p.environment_id}
-        </Text>
+        <Text size="sm" c="dimmed">{resolveLocationLabel(p)}</Text>
       </Table.Td>
       <Table.Td onClick={(e) => e.stopPropagation()}>
         <Group gap={4}>
@@ -151,7 +237,7 @@ export function PlantsList() {
             <Table.Th>Name</Table.Th>
             <Table.Th>Status</Table.Th>
             <Table.Th>Planted</Table.Th>
-            <Table.Th>Environment</Table.Th>
+            <Table.Th>Location</Table.Th>
             <Table.Th w={80}>Actions</Table.Th>
           </Table.Tr>
         </Table.Thead>
