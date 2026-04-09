@@ -14,6 +14,7 @@ import {
   Text,
   TextInput,
   Title,
+  Checkbox,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -27,7 +28,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { commands } from "../lib/bindings";
+import { commands, type StorageSettings } from "../lib/bindings";
 import {
   BackupManagerPanel,
   IntegrationExtensionsPanel,
@@ -360,6 +361,8 @@ function SettingsPage() {
         />
       </Card>
 
+      <StorageLocationsCard />
+
       {/* ---- Environments section ---- */}
       <Card withBorder>
         <Group justify="space-between" mb="md">
@@ -468,6 +471,165 @@ function SettingsPage() {
         </Group>
       </Card>
     </Stack>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Storage locations card
+// ---------------------------------------------------------------------------
+
+function StorageLocationsCard() {
+  const qc = useQueryClient();
+  const [userDataPath, setUserDataPath] = useState("");
+  const [backupPath, setBackupPath] = useState("");
+  const [migrateExisting, setMigrateExisting] = useState(true);
+
+  const { data: storageSettings, isLoading } = useQuery<StorageSettings | null>({
+    queryKey: ["storage-settings"],
+    queryFn: async () => {
+      const res = await commands.getStorageSettings();
+      if (res.status !== "ok") throw new Error(res.error);
+      return res.data;
+    },
+  });
+
+  useEffect(() => {
+    if (!storageSettings) return;
+    setUserDataPath(storageSettings.user_data_dir);
+    setBackupPath(storageSettings.backup_output_dir);
+  }, [storageSettings?.user_data_dir, storageSettings?.backup_output_dir]);
+
+  const saveUserDataDirectory = useMutation({
+    mutationFn: async () => {
+      const res = await commands.setUserDataDirectory(userDataPath.trim(), migrateExisting);
+      if (res.status !== "ok") throw new Error(res.error);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["storage-settings"] });
+      notifications.show({
+        color: data.restart_required ? "orange" : "green",
+        title: "Storage updated",
+        message: data.restart_required
+          ? "User data path saved. Restart DirtOS to switch active data directory."
+          : "User data path updated.",
+      });
+    },
+    onError: (e: Error) => notifications.show({ color: "red", title: "Storage update failed", message: e.message }),
+  });
+
+  const clearUserDataOverride = useMutation({
+    mutationFn: async () => {
+      const res = await commands.clearUserDataDirectoryOverride();
+      if (res.status !== "ok") throw new Error(res.error);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["storage-settings"] });
+      notifications.show({
+        color: data.restart_required ? "orange" : "green",
+        title: "Override cleared",
+        message: "Default Documents/DirtOS location will be used after restart.",
+      });
+    },
+    onError: (e: Error) => notifications.show({ color: "red", title: "Storage update failed", message: e.message }),
+  });
+
+  const saveBackupOutputDirectory = useMutation({
+    mutationFn: async (nextPath?: string) => {
+      const next = (nextPath ?? backupPath).trim();
+      const res = await commands.setBackupOutputDirectory(next ? next : null);
+      if (res.status !== "ok") throw new Error(res.error);
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["storage-settings"] });
+      notifications.show({ color: "green", message: "Backup output directory updated." });
+    },
+    onError: (e: Error) => notifications.show({ color: "red", title: "Backup path update failed", message: e.message }),
+  });
+
+  return (
+    <Card withBorder>
+      <Stack gap="sm">
+        <Title order={4}>Data & Backup Locations</Title>
+        <Text size="sm" c="dimmed">
+          DirtOS stores live data in your Documents folder by default and keeps it during normal uninstall.
+          Use override paths for local disks or network shares.
+        </Text>
+
+        {isLoading ? (
+          <Text size="sm" c="dimmed">Loading storage settings…</Text>
+        ) : (
+          <>
+            <Text size="sm">Default location: {storageSettings?.default_user_data_dir ?? "-"}</Text>
+            <Text size="sm">Current data location: {storageSettings?.user_data_dir ?? "-"}</Text>
+            <Text size="sm">Current backup location: {storageSettings?.backup_output_dir ?? "-"}</Text>
+            {storageSettings?.restart_required && (
+              <Text size="sm" c="orange">Restart required to apply the pending data directory migration.</Text>
+            )}
+          </>
+        )}
+
+        <Divider my={4} />
+
+        <TextInput
+          label="User data directory"
+          placeholder="/mnt/shared/DirtOS"
+          value={userDataPath}
+          onChange={(e) => setUserDataPath(e.currentTarget.value)}
+        />
+        <Checkbox
+          label="Migrate existing data to the new directory on next restart"
+          checked={migrateExisting}
+          onChange={(e) => setMigrateExisting(e.currentTarget.checked)}
+        />
+        <Group>
+          <Button
+            onClick={() => saveUserDataDirectory.mutate()}
+            loading={saveUserDataDirectory.isPending}
+            disabled={!userDataPath.trim()}
+          >
+            Save user data directory
+          </Button>
+          <Button
+            variant="subtle"
+            onClick={() => clearUserDataOverride.mutate()}
+            loading={clearUserDataOverride.isPending}
+          >
+            Use default path
+          </Button>
+        </Group>
+
+        <Divider my={4} />
+
+        <TextInput
+          label="Backup output directory"
+          placeholder="/mnt/backup/DirtOS"
+          value={backupPath}
+          onChange={(e) => setBackupPath(e.currentTarget.value)}
+          description="Set this to a separate disk/share from your live data directory for safer disaster recovery."
+        />
+        <Group>
+          <Button
+            onClick={() => saveBackupOutputDirectory.mutate(undefined)}
+            loading={saveBackupOutputDirectory.isPending}
+          >
+            Save backup directory
+          </Button>
+          <Button
+            variant="subtle"
+            onClick={() => {
+              setBackupPath("");
+              saveBackupOutputDirectory.mutate("");
+            }}
+            loading={saveBackupOutputDirectory.isPending}
+          >
+            Reset to default
+          </Button>
+        </Group>
+      </Stack>
+    </Card>
   );
 }
 

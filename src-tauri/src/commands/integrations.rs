@@ -5,7 +5,7 @@ use chrono::Utc;
 use reqwest::Client;
 use serde_json::Value;
 use sqlx::SqlitePool;
-use tauri::State;
+use tauri::{AppHandle, State};
 use uuid::Uuid;
 
 use crate::{
@@ -21,7 +21,8 @@ use crate::{
         },
         sensors, species,
     },
-    services::{export_import, inaturalist, osm, wikipedia},
+    services::{backup_jobs, export_import, inaturalist, osm, wikipedia},
+    AppStorageState,
 };
 
 fn build_http_client() -> Result<Client, String> {
@@ -643,11 +644,8 @@ pub async fn export_configuration(
     let run_id = integrations::create_backup_run(
         &pool,
         None,
-        match format {
-            BackupFormat::Json => "json",
-            BackupFormat::Yaml => "yaml",
-            BackupFormat::Archive => "archive",
-        },
+        format.clone(),
+        crate::db::models::BackupStrategy::Full,
     )
     .await
     .map_err(|e| e.to_string())?;
@@ -661,6 +659,9 @@ pub async fn export_configuration(
                 run_id,
                 "success",
                 Some(payload.filename.clone()),
+                None,
+                None,
+                false,
                 Some(payload.content.len() as i64),
                 None,
             )
@@ -673,6 +674,9 @@ pub async fn export_configuration(
                 run_id,
                 "error",
                 None,
+                None,
+                None,
+                false,
                 None,
                 Some(err.clone()),
             )
@@ -688,62 +692,20 @@ pub async fn export_configuration(
 #[specta::specta]
 pub async fn run_backup_job(
     pool: State<'_, SqlitePool>,
+    storage: State<'_, AppStorageState>,
+    _app: AppHandle,
     backup_job_id: i64,
     encryption_password: Option<String>,
 ) -> Result<crate::db::models::ExportPayload, String> {
-    let job = integrations::get_backup_job(&pool, backup_job_id)
-        .await
-        .map_err(|e| e.to_string())?
-        .ok_or_else(|| format!("Backup job {backup_job_id} not found"))?;
-
-    let run_id = integrations::create_backup_run(
+    let runtime = storage.get_paths();
+    backup_jobs::run_backup_job_by_id(
         &pool,
-        Some(backup_job_id),
-        match job.format {
-            BackupFormat::Json => "json",
-            BackupFormat::Yaml => "yaml",
-            BackupFormat::Archive => "archive",
-        },
-    )
-    .await
-    .map_err(|e| e.to_string())?;
-
-    let export_res = execute_export(
-        &pool,
-        job.format.clone(),
-        job.include_secrets,
+        backup_job_id,
+        &runtime.data_dir,
+        &runtime.backup_output_dir,
         encryption_password,
     )
-    .await;
-
-    match &export_res {
-        Ok(payload) => {
-            integrations::complete_backup_run(
-                &pool,
-                run_id,
-                "success",
-                Some(payload.filename.clone()),
-                Some(payload.content.len() as i64),
-                None,
-            )
-            .await
-            .map_err(|e| e.to_string())?;
-        }
-        Err(err) => {
-            integrations::complete_backup_run(
-                &pool,
-                run_id,
-                "error",
-                None,
-                None,
-                Some(err.clone()),
-            )
-            .await
-            .map_err(|e| e.to_string())?;
-        }
-    }
-
-    export_res
+    .await
 }
 
 #[tauri::command]
@@ -848,7 +810,14 @@ pub async fn import_configuration(
                     name: Some(job.name),
                     schedule_cron: job.schedule_cron,
                     format: Some(job.format),
+                    backup_strategy: Some(job.backup_strategy),
+                    destination_kind: Some(job.destination_kind),
+                    destination_path: job.destination_path,
+                    cloud_provider: job.cloud_provider,
+                    cloud_path_prefix: job.cloud_path_prefix,
+                    lifecycle_policy_json: job.lifecycle_policy_json,
                     include_secrets: Some(job.include_secrets),
+                    dedupe_enabled: Some(job.dedupe_enabled),
                     is_active: Some(job.is_active),
                 },
             )
@@ -861,7 +830,14 @@ pub async fn import_configuration(
                     name: job.name,
                     schedule_cron: job.schedule_cron,
                     format: job.format,
+                    backup_strategy: job.backup_strategy,
+                    destination_kind: job.destination_kind,
+                    destination_path: job.destination_path,
+                    cloud_provider: job.cloud_provider,
+                    cloud_path_prefix: job.cloud_path_prefix,
+                    lifecycle_policy_json: job.lifecycle_policy_json,
                     include_secrets: job.include_secrets,
+                    dedupe_enabled: job.dedupe_enabled,
                     is_active: job.is_active,
                 },
             )

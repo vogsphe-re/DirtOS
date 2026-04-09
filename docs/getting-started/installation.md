@@ -21,6 +21,18 @@ pnpm install
 pnpm dev
 ```
 
+## Default data location
+
+On first run, DirtOS creates and uses:
+
+- Linux/macOS: `~/Documents/DirtOS`
+- Windows: `%USERPROFILE%\\Documents\\DirtOS`
+
+This directory stores the live SQLite database, media files, and local backup output (unless overridden in Settings).
+
+Installers preserve this folder on normal uninstall so garden data is not removed accidentally.
+On Debian-based installs, `apt purge` / package `purge` removes this folder for the installing user.
+
 > [SCREENSHOT:install-terminal-success]
 > Capture a successful first `pnpm dev` run with no blocking errors.
 

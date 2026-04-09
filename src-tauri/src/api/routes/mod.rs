@@ -1,3 +1,4 @@
+pub mod backups;
 pub mod environments;
 pub mod harvests;
 pub mod health;
@@ -7,6 +8,7 @@ pub mod locations;
 pub mod plants;
 pub mod schedules;
 pub mod sensors;
+pub mod storage;
 pub mod species;
 
 use axum::{
@@ -16,6 +18,7 @@ use axum::{
 };
 use serde::Serialize;
 use sqlx::SqlitePool;
+use tauri::AppHandle;
 
 // ---------------------------------------------------------------------------
 // Shared state injected into every handler
@@ -24,6 +27,7 @@ use sqlx::SqlitePool;
 #[derive(Clone)]
 pub struct AppState {
     pub pool: SqlitePool,
+    pub app_handle: AppHandle,
 }
 
 // ---------------------------------------------------------------------------
@@ -35,6 +39,12 @@ pub struct ApiError(String);
 impl From<sqlx::Error> for ApiError {
     fn from(e: sqlx::Error) -> Self {
         Self(e.to_string())
+    }
+}
+
+impl From<String> for ApiError {
+    fn from(e: String) -> Self {
+        Self(e)
     }
 }
 

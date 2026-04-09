@@ -14,21 +14,16 @@ pub enum BackupServiceError {
     Sql(#[from] sqlx::Error),
 }
 
-fn backup_dir(app_data_dir: &Path) -> PathBuf {
-    app_data_dir.join("backups")
+fn db_path(data_dir: &Path) -> PathBuf {
+    data_dir.join("dirtos.db")
 }
 
-fn db_path(app_data_dir: &Path) -> PathBuf {
-    app_data_dir.join("dirtos.db")
-}
-
-pub fn latest_backup(app_data_dir: &Path) -> Result<Option<PathBuf>, BackupServiceError> {
-    let dir = backup_dir(app_data_dir);
-    if !dir.exists() {
+pub fn latest_backup(backup_output_dir: &Path) -> Result<Option<PathBuf>, BackupServiceError> {
+    if !backup_output_dir.exists() {
         return Ok(None);
     }
 
-    let mut candidates = std::fs::read_dir(dir)?
+    let mut candidates = std::fs::read_dir(backup_output_dir)?
         .filter_map(Result::ok)
         .map(|entry| entry.path())
         .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("db"))
@@ -38,13 +33,12 @@ pub fn latest_backup(app_data_dir: &Path) -> Result<Option<PathBuf>, BackupServi
     Ok(candidates.pop())
 }
 
-fn prune_old_backups(app_data_dir: &Path) -> Result<(), BackupServiceError> {
-    let dir = backup_dir(app_data_dir);
-    if !dir.exists() {
+fn prune_old_backups(backup_output_dir: &Path) -> Result<(), BackupServiceError> {
+    if !backup_output_dir.exists() {
         return Ok(());
     }
 
-    let mut candidates = std::fs::read_dir(&dir)?
+    let mut candidates = std::fs::read_dir(backup_output_dir)?
         .filter_map(Result::ok)
         .map(|entry| entry.path())
         .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("db"))
@@ -66,36 +60,40 @@ fn prune_old_backups(app_data_dir: &Path) -> Result<(), BackupServiceError> {
 
 pub async fn create_database_backup(
     pool: &SqlitePool,
-    app_data_dir: &Path,
+    data_dir: &Path,
+    backup_output_dir: &Path,
 ) -> Result<PathBuf, BackupServiceError> {
-    std::fs::create_dir_all(backup_dir(app_data_dir))?;
+    std::fs::create_dir_all(backup_output_dir)?;
 
     sqlx::query("PRAGMA wal_checkpoint(TRUNCATE);")
         .execute(pool)
         .await?;
 
-    let source = db_path(app_data_dir);
-    let target = backup_dir(app_data_dir).join(format!(
-        "dirtos-backup-{}.db",
+    let source = db_path(data_dir);
+    let target = backup_output_dir.join(format!(
+        "dirtos-db-backup-{}.db",
         Utc::now().format("%Y%m%d-%H%M%S")
     ));
 
     std::fs::copy(source, &target)?;
-    prune_old_backups(app_data_dir)?;
+    prune_old_backups(backup_output_dir)?;
 
     Ok(target)
 }
 
-pub fn restore_latest_backup(app_data_dir: &Path) -> Result<Option<PathBuf>, BackupServiceError> {
-    let Some(latest) = latest_backup(app_data_dir)? else {
+pub fn restore_latest_backup(
+    data_dir: &Path,
+    backup_output_dir: &Path,
+) -> Result<Option<PathBuf>, BackupServiceError> {
+    let Some(latest) = latest_backup(backup_output_dir)? else {
         return Ok(None);
     };
 
-    std::fs::create_dir_all(app_data_dir)?;
+    std::fs::create_dir_all(data_dir)?;
 
-    let live_db = db_path(app_data_dir);
+    let live_db = db_path(data_dir);
     if live_db.exists() {
-        let corrupt = app_data_dir.join(format!(
+        let corrupt = data_dir.join(format!(
             "dirtos-corrupt-{}.db",
             Utc::now().format("%Y%m%d-%H%M%S")
         ));
@@ -106,14 +104,14 @@ pub fn restore_latest_backup(app_data_dir: &Path) -> Result<Option<PathBuf>, Bac
     Ok(Some(latest))
 }
 
-pub fn start_periodic_backups(app_data_dir: PathBuf, pool: SqlitePool) {
+pub fn start_periodic_backups(data_dir: PathBuf, backup_output_dir: PathBuf, pool: SqlitePool) {
     tauri::async_runtime::spawn(async move {
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(BACKUP_INTERVAL_SECS));
         interval.tick().await;
 
         loop {
             interval.tick().await;
-            match create_database_backup(&pool, &app_data_dir).await {
+            match create_database_backup(&pool, &data_dir, &backup_output_dir).await {
                 Ok(path) => tracing::info!("Created periodic database backup at {:?}", path),
                 Err(error) => tracing::warn!("Periodic backup failed: {:?}", error),
             }

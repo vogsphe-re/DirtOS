@@ -385,14 +385,24 @@ pub async fn create_backup_job(
 ) -> Result<BackupJob, sqlx::Error> {
     let result = sqlx::query(
         "INSERT INTO backup_jobs
-            (name, schedule_cron, format, include_secrets, is_active,
+            (name, schedule_cron, format, backup_strategy,
+             destination_kind, destination_path, cloud_provider,
+             cloud_path_prefix, lifecycle_policy_json,
+             include_secrets, dedupe_enabled, is_active,
              created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))",
     )
     .bind(input.name)
     .bind(input.schedule_cron)
     .bind(input.format)
+    .bind(input.backup_strategy)
+    .bind(input.destination_kind)
+    .bind(input.destination_path)
+    .bind(input.cloud_provider)
+    .bind(input.cloud_path_prefix)
+    .bind(input.lifecycle_policy_json)
     .bind(input.include_secrets)
+    .bind(input.dedupe_enabled)
     .bind(input.is_active)
     .execute(pool)
     .await?;
@@ -428,7 +438,14 @@ pub async fn update_backup_job(
             name = COALESCE(?, name),
             schedule_cron = COALESCE(?, schedule_cron),
             format = COALESCE(?, format),
+            backup_strategy = COALESCE(?, backup_strategy),
+            destination_kind = COALESCE(?, destination_kind),
+            destination_path = COALESCE(?, destination_path),
+            cloud_provider = COALESCE(?, cloud_provider),
+            cloud_path_prefix = COALESCE(?, cloud_path_prefix),
+            lifecycle_policy_json = COALESCE(?, lifecycle_policy_json),
             include_secrets = COALESCE(?, include_secrets),
+            dedupe_enabled = COALESCE(?, dedupe_enabled),
             is_active = COALESCE(?, is_active),
             updated_at = datetime('now')
          WHERE id = ?",
@@ -436,7 +453,14 @@ pub async fn update_backup_job(
     .bind(input.name)
     .bind(input.schedule_cron)
     .bind(input.format)
+    .bind(input.backup_strategy)
+    .bind(input.destination_kind)
+    .bind(input.destination_path)
+    .bind(input.cloud_provider)
+    .bind(input.cloud_path_prefix)
+    .bind(input.lifecycle_policy_json)
     .bind(input.include_secrets)
+    .bind(input.dedupe_enabled)
     .bind(input.is_active)
     .bind(id)
     .execute(pool)
@@ -448,15 +472,17 @@ pub async fn update_backup_job(
 pub async fn create_backup_run(
     pool: &SqlitePool,
     backup_job_id: Option<i64>,
-    format: &str,
+    format: super::models::BackupFormat,
+    backup_kind: super::models::BackupStrategy,
 ) -> Result<i64, sqlx::Error> {
     let result = sqlx::query(
         "INSERT INTO backup_runs
-            (backup_job_id, status, format, started_at)
-         VALUES (?, 'started', ?, datetime('now'))",
+            (backup_job_id, status, format, backup_kind, dedupe_skipped, started_at)
+         VALUES (?, 'started', ?, ?, 0, datetime('now'))",
     )
     .bind(backup_job_id)
     .bind(format)
+    .bind(backup_kind)
     .execute(pool)
     .await?;
 
@@ -468,13 +494,21 @@ pub async fn complete_backup_run(
     run_id: i64,
     status: &str,
     output_ref: Option<String>,
+    destination_ref: Option<String>,
+    content_hash: Option<String>,
+    dedupe_skipped: bool,
     bytes_written: Option<i64>,
     error_message: Option<String>,
 ) -> Result<(), sqlx::Error> {
+    let last_error = error_message.clone();
+
     sqlx::query(
         "UPDATE backup_runs SET
             status = ?,
             output_ref = ?,
+            destination_ref = ?,
+            content_hash = ?,
+            dedupe_skipped = ?,
             bytes_written = ?,
             error_message = ?,
             finished_at = datetime('now')
@@ -482,11 +516,29 @@ pub async fn complete_backup_run(
     )
     .bind(status)
     .bind(output_ref)
+    .bind(destination_ref)
+    .bind(content_hash)
+    .bind(dedupe_skipped)
     .bind(bytes_written)
     .bind(error_message)
     .bind(run_id)
     .execute(pool)
     .await?;
+
+    sqlx::query(
+        "UPDATE backup_jobs SET
+            last_run_status = ?,
+            last_run_at = datetime('now'),
+            last_error = ?,
+            updated_at = datetime('now')
+         WHERE id = (SELECT backup_job_id FROM backup_runs WHERE id = ?)",
+    )
+    .bind(status)
+    .bind(last_error)
+    .bind(run_id)
+    .execute(pool)
+    .await?;
+
     Ok(())
 }
 
@@ -505,6 +557,72 @@ pub async fn list_backup_runs(
     .bind(backup_job_id)
     .bind(limit)
     .fetch_all(pool)
+    .await
+}
+
+pub async fn list_active_scheduled_backup_jobs(
+    pool: &SqlitePool,
+) -> Result<Vec<BackupJob>, sqlx::Error> {
+    sqlx::query_as::<_, BackupJob>(
+        "SELECT * FROM backup_jobs
+         WHERE is_active = 1
+           AND schedule_cron IS NOT NULL
+           AND trim(schedule_cron) != ''
+         ORDER BY id ASC",
+    )
+    .fetch_all(pool)
+    .await
+}
+
+pub async fn latest_successful_backup_run(
+    pool: &SqlitePool,
+    backup_job_id: i64,
+) -> Result<Option<BackupRun>, sqlx::Error> {
+    sqlx::query_as::<_, BackupRun>(
+        "SELECT * FROM backup_runs
+         WHERE backup_job_id = ?
+           AND status = 'success'
+         ORDER BY started_at DESC
+         LIMIT 1",
+    )
+    .bind(backup_job_id)
+    .fetch_optional(pool)
+    .await
+}
+
+pub async fn latest_successful_full_backup_run(
+    pool: &SqlitePool,
+    backup_job_id: i64,
+) -> Result<Option<BackupRun>, sqlx::Error> {
+    sqlx::query_as::<_, BackupRun>(
+        "SELECT * FROM backup_runs
+         WHERE backup_job_id = ?
+           AND status = 'success'
+           AND backup_kind = 'full'
+         ORDER BY started_at DESC
+         LIMIT 1",
+    )
+    .bind(backup_job_id)
+    .fetch_optional(pool)
+    .await
+}
+
+pub async fn find_successful_run_by_hash(
+    pool: &SqlitePool,
+    backup_job_id: i64,
+    content_hash: &str,
+) -> Result<Option<BackupRun>, sqlx::Error> {
+    sqlx::query_as::<_, BackupRun>(
+        "SELECT * FROM backup_runs
+         WHERE backup_job_id = ?
+           AND status = 'success'
+           AND content_hash = ?
+         ORDER BY started_at DESC
+         LIMIT 1",
+    )
+    .bind(backup_job_id)
+    .bind(content_hash)
+    .fetch_optional(pool)
     .await
 }
 

@@ -17,7 +17,19 @@ A full export captures:
 2. Run full export.
 3. Save JSON to a trusted local or cloud destination.
 
+For scheduled backups, create a backup job with:
+
+- Strategy: `full`, `incremental`, or `hybrid`.
+- Destination: local disk, network share, or cloud provider (Dropbox, Google Drive, OneDrive).
+- Optional lifecycle policy: `keep_last` to automatically prune old local backups.
+- Optional dedupe: skip writing duplicates by content hash.
+
 Recommended frequency: weekly for active gardens, daily during peak season.
+
+Recommended topology:
+
+- Keep the live DirtOS data directory and backup destination on different storage targets.
+- Keep at least one off-device backup destination (cloud or remote NAS).
 
 ## Import procedure
 
@@ -34,6 +46,7 @@ Recommended frequency: weekly for active gardens, daily during peak season.
 - Keep multiple dated backups.
 - Test restore on a non-production profile before major upgrades.
 - Export before migration-heavy updates.
+- Avoid storing API keys/tokens in backups unless you explicitly need secret recovery.
 
 ## Keywords
 

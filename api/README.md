@@ -28,6 +28,9 @@ DIRTOS_API_PORT=8080 pnpm dev
 | Resource | Endpoints |
 | --- | --- |
 | Health | `GET /api/v1/health` |
+| Storage settings | `GET /api/v1/settings/storage` · `PUT/DELETE /api/v1/settings/storage/user-data` · `PUT /api/v1/settings/storage/backup-output` |
+| Backup jobs | `GET/POST /api/v1/backups/jobs` · `PATCH /api/v1/backups/jobs/{id}` · `POST /api/v1/backups/jobs/{id}/run` |
+| Backup runs | `GET /api/v1/backups/runs?backup_job_id=&limit=` |
 | Environments | `GET/POST /api/v1/environments` · `GET/PUT/DELETE /api/v1/environments/{id}` |
 | Locations | `GET/POST /api/v1/locations?environment_id=` · `GET/PUT/DELETE /api/v1/locations/{id}` |
 | Species | `GET/POST /api/v1/species` · `GET/PUT/DELETE /api/v1/species/{id}` |
@@ -51,6 +54,13 @@ Plant create/update payloads support lifecycle metadata:
 
 All collection endpoints support `limit` (default 100) and `offset` pagination
 parameters.
+
+Backup job fields support:
+
+- `backup_strategy`: `full`, `incremental`, `hybrid`
+- `destination_kind`: `local`, `network`, `cloud`
+- cloud settings: `cloud_provider` (`dropbox`, `google_drive`, `onedrive`) and `cloud_path_prefix`
+- lifecycle and dedupe: `lifecycle_policy_json` (for example `{"keep_last":14}`) and `dedupe_enabled`
 
 ## Documentation & Testing
 
@@ -89,6 +99,34 @@ processes can reach it.
 ```bash
 ENV_ID=1
 curl "http://127.0.0.1:7272/api/v1/plants?environment_id=${ENV_ID}" | jq .
+```
+
+### Set a custom user data directory
+
+```bash
+curl -X PUT http://127.0.0.1:7272/api/v1/settings/storage/user-data \
+  -H "Content-Type: application/json" \
+  -d '{"path":"/mnt/shared/DirtOS","migrate_existing":true}'
+```
+
+### Create a hybrid cloud backup job
+
+```bash
+curl -X POST http://127.0.0.1:7272/api/v1/backups/jobs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name":"Nightly cloud backup",
+    "schedule_cron":"0 2 * * *",
+    "format":"json",
+    "backup_strategy":"hybrid",
+    "destination_kind":"cloud",
+    "cloud_provider":"dropbox",
+    "cloud_path_prefix":"DirtOS/Backups",
+    "lifecycle_policy_json":"{\"keep_last\":30}",
+    "include_secrets":false,
+    "dedupe_enabled":true,
+    "is_active":true
+  }'
 ```
 
 ### Create a journal entry

@@ -27,12 +27,17 @@ run_as_user() {
     target_user="$1"
     shift
 
+    command_str="$*"
+    if [ -z "$command_str" ]; then
+        return 0
+    fi
+
     if command -v runuser >/dev/null 2>&1; then
-        runuser -u "$target_user" -- "$@"
+        runuser -u "$target_user" -- sh -c "$command_str"
         return
     fi
 
-    su -s /bin/sh "$target_user" -c "\"$1\" \"$2\" \"$3\""
+    su -s /bin/sh "$target_user" -c "$command_str"
 }
 
 install_example_garden() {
@@ -46,12 +51,17 @@ install_example_garden() {
         exit 0
     fi
 
-    target_path="$target_home/Documents/DirtOS/Examples/$EXAMPLE_NAME"
+    target_root="$target_home/Documents/DirtOS"
+    target_examples="$target_root/Examples"
+    target_path="$target_examples/$EXAMPLE_NAME"
+
+    run_as_user "$target_user" "mkdir -p \"$target_examples\"" >/dev/null 2>&1 || true
+
     if [ -f "$target_path" ]; then
         exit 0
     fi
 
-    run_as_user "$target_user" "$APP_BIN" --write-example-garden "$target_path" >/dev/null 2>&1 || true
+    run_as_user "$target_user" "\"$APP_BIN\" --write-example-garden \"$target_path\"" >/dev/null 2>&1 || true
 }
 
 install_example_garden

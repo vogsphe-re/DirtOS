@@ -10,12 +10,13 @@ pub mod routes;
 use axum::{Router, routing::get};
 use sqlx::SqlitePool;
 use std::net::SocketAddr;
+use tauri::AppHandle;
 use tower_http::cors::{Any, CorsLayer};
 
 pub use routes::AppState;
 
-pub fn build_router(pool: SqlitePool) -> Router {
-    let state = AppState { pool };
+pub fn build_router(pool: SqlitePool, app_handle: AppHandle) -> Router {
+    let state = AppState { pool, app_handle };
 
     let cors = CorsLayer::new()
         .allow_origin(Any)
@@ -24,6 +25,8 @@ pub fn build_router(pool: SqlitePool) -> Router {
 
     Router::new()
         .route("/api/v1/health", get(routes::health::health))
+        .merge(routes::storage::router())
+        .merge(routes::backups::router())
         .merge(routes::environments::router())
         .merge(routes::species::router())
         .merge(routes::plants::router())
@@ -39,14 +42,14 @@ pub fn build_router(pool: SqlitePool) -> Router {
 
 /// Start the API server. Intended to be spawned as a background task after
 /// the database pool is ready.
-pub async fn start(pool: SqlitePool) {
+pub async fn start(pool: SqlitePool, app_handle: AppHandle) {
     let port: u16 = std::env::var("DIRTOS_API_PORT")
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(7272);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
-    let app = build_router(pool);
+    let app = build_router(pool, app_handle);
 
     tracing::info!("DirtOS REST API listening on http://{}", addr);
 

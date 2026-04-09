@@ -39,6 +39,9 @@ Most enum values use lowercase snake_case. `LocationType` values are PascalCase.
 | Resource | Collection URL | Item URL |
 | --- | --- | --- |
 | Health | `GET /api/v1/health` | — |
+| Storage settings | `/api/v1/settings/storage` | `/api/v1/settings/storage/user-data`, `/api/v1/settings/storage/backup-output` |
+| Backup jobs | `/api/v1/backups/jobs` | `/api/v1/backups/jobs/{id}`, `/api/v1/backups/jobs/{id}/run` |
+| Backup runs | `/api/v1/backups/runs` | — |
 | Environments | `/api/v1/environments` | `/api/v1/environments/{id}` |
 | Locations | `/api/v1/locations` | `/api/v1/locations/{id}` |
 | Species | `/api/v1/species` | `/api/v1/species/{id}` |
@@ -67,6 +70,17 @@ Plant payloads include lifecycle metadata fields:
 | `DELETE` | Remove a record — returns `204 No Content` |
 
 Harvests do not support `PUT` (delete and re-create to correct a record).
+
+Storage endpoints support moving user data to absolute local or UNC network paths.
+When a user data directory override is changed, responses include `restart_required`
+to indicate that DirtOS must restart before switching active database/media paths.
+
+Backup job payloads include strategy and destination controls:
+
+- `backup_strategy`: `full`, `incremental`, `hybrid`
+- `destination_kind`: `local`, `network`, `cloud`
+- cloud uploads: `cloud_provider` (`dropbox`, `google_drive`, `onedrive`) and `cloud_path_prefix`
+- lifecycle/dedupe: `lifecycle_policy_json` (for example `{"keep_last":14}`) and `dedupe_enabled`
 
 ### Pagination
 
@@ -146,6 +160,22 @@ curl -X PUT http://127.0.0.1:7272/api/v1/issues/3 \
 curl -X POST http://127.0.0.1:7272/api/v1/harvests \
   -H "Content-Type: application/json" \
   -d '{"plant_id": 12, "harvest_date": "2026-07-15", "quantity": 1.4, "unit": "kg"}'
+```
+
+### Configure a custom backup output directory
+
+```bash
+curl -X PUT http://127.0.0.1:7272/api/v1/settings/storage/backup-output \
+  -H "Content-Type: application/json" \
+  -d '{"path":"/mnt/backup/DirtOS"}'
+```
+
+### Run a backup job immediately
+
+```bash
+curl -X POST http://127.0.0.1:7272/api/v1/backups/jobs/3/run \
+  -H "Content-Type: application/json" \
+  -d '{"encryption_password":null}'
 ```
 
 ## Documentation and testing tools

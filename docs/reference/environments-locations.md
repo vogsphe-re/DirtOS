@@ -35,6 +35,12 @@ description: "Reference for environment and location records, fields, and behavi
 - Use location hierarchy for nested spaces.
 - Keep names stable so history and reports stay readable.
 
+## Storage roots
+
+- Default user data root: `~/Documents/DirtOS` (or `%USERPROFILE%\\Documents\\DirtOS` on Windows).
+- Backup output defaults to `<user_data_root>/backups`.
+- Both paths can be overridden in Settings for local disks or network shares.
+
 > [SCREENSHOT:environment-location-editor] Capture environment and location edit forms side by side.
 
 ## Keywords

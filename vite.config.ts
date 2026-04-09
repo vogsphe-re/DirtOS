@@ -13,7 +13,7 @@ export default defineConfig(() => ({
     },
   },
   build: {
-    chunkSizeWarningLimit: 750,
+    chunkSizeWarningLimit: 768, // 768kb is the max size for a single file on Tauri's WebView2 (https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/app-size-limits#javascript-file-size-limit)  
     rollupOptions: {
       output: {
         manualChunks(id) {

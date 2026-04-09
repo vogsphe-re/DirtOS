@@ -38,6 +38,10 @@ tags:
     description: Timestamped garden journal entries
   - name: Harvests
     description: Harvest records linked to plants
+  - name: Storage
+    description: User data and backup storage path configuration
+  - name: Backups
+    description: Backup job definitions and execution history
 
 paths:
   # ---------------------------------------------------------------------------
@@ -62,6 +66,173 @@ paths:
                   version:
                     type: string
                     example: "0.4.0"
+
+  # ---------------------------------------------------------------------------
+  # Storage
+  # ---------------------------------------------------------------------------
+  /api/v1/settings/storage:
+    get:
+      tags: [Storage]
+      summary: Get storage path settings
+      operationId: getStorageSettings
+      responses:
+        "200":
+          description: Current storage settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageSettingsResponse"
+
+  /api/v1/settings/storage/user-data:
+    put:
+      tags: [Storage]
+      summary: Set user data directory override
+      operationId: setUserDataDirectory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetUserDataDirectoryInput"
+      responses:
+        "200":
+          description: Updated storage settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageSettingsResponse"
+    delete:
+      tags: [Storage]
+      summary: Clear user data directory override
+      operationId: clearUserDataDirectoryOverride
+      responses:
+        "200":
+          description: Updated storage settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageSettingsResponse"
+
+  /api/v1/settings/storage/backup-output:
+    put:
+      tags: [Storage]
+      summary: Set backup output directory
+      operationId: setBackupOutputDirectory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetBackupOutputDirectoryInput"
+      responses:
+        "200":
+          description: Updated storage settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageSettingsResponse"
+
+  # ---------------------------------------------------------------------------
+  # Backups
+  # ---------------------------------------------------------------------------
+  /api/v1/backups/jobs:
+    get:
+      tags: [Backups]
+      summary: List backup jobs
+      operationId: listBackupJobs
+      responses:
+        "200":
+          description: Backup jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BackupJob"
+    post:
+      tags: [Backups]
+      summary: Create backup job
+      operationId: createBackupJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewBackupJob"
+      responses:
+        "200":
+          description: Created backup job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BackupJob"
+
+  /api/v1/backups/jobs/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    patch:
+      tags: [Backups]
+      summary: Update backup job
+      operationId: updateBackupJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBackupJob"
+      responses:
+        "200":
+          description: Updated backup job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BackupJob"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/backups/jobs/{id}/run:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    post:
+      tags: [Backups]
+      summary: Run backup job immediately
+      operationId: runBackupJob
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RunBackupJobInput"
+      responses:
+        "200":
+          description: Backup execution output
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExportPayload"
+
+  /api/v1/backups/runs:
+    get:
+      tags: [Backups]
+      summary: List backup runs
+      operationId: listBackupRuns
+      parameters:
+        - name: backup_job_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/limit"
+      responses:
+        "200":
+          description: Backup run history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BackupRun"
 
   # ---------------------------------------------------------------------------
   # Environments
@@ -1865,3 +2036,256 @@ components:
         notes:
           type: string
           nullable: true
+
+    # -------------------------------------------------------------------------
+    # Storage & backup
+    # -------------------------------------------------------------------------
+    StorageSettingsResponse:
+      type: object
+      properties:
+        default_user_data_dir:
+          type: string
+        user_data_dir:
+          type: string
+        backup_output_dir:
+          type: string
+        using_user_data_override:
+          type: boolean
+        pending_migration_from:
+          type: string
+          nullable: true
+        restart_required:
+          type: boolean
+
+    SetUserDataDirectoryInput:
+      type: object
+      required: [path]
+      properties:
+        path:
+          type: string
+          description: Absolute local path or UNC network path
+        migrate_existing:
+          type: boolean
+          default: false
+
+    SetBackupOutputDirectoryInput:
+      type: object
+      properties:
+        path:
+          type: string
+          nullable: true
+          description: Null or empty value reverts to <data_dir>/backups
+
+    BackupFormat:
+      type: string
+      enum: [json, yaml, archive]
+
+    BackupStrategy:
+      type: string
+      enum: [full, incremental, hybrid]
+
+    BackupDestinationKind:
+      type: string
+      enum: [local, network, cloud]
+
+    CloudStorageProvider:
+      type: string
+      enum: [dropbox, google_drive, onedrive]
+
+    BackupJob:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        schedule_cron:
+          type: string
+          nullable: true
+        format:
+          $ref: "#/components/schemas/BackupFormat"
+        backup_strategy:
+          $ref: "#/components/schemas/BackupStrategy"
+        destination_kind:
+          $ref: "#/components/schemas/BackupDestinationKind"
+        destination_path:
+          type: string
+          nullable: true
+        cloud_provider:
+          allOf:
+            - $ref: "#/components/schemas/CloudStorageProvider"
+          nullable: true
+        cloud_path_prefix:
+          type: string
+          nullable: true
+        lifecycle_policy_json:
+          type: string
+          nullable: true
+        include_secrets:
+          type: boolean
+        dedupe_enabled:
+          type: boolean
+        is_active:
+          type: boolean
+        last_run_status:
+          type: string
+          nullable: true
+        last_run_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_error:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    NewBackupJob:
+      type: object
+      required: [name, format, include_secrets, is_active]
+      properties:
+        name:
+          type: string
+        schedule_cron:
+          type: string
+          nullable: true
+        format:
+          $ref: "#/components/schemas/BackupFormat"
+        backup_strategy:
+          allOf:
+            - $ref: "#/components/schemas/BackupStrategy"
+          default: full
+        destination_kind:
+          allOf:
+            - $ref: "#/components/schemas/BackupDestinationKind"
+          default: local
+        destination_path:
+          type: string
+          nullable: true
+        cloud_provider:
+          allOf:
+            - $ref: "#/components/schemas/CloudStorageProvider"
+          nullable: true
+        cloud_path_prefix:
+          type: string
+          nullable: true
+        lifecycle_policy_json:
+          type: string
+          nullable: true
+        include_secrets:
+          type: boolean
+        dedupe_enabled:
+          type: boolean
+          default: true
+        is_active:
+          type: boolean
+
+    UpdateBackupJob:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        schedule_cron:
+          type: string
+          nullable: true
+        format:
+          allOf:
+            - $ref: "#/components/schemas/BackupFormat"
+          nullable: true
+        backup_strategy:
+          allOf:
+            - $ref: "#/components/schemas/BackupStrategy"
+          nullable: true
+        destination_kind:
+          allOf:
+            - $ref: "#/components/schemas/BackupDestinationKind"
+          nullable: true
+        destination_path:
+          type: string
+          nullable: true
+        cloud_provider:
+          allOf:
+            - $ref: "#/components/schemas/CloudStorageProvider"
+          nullable: true
+        cloud_path_prefix:
+          type: string
+          nullable: true
+        lifecycle_policy_json:
+          type: string
+          nullable: true
+        include_secrets:
+          type: boolean
+          nullable: true
+        dedupe_enabled:
+          type: boolean
+          nullable: true
+        is_active:
+          type: boolean
+          nullable: true
+
+    BackupRun:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        backup_job_id:
+          type: integer
+          format: int64
+          nullable: true
+        status:
+          type: string
+        format:
+          $ref: "#/components/schemas/BackupFormat"
+        backup_kind:
+          $ref: "#/components/schemas/BackupStrategy"
+        output_ref:
+          type: string
+          nullable: true
+        destination_ref:
+          type: string
+          nullable: true
+        content_hash:
+          type: string
+          nullable: true
+        dedupe_skipped:
+          type: boolean
+        bytes_written:
+          type: integer
+          format: int64
+          nullable: true
+        error_message:
+          type: string
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    RunBackupJobInput:
+      type: object
+      properties:
+        encryption_password:
+          type: string
+          nullable: true
+
+    ExportPayload:
+      type: object
+      properties:
+        format:
+          $ref: "#/components/schemas/BackupFormat"
+        filename:
+          type: string
+        content:
+          type: string
+        is_base64:
+          type: boolean

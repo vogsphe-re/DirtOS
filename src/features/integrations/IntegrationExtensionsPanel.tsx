@@ -7,6 +7,7 @@ import {
   Divider,
   Group,
   NumberInput,
+  PasswordInput,
   Select,
   SimpleGrid,
   Stack,
@@ -24,7 +25,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { useEffect, useMemo, useState } from "react";
-import { commands, type AutomationEvent, type BackupFormat, type BackupJob, type BackupRun, type IntegrationConfig, type IntegrationSyncRun, type IntegrationWebhookToken, type OSMPlaceResult, type SpeciesExternalSource } from "../../lib/bindings";
+import { commands, type AutomationEvent, type BackupDestinationKind, type BackupFormat, type BackupJob, type BackupRun, type BackupStrategy, type CloudStorageProvider, type IntegrationConfig, type IntegrationSyncRun, type IntegrationWebhookToken, type OSMPlaceResult, type SpeciesExternalSource } from "../../lib/bindings";
 
 type Provider =
   | "inaturalist"
@@ -32,8 +33,13 @@ type Provider =
   | "eol"
   | "ean_search"
   | "osm"
+  | "dropbox"
+  | "google_drive"
+  | "onedrive"
   | "home_assistant"
   | "n8n";
+
+type CloudProvider = "dropbox" | "google_drive" | "onedrive";
 
 const PROVIDERS: { value: Provider; label: string }[] = [
   { value: "inaturalist", label: "iNaturalist" },
@@ -41,8 +47,17 @@ const PROVIDERS: { value: Provider; label: string }[] = [
   { value: "eol", label: "Encyclopedia of Life" },
   { value: "ean_search", label: "EAN-Search" },
   { value: "osm", label: "OpenStreetMap" },
+  { value: "dropbox", label: "Dropbox" },
+  { value: "google_drive", label: "Google Drive" },
+  { value: "onedrive", label: "OneDrive" },
   { value: "home_assistant", label: "Home Assistant" },
   { value: "n8n", label: "n8n" },
+];
+
+const CLOUD_PROVIDERS: { value: CloudProvider; label: string }[] = [
+  { value: "dropbox", label: "Dropbox" },
+  { value: "google_drive", label: "Google Drive" },
+  { value: "onedrive", label: "OneDrive" },
 ];
 
 export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvironmentId: number | null }) {
@@ -60,6 +75,10 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
   const [haTopicPrefix, setHaTopicPrefix] = useState("dirtos");
   const [haInstanceId, setHaInstanceId] = useState("home");
   const [haPublishInterval, setHaPublishInterval] = useState<number | string>(300);
+
+  const [selectedCloudProvider, setSelectedCloudProvider] = useState<CloudProvider>("dropbox");
+  const [cloudAccessToken, setCloudAccessToken] = useState("");
+  const [cloudRemotePath, setCloudRemotePath] = useState("DirtOS/Backups");
 
   const { data: integrationConfigs = [] } = useQuery({
     queryKey: ["integration-configs"],
@@ -213,6 +232,53 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
     onError: (e: Error) => notifications.show({ color: "red", title: "Save failed", message: e.message }),
   });
 
+  useEffect(() => {
+    const cfg = configByProvider.get(selectedCloudProvider);
+    if (!cfg) {
+      setCloudAccessToken("");
+      setCloudRemotePath("DirtOS/Backups");
+      return;
+    }
+
+    try {
+      const parsedAuth = cfg.auth_json ? JSON.parse(cfg.auth_json) as { access_token?: string; token?: string; bearer_token?: string } : null;
+      const token = parsedAuth?.access_token ?? parsedAuth?.token ?? parsedAuth?.bearer_token ?? "";
+      setCloudAccessToken(token);
+    } catch {
+      setCloudAccessToken("");
+    }
+
+    try {
+      const parsedSettings = cfg.settings_json ? JSON.parse(cfg.settings_json) as { remote_path?: string; path_prefix?: string; folder?: string } : null;
+      setCloudRemotePath(parsedSettings?.remote_path ?? parsedSettings?.path_prefix ?? parsedSettings?.folder ?? "DirtOS/Backups");
+    } catch {
+      setCloudRemotePath("DirtOS/Backups");
+    }
+  }, [configByProvider, selectedCloudProvider]);
+
+  const saveCloudSettings = useMutation({
+    mutationFn: async () => {
+      const cfg = configByProvider.get(selectedCloudProvider);
+      const accessToken = cloudAccessToken.trim();
+      const remotePath = cloudRemotePath.trim() || "DirtOS/Backups";
+
+      const res = await commands.upsertIntegrationConfig(selectedCloudProvider, {
+        enabled: cfg?.enabled ?? true,
+        auth_json: accessToken ? JSON.stringify({ access_token: accessToken }) : null,
+        settings_json: JSON.stringify({ remote_path: remotePath }),
+        sync_interval_minutes: cfg?.sync_interval_minutes ?? 1440,
+        cache_ttl_minutes: cfg?.cache_ttl_minutes ?? 240,
+        rate_limit_per_minute: cfg?.rate_limit_per_minute ?? 60,
+      });
+      if (res.status === "error") throw new Error(res.error);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["integration-configs"] });
+      notifications.show({ color: "green", message: "Cloud integration settings saved." });
+    },
+    onError: (e: Error) => notifications.show({ color: "red", title: "Cloud settings", message: e.message }),
+  });
+
   const syncSpecies = useMutation({
     mutationFn: async (speciesId: number) => {
       const res = await commands.syncSpeciesExternalSources(speciesId);
@@ -332,6 +398,43 @@ export function IntegrationExtensionsPanel({ activeEnvironmentId }: { activeEnvi
             </SimpleGrid>
 
             <Divider />
+
+            <Card withBorder>
+              <Stack gap="sm">
+                <Text fw={600}>Cloud Backup Integrations</Text>
+                <Text size="sm" c="dimmed">
+                  Configure OAuth access tokens and remote folders used when backup jobs target cloud destinations.
+                </Text>
+                <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                  <Select
+                    label="Cloud provider"
+                    data={CLOUD_PROVIDERS}
+                    value={selectedCloudProvider}
+                    onChange={(value) => setSelectedCloudProvider((value as CloudProvider) || "dropbox")}
+                  />
+                  <TextInput
+                    label="Remote folder / path prefix"
+                    placeholder="DirtOS/Backups"
+                    value={cloudRemotePath}
+                    onChange={(e) => setCloudRemotePath(e.currentTarget.value)}
+                  />
+                </SimpleGrid>
+                <PasswordInput
+                  label="Access token"
+                  placeholder="Paste OAuth access token"
+                  value={cloudAccessToken}
+                  onChange={(e) => setCloudAccessToken(e.currentTarget.value)}
+                />
+                <Group>
+                  <Button onClick={() => saveCloudSettings.mutate()} loading={saveCloudSettings.isPending}>
+                    Save cloud settings
+                  </Button>
+                  <Text size="xs" c="dimmed">
+                    Tokens are stored in DirtOS integration settings and are excluded from backups unless secrets are explicitly included.
+                  </Text>
+                </Group>
+              </Stack>
+            </Card>
 
             <Group align="end" wrap="wrap">
               <Select
@@ -696,6 +799,13 @@ export function BackupManagerPanel() {
   const [jobName, setJobName] = useState("");
   const [cronExpr, setCronExpr] = useState("0 0 * * *");
   const [format, setFormat] = useState<BackupFormat>("json");
+  const [backupStrategy, setBackupStrategy] = useState<BackupStrategy>("full");
+  const [destinationKind, setDestinationKind] = useState<BackupDestinationKind>("local");
+  const [destinationPath, setDestinationPath] = useState("");
+  const [cloudProvider, setCloudProvider] = useState<CloudStorageProvider>("dropbox");
+  const [cloudPathPrefix, setCloudPathPrefix] = useState("DirtOS/Backups");
+  const [lifecycleKeepLast, setLifecycleKeepLast] = useState<number | string>(14);
+  const [dedupeEnabled, setDedupeEnabled] = useState(true);
   const [includeSecrets, setIncludeSecrets] = useState(false);
   const [encryptionPassword, setEncryptionPassword] = useState("");
   const [importFormat, setImportFormat] = useState<BackupFormat>("json");
@@ -723,11 +833,26 @@ export function BackupManagerPanel() {
 
   const createJob = useMutation({
     mutationFn: async () => {
+      const parsedKeepLast =
+        typeof lifecycleKeepLast === "number"
+          ? lifecycleKeepLast
+          : parseInt(String(lifecycleKeepLast).trim(), 10);
+      const lifecyclePolicy = Number.isFinite(parsedKeepLast) && parsedKeepLast > 0
+        ? JSON.stringify({ keep_last: Math.round(parsedKeepLast) })
+        : null;
+
       const res = await commands.createBackupJob({
         name: jobName || "Scheduled backup",
         schedule_cron: cronExpr.trim() || null,
         format,
+        backup_strategy: backupStrategy,
+        destination_kind: destinationKind,
+        destination_path: destinationPath.trim() || null,
+        cloud_provider: destinationKind === "cloud" ? cloudProvider : null,
+        cloud_path_prefix: destinationKind === "cloud" ? (cloudPathPrefix.trim() || "DirtOS/Backups") : null,
+        lifecycle_policy_json: lifecyclePolicy,
         include_secrets: includeSecrets,
+        dedupe_enabled: dedupeEnabled,
         is_active: true,
       });
       if (res.status === "error") throw new Error(res.error);
@@ -881,6 +1006,10 @@ export function BackupManagerPanel() {
           <Card withBorder>
             <Text fw={600} mb={8}>Scheduled Backups</Text>
             <Stack gap="sm">
+              <Text size="sm" c="dimmed">
+                For better resilience, store backups in a different destination than your live data folder.
+                Use a network share or cloud destination for off-device copies.
+              </Text>
               <TextInput
                 label="Job name"
                 placeholder="Nightly backup"
@@ -893,6 +1022,28 @@ export function BackupManagerPanel() {
                 onChange={(e) => setCronExpr(e.currentTarget.value)}
                 description="Use standard 5-field cron format"
               />
+              <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                <Select
+                  label="Backup strategy"
+                  value={backupStrategy}
+                  onChange={(value) => setBackupStrategy((value as BackupStrategy) || "full")}
+                  data={[
+                    { value: "full", label: "Full" },
+                    { value: "incremental", label: "Incremental" },
+                    { value: "hybrid", label: "Hybrid (weekly full + incremental)" },
+                  ]}
+                />
+                <Select
+                  label="Destination kind"
+                  value={destinationKind}
+                  onChange={(value) => setDestinationKind((value as BackupDestinationKind) || "local")}
+                  data={[
+                    { value: "local", label: "Local disk" },
+                    { value: "network", label: "Network share" },
+                    { value: "cloud", label: "Cloud provider" },
+                  ]}
+                />
+              </SimpleGrid>
               <Select
                 label="Format"
                 value={format}
@@ -903,14 +1054,53 @@ export function BackupManagerPanel() {
                   { value: "archive", label: "Archive (ZIP)" },
                 ]}
               />
+
+              {destinationKind === "cloud" ? (
+                <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                  <Select
+                    label="Cloud provider"
+                    value={cloudProvider}
+                    onChange={(value) => setCloudProvider((value as CloudStorageProvider) || "dropbox")}
+                    data={CLOUD_PROVIDERS}
+                  />
+                  <TextInput
+                    label="Cloud path prefix"
+                    placeholder="DirtOS/Backups"
+                    value={cloudPathPrefix}
+                    onChange={(e) => setCloudPathPrefix(e.currentTarget.value)}
+                  />
+                </SimpleGrid>
+              ) : (
+                <TextInput
+                  label={destinationKind === "network" ? "Network destination path" : "Local destination path"}
+                  description="Absolute path. Leave blank to use the configured backup output directory."
+                  placeholder={destinationKind === "network" ? "//nas/share/DirtOS" : "/mnt/external/dirtos-backups"}
+                  value={destinationPath}
+                  onChange={(e) => setDestinationPath(e.currentTarget.value)}
+                />
+              )}
+
+              <NumberInput
+                label="Lifecycle keep-last"
+                description="How many recent backups to keep per job (leave blank to disable automatic pruning)."
+                value={lifecycleKeepLast}
+                onChange={setLifecycleKeepLast}
+                min={1}
+              />
+
+              <Checkbox
+                label="Skip duplicate backups (dedupe by content hash)"
+                checked={dedupeEnabled}
+                onChange={(e) => setDedupeEnabled(e.currentTarget.checked)}
+              />
+
               <Checkbox
                 label="Include secrets (API keys/tokens/passwords)"
                 checked={includeSecrets}
                 onChange={(e) => setIncludeSecrets(e.currentTarget.checked)}
               />
-              <TextInput
+              <PasswordInput
                 label="Encryption password (required when exporting secrets)"
-                type="password"
                 value={encryptionPassword}
                 onChange={(e) => setEncryptionPassword(e.currentTarget.value)}
               />
@@ -953,6 +1143,9 @@ export function BackupManagerPanel() {
                 <Table.Th>Name</Table.Th>
                 <Table.Th>Cron</Table.Th>
                 <Table.Th>Format</Table.Th>
+                <Table.Th>Strategy</Table.Th>
+                <Table.Th>Destination</Table.Th>
+                <Table.Th>Dedupe</Table.Th>
                 <Table.Th>Actions</Table.Th>
               </Table.Tr>
             </Table.Thead>
@@ -962,6 +1155,13 @@ export function BackupManagerPanel() {
                   <Table.Td>{job.name}</Table.Td>
                   <Table.Td>{job.schedule_cron || "-"}</Table.Td>
                   <Table.Td>{job.format}</Table.Td>
+                  <Table.Td>{job.backup_strategy}</Table.Td>
+                  <Table.Td>
+                    {job.destination_kind === "cloud"
+                      ? `${job.cloud_provider || "cloud"}:${job.cloud_path_prefix || "DirtOS/Backups"}`
+                      : job.destination_path || "default"}
+                  </Table.Td>
+                  <Table.Td>{job.dedupe_enabled ? "on" : "off"}</Table.Td>
                   <Table.Td>
                     <Button size="xs" onClick={() => runJob.mutate(job.id)} loading={runJob.isPending}>Run</Button>
                   </Table.Td>
@@ -978,7 +1178,10 @@ export function BackupManagerPanel() {
               <Table.Tr>
                 <Table.Th>Status</Table.Th>
                 <Table.Th>Format</Table.Th>
+                <Table.Th>Kind</Table.Th>
                 <Table.Th>Output</Table.Th>
+                <Table.Th>Destination</Table.Th>
+                <Table.Th>Dedupe</Table.Th>
                 <Table.Th>Started</Table.Th>
               </Table.Tr>
             </Table.Thead>
@@ -987,7 +1190,10 @@ export function BackupManagerPanel() {
                 <Table.Tr key={run.id}>
                   <Table.Td>{run.status}</Table.Td>
                   <Table.Td>{run.format}</Table.Td>
+                  <Table.Td>{run.backup_kind}</Table.Td>
                   <Table.Td>{run.output_ref || "-"}</Table.Td>
+                  <Table.Td>{run.destination_ref || "-"}</Table.Td>
+                  <Table.Td>{run.dedupe_skipped ? "skipped" : "written"}</Table.Td>
                   <Table.Td>{String(run.started_at)}</Table.Td>
                 </Table.Tr>
               ))}

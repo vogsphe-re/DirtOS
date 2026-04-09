@@ -15,6 +15,38 @@ async getAppStartupStatus() : Promise<Result<AppStartupStatus, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async getStorageSettings() : Promise<Result<StorageSettings, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_storage_settings") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async setUserDataDirectory(path: string, migrateExisting: boolean) : Promise<Result<StorageSettings, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_user_data_directory", { path, migrateExisting }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async clearUserDataDirectoryOverride() : Promise<Result<StorageSettings, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("clear_user_data_directory_override") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async setBackupOutputDirectory(path: string | null) : Promise<Result<StorageSettings, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_backup_output_directory", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async exportFullGardenData() : Promise<Result<ExportPayload, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("export_full_garden_data") };
@@ -1859,11 +1891,14 @@ queued: number;
  */
 message: string }
 export type AutomationEvent = { id: number; provider: string; event_type: string; direction: string; payload_json: string | null; status: string; error_message: string | null; created_at: string; processed_at: string | null }
+export type BackupDestinationKind = "local" | "network" | "cloud"
 export type BackupFormat = "json" | "yaml" | "archive"
-export type BackupJob = { id: number; name: string; schedule_cron: string | null; format: BackupFormat; include_secrets: boolean; is_active: boolean; last_run_status: string | null; last_run_at: string | null; last_error: string | null; created_at: string; updated_at: string }
-export type BackupRun = { id: number; backup_job_id: number | null; status: string; format: BackupFormat; output_ref: string | null; bytes_written: number | null; error_message: string | null; started_at: string; finished_at: string | null }
+export type BackupJob = { id: number; name: string; schedule_cron: string | null; format: BackupFormat; backup_strategy?: BackupStrategy; destination_kind?: BackupDestinationKind; destination_path: string | null; cloud_provider: CloudStorageProvider | null; cloud_path_prefix: string | null; lifecycle_policy_json: string | null; include_secrets: boolean; dedupe_enabled?: boolean; is_active: boolean; last_run_status: string | null; last_run_at: string | null; last_error: string | null; created_at: string; updated_at: string }
+export type BackupRun = { id: number; backup_job_id: number | null; status: string; format: BackupFormat; backup_kind?: BackupStrategy; output_ref: string | null; destination_ref: string | null; content_hash: string | null; dedupe_skipped?: boolean; bytes_written: number | null; error_message: string | null; started_at: string; finished_at: string | null }
+export type BackupStrategy = "full" | "incremental" | "hybrid"
 export type CalendarEvent = { id: string; event_type: CalendarEventType; date: string; title: string; color: string | null; plant_id: number | null; schedule_id: number | null; issue_id: number | null }
 export type CalendarEventType = "Schedule" | "PlantingDate" | "HarvestDate" | "IssueCreated"
+export type CloudStorageProvider = "dropbox" | "google_drive" | "onedrive"
 export type CreatePlotGroupInput = { environment_id: number; parent_id: number | null; name: string; label_prefix: string | null; rows: number; cols: number; origin_x: number | null; origin_y: number | null; cell_width: number | null; cell_height: number | null; gap_x: number | null; gap_y: number | null; notes: string | null }
 export type CurrentWeather = { temperature_c: number; feels_like_c: number; humidity: number; pressure_hpa: number; wind_speed_ms: number; wind_direction_deg: number; cloud_cover_pct: number; description: string; icon: string; sunrise: number | null; sunset: number | null; dt: number; uv_index: number | null; visibility_m: number | null; dew_point_c: number | null; wind_gust_ms: number | null; is_day: boolean | null }
 export type CustomField = { id: number; entity_type: CustomFieldEntityType; entity_id: number; field_name: string; field_value: string | null; field_type: CustomFieldType; created_at: string }
@@ -1983,7 +2018,7 @@ export type IndoorReading = { id: number; indoor_environment_id: number; water_t
 export type IndoorReservoirTarget = { id: number; indoor_environment_id: number; ph_min: number | null; ph_max: number | null; ec_min: number | null; ec_max: number | null; ppm_min: number | null; ppm_max: number | null; updated_at: string }
 export type IndoorWaterChange = { id: number; indoor_environment_id: number; volume_liters: number | null; notes: string | null; created_at: string }
 export type IntegrationConfig = { id: number; provider: IntegrationProvider; enabled: boolean; auth_json: string | null; settings_json: string | null; sync_interval_minutes: number | null; cache_ttl_minutes: number | null; rate_limit_per_minute: number | null; last_synced_at: string | null; last_error: string | null; updated_at: string }
-export type IntegrationProvider = "inaturalist" | "wikipedia" | "eol" | "ean_search" | "osm" | "home_assistant" | "n8n"
+export type IntegrationProvider = "inaturalist" | "wikipedia" | "eol" | "ean_search" | "osm" | "dropbox" | "google_drive" | "onedrive" | "home_assistant" | "n8n"
 export type IntegrationSyncRun = { id: number; provider: string; operation: string; status: string; records_fetched: number | null; records_upserted: number | null; error_message: string | null; started_at: string; finished_at: string | null }
 export type IntegrationWebhookToken = { id: number; provider: string; name: string; token: string; is_active: boolean; created_at: string }
 export type Issue = { id: number; environment_id: number | null; plant_id: number | null; location_id: number | null; title: string; description: string | null; status: IssueStatus; priority: IssuePriority; created_at: string; updated_at: string; closed_at: string | null }
@@ -1997,7 +2032,7 @@ export type LocationType = "Plot" | "Space" | "Tent" | "Tray" | "Pot" | "Shed" |
 export type MapPrivacyLevel = "private" | "obfuscated" | "shared"
 export type Media = { id: number; entity_type: string; entity_id: number; file_path: string; file_name: string; mime_type: string | null; thumbnail_path: string | null; caption: string | null; created_at: string }
 export type MediaBase64 = { id: number; mime_type: string; data: string; is_thumbnail: boolean }
-export type NewBackupJob = { name: string; schedule_cron: string | null; format: BackupFormat; include_secrets: boolean; is_active: boolean }
+export type NewBackupJob = { name: string; schedule_cron: string | null; format: BackupFormat; backup_strategy?: BackupStrategy; destination_kind?: BackupDestinationKind; destination_path: string | null; cloud_provider: CloudStorageProvider | null; cloud_path_prefix: string | null; lifecycle_policy_json: string | null; include_secrets: boolean; dedupe_enabled?: boolean; is_active: boolean }
 export type NewCustomField = { entity_type: CustomFieldEntityType; entity_id: number; field_name: string; field_value: string | null; field_type: CustomFieldType }
 export type NewDashboard = { environment_id: number | null; name: string; description: string | null; template_key: string | null; layout_json: string; is_default: boolean }
 export type NewEnvironment = { name: string; latitude: number | null; longitude: number | null; elevation_m: number | null; timezone: string | null; climate_zone: string | null }
@@ -2052,6 +2087,7 @@ export type SoilTest = { id: number; location_id: number; test_date: string; ph:
 export type SowSeedInput = { seed_lot_id: number; tray_id: number; row: number; col: number; plant_name: string | null; notes: string | null }
 export type Species = { id: number; common_name: string; scientific_name: string | null; family: string | null; genus: string | null; inaturalist_id: number | null; wikipedia_slug: string | null; growth_type: string | null; sun_requirement: string | null; water_requirement: string | null; soil_ph_min: number | null; soil_ph_max: number | null; spacing_cm: number | null; days_to_germination_min: number | null; days_to_germination_max: number | null; days_to_harvest_min: number | null; days_to_harvest_max: number | null; hardiness_zone_min: string | null; hardiness_zone_max: string | null; description: string | null; image_url: string | null; eol_page_id: number | null; eol_description: string | null; gbif_key: number | null; gbif_accepted_name: string | null; native_range: string | null; establishment_means: string | null; habitat: string | null; min_temperature_c: number | null; max_temperature_c: number | null; rooting_depth: string | null; uses: string | null; tags: string | null; trefle_id: number | null; cached_inaturalist_json: string | null; cached_wikipedia_json: string | null; cached_eol_json: string | null; cached_gbif_json: string | null; cached_trefle_json: string | null; is_user_added: boolean; created_at: string; updated_at: string }
 export type SpeciesExternalSource = { id: number; species_id: number; provider: IntegrationProvider; external_id: string | null; source_url: string | null; attribution: string | null; revision_id: string | null; native_range_json: string | null; metadata_json: string | null; retrieved_at: string; last_synced_at: string }
+export type StorageSettings = { default_user_data_dir: string; user_data_dir: string; backup_output_dir: string; using_user_data_override: boolean; pending_migration_from: string | null; restart_required: boolean }
 export type SyncSpeciesResult = { species: Species | null; synced_providers: string[]; skipped_providers: string[]; errors: string[] }
 export type TaxonResult = { id: number; name: string; preferred_common_name: string | null; rank: string | null; default_photo_url: string | null; wikipedia_url: string | null; matched_term: string | null }
 /**
@@ -2086,7 +2122,7 @@ genus: string | null;
  * Image URL (thumbnail).
  */
 image_url: string | null }
-export type UpdateBackupJob = { name: string | null; schedule_cron: string | null; format: BackupFormat | null; include_secrets: boolean | null; is_active: boolean | null }
+export type UpdateBackupJob = { name: string | null; schedule_cron: string | null; format: BackupFormat | null; backup_strategy: BackupStrategy | null; destination_kind: BackupDestinationKind | null; destination_path: string | null; cloud_provider: CloudStorageProvider | null; cloud_path_prefix: string | null; lifecycle_policy_json: string | null; include_secrets: boolean | null; dedupe_enabled: boolean | null; is_active: boolean | null }
 export type UpdateCustomField = { field_name: string | null; field_value: string | null; field_type: CustomFieldType | null }
 export type UpdateDashboard = { name: string | null; description: string | null; layout_json: string | null; is_default: boolean | null }
 export type UpdateEnvironment = { name: string | null; latitude: number | null; longitude: number | null; elevation_m: number | null; timezone: string | null; climate_zone: string | null }

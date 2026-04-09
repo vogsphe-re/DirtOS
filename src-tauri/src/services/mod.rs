@@ -1,5 +1,6 @@
 pub mod asset_tag;
 pub mod backup;
+pub mod backup_jobs;
 pub mod ean_search;
 pub mod eol;
 pub mod export;
@@ -17,6 +18,7 @@ pub mod recommendations;
 pub mod schedule_suggestions;
 pub mod scheduler;
 pub mod sensors;
+pub mod storage_paths;
 pub mod trefle;
 pub mod weather;
 pub mod weather_alerts;

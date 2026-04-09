@@ -33,6 +33,58 @@ interface PlantDetailProps {
   plantId: number;
 }
 
+type LocationNavigationTarget = "/plants/trays" | "/garden/plots";
+
+interface PlantLocationInfo {
+  label: string;
+  navigationTarget: LocationNavigationTarget | null;
+}
+
+interface CanvasObjectReference {
+  id: string;
+  type: string;
+  label: string;
+  parentId: string | null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function parseCanvasObjects(canvasJson: string | null): CanvasObjectReference[] {
+  if (!canvasJson) return [];
+
+  try {
+    const parsed = JSON.parse(canvasJson);
+    if (!isRecord(parsed)) return [];
+    const objects = parsed.objects;
+    if (!Array.isArray(objects)) return [];
+
+    return objects
+      .filter((value): value is Record<string, unknown> => isRecord(value) && typeof value.id === "string")
+      .map((value) => ({
+        id: String(value.id),
+        type: typeof value.type === "string" ? value.type : "",
+        label: typeof value.label === "string" ? value.label : "",
+        parentId: typeof value.parentId === "string" ? value.parentId : null,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function getLocationNavigationTarget(location: Location): LocationNavigationTarget | null {
+  if (location.location_type === "SeedlingArea") return "/plants/trays";
+  if (
+    location.location_type === "Space"
+    || location.location_type === "PlotGroup"
+    || location.location_type === "OutdoorSite"
+  ) {
+    return "/garden/plots";
+  }
+  return null;
+}
+
 export function PlantDetail({ plantId }: PlantDetailProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -58,10 +110,10 @@ export function PlantDetail({ plantId }: PlantDetailProps) {
     enabled: !!plant?.species_id,
   });
 
-  const { data: locationLabel = "Unassigned", isLoading: locationLoading } = useQuery({
-    queryKey: ["plant-location-label", plant?.id, plant?.environment_id, plant?.location_id],
+  const { data: locationInfo = { label: "Unassigned", navigationTarget: null }, isLoading: locationLoading } = useQuery<PlantLocationInfo>({
+    queryKey: ["plant-location-label", plant?.id, plant?.environment_id, plant?.location_id, plant?.canvas_object_id],
     queryFn: async () => {
-      if (!plant) return "Unassigned";
+      if (!plant) return { label: "Unassigned", navigationTarget: null };
 
       const locationsRes = await commands.listLocations(plant.environment_id);
       if (locationsRes.status === "error") throw new Error(locationsRes.error);
@@ -82,18 +134,49 @@ export function PlantDetail({ plantId }: PlantDetailProps) {
 
         const areaName = tray.location_id != null ? locationsById.get(tray.location_id)?.name : null;
         const trayLabel = `${tray.name} - Row ${match.row + 1}, Col ${match.col + 1}`;
-        return areaName ? `${areaName} / ${trayLabel}` : trayLabel;
+        return {
+          label: areaName ? `${areaName} / ${trayLabel}` : trayLabel,
+          navigationTarget: "/plants/trays",
+        };
+      }
+
+      if (plant.canvas_object_id) {
+        const canvasRes = await commands.loadCanvas(plant.environment_id);
+        if (canvasRes.status === "ok") {
+          const canvasObjects = parseCanvasObjects(canvasRes.data);
+          const canvasObjectsById = new Map(canvasObjects.map((object) => [object.id, object]));
+
+          const spaceObject = canvasObjectsById.get(plant.canvas_object_id);
+          if (spaceObject) {
+            const spaceLabel = spaceObject.label.trim() || "Canvas space";
+            const plotObject = spaceObject.parentId ? canvasObjectsById.get(spaceObject.parentId) : undefined;
+            const plotLabel = plotObject?.label.trim() || null;
+
+            return {
+              label: plotLabel ? `${plotLabel} / ${spaceLabel}` : spaceLabel,
+              navigationTarget: "/garden/plots",
+            };
+          }
+        }
+
+        return {
+          label: "Assigned on Garden Canvas",
+          navigationTarget: "/garden/plots",
+        };
       }
 
       if (plant.location_id != null) {
         const location = locationsById.get(plant.location_id);
         if (location) {
-          return location.label ? `${location.name} (${location.label})` : location.name;
+          return {
+            label: location.label ? `${location.name} (${location.label})` : location.name,
+            navigationTarget: getLocationNavigationTarget(location),
+          };
         }
-        return `Location #${plant.location_id}`;
+        return { label: `Location #${plant.location_id}`, navigationTarget: null };
       }
 
-      return "Unassigned";
+      return { label: "Unassigned", navigationTarget: null };
     },
     enabled: !!plant,
   });
@@ -287,7 +370,26 @@ export function PlantDetail({ plantId }: PlantDetailProps) {
                     </Badge>
                   }
                 />
-                <InfoItem label="Location" value={locationLoading ? "Resolving..." : locationLabel} />
+                <InfoItem
+                  label="Location"
+                  value={
+                    locationLoading
+                      ? "Resolving..."
+                      : locationInfo.navigationTarget
+                        ? (
+                          <Text
+                            size="sm"
+                            c="blue"
+                            td="underline"
+                            style={{ cursor: "pointer" }}
+                            onClick={() => navigate({ to: locationInfo.navigationTarget as LocationNavigationTarget })}
+                          >
+                            {locationInfo.label}
+                          </Text>
+                        )
+                        : locationInfo.label
+                  }
+                />
                 <InfoItem label="Lifecycle" value={effectiveLifecycle} />
                 <InfoItem label="Harvestable" value={plant.is_harvestable ? "Yes" : "No"} />
                 <InfoItem label="Planted date" value={plant.planted_date} />

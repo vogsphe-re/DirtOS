@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   Group,
+  Loader,
   Modal,
   NumberInput,
   ScrollArea,
@@ -27,7 +28,7 @@ import {
   IconSeeding,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   commands,
   type SeedLot,
@@ -39,7 +40,7 @@ import {
   type SeedLotScanResult,
 } from "../../lib/bindings";
 import { useAppStore } from "../../stores/appStore";
-import type { Species } from "./types";
+import type { Species, TaxonResult } from "./types";
 import { AssetTagInline } from "../../components/AssetTagBadge";
 
 const SOURCE_TYPES = [
@@ -66,6 +67,7 @@ function SeedFormModal({ opened, onClose, seedLot, speciesList }: SeedFormModalP
   const [speciesId, setSpeciesId] = useState<string | null>(
     seedLot?.species_id?.toString() ?? null,
   );
+  const [speciesSearch, setSpeciesSearch] = useState("");
   const [lotLabel, setLotLabel] = useState(seedLot?.lot_label ?? "");
   const [eanCode, setEanCode] = useState(seedLot?.ean_code ?? "");
   const [quantity, setQuantity] = useState<number | string>(seedLot?.quantity ?? "");
@@ -83,6 +85,144 @@ function SeedFormModal({ opened, onClose, seedLot, speciesList }: SeedFormModalP
   const [expirationDate, setExpirationDate] = useState(seedLot?.expiration_date ?? "");
   const [packetInfo, setPacketInfo] = useState(seedLot?.packet_info ?? "");
   const [notes, setNotes] = useState(seedLot?.notes ?? "");
+
+  useEffect(() => {
+    if (!opened) return;
+
+    setSpeciesId(seedLot?.species_id?.toString() ?? null);
+    setSpeciesSearch("");
+    setLotLabel(seedLot?.lot_label ?? "");
+    setEanCode(seedLot?.ean_code ?? "");
+    setQuantity(seedLot?.quantity ?? "");
+    setViabilityPct(seedLot?.viability_pct ?? "");
+    setStorageLocation(seedLot?.storage_location ?? "");
+    setSourceType(seedLot?.source_type ?? "purchased");
+    setVendor(seedLot?.vendor ?? "");
+    setPurchaseDate(seedLot?.purchase_date ?? "");
+    setExpirationDate(seedLot?.expiration_date ?? "");
+    setPacketInfo(seedLot?.packet_info ?? "");
+    setNotes(seedLot?.notes ?? "");
+  }, [opened, seedLot]);
+
+  const { data: inatResults = [], isFetching: inatSearching } = useQuery({
+    queryKey: ["seed-form-inat-search", speciesSearch.trim()],
+    queryFn: async () => {
+      const query = speciesSearch.trim();
+      if (query.length < 2) return [] as TaxonResult[];
+      const res = await (commands as any).searchInaturalist(query);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data as TaxonResult[];
+    },
+    enabled: opened && speciesSearch.trim().length >= 2,
+    staleTime: 60_000,
+  });
+
+  const createSpeciesFromTaxon = useMutation({
+    mutationFn: async (taxon: TaxonResult) => {
+      const res = await (commands as any).createSpecies({
+        common_name: taxon.preferred_common_name ?? taxon.name,
+        scientific_name: taxon.name,
+        family: null,
+        genus: null,
+        growth_type: null,
+        sun_requirement: null,
+        water_requirement: null,
+        soil_ph_min: null,
+        soil_ph_max: null,
+        spacing_cm: null,
+        days_to_germination_min: null,
+        days_to_germination_max: null,
+        days_to_harvest_min: null,
+        days_to_harvest_max: null,
+        hardiness_zone_min: null,
+        hardiness_zone_max: null,
+        description: null,
+        image_url: taxon.default_photo_url ?? null,
+        is_user_added: true,
+      });
+      if (res.status === "error") throw new Error(res.error);
+      return res.data as Species;
+    },
+    onSuccess: (createdSpecies) => {
+      setSpeciesId(String(createdSpecies.id));
+      setSpeciesSearch("");
+      queryClient.invalidateQueries({ queryKey: ["species-all"] });
+      queryClient.invalidateQueries({ queryKey: ["species"] });
+
+      notifications.show({
+        title: "Species added",
+        message: `${createdSpecies.common_name} was created from iNaturalist search.`,
+        color: "green",
+      });
+
+      (commands as any).enrichSpeciesInaturalist(createdSpecies.id)
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ["species-all"] });
+          queryClient.invalidateQueries({ queryKey: ["species"] });
+        })
+        .catch(() => {
+          // Optional enrichment; ignore background errors.
+        });
+    },
+    onError: (err: Error) => {
+      notifications.show({ title: "Species creation failed", message: err.message, color: "red" });
+    },
+  });
+
+  const speciesOptions = useMemo(() => {
+    const query = speciesSearch.trim().toLowerCase();
+    const localOptions = speciesList
+      .filter((species) => {
+        if (!query) return true;
+        const commonName = species.common_name.toLowerCase();
+        const scientificName = (species.scientific_name ?? "").toLowerCase();
+        return commonName.includes(query) || scientificName.includes(query);
+      })
+      .map((species) => ({
+        value: String(species.id),
+        label: species.common_name + (species.scientific_name ? ` (${species.scientific_name})` : ""),
+      }));
+
+    const knownScientificNames = new Set(
+      speciesList
+        .map((species) => (species.scientific_name ?? "").trim().toLowerCase())
+        .filter(Boolean),
+    );
+
+    const inatOptions = inatResults
+      .filter((taxon) => !knownScientificNames.has(taxon.name.trim().toLowerCase()))
+      .map((taxon) => ({
+        value: `inat:${taxon.id}`,
+        label: `Add from iNaturalist: ${taxon.preferred_common_name ?? taxon.name} (${taxon.name})`,
+      }));
+
+    return [...localOptions, ...inatOptions];
+  }, [inatResults, speciesList, speciesSearch]);
+
+  const handleSpeciesChange = (value: string | null) => {
+    if (!value) {
+      setSpeciesId(null);
+      return;
+    }
+
+    if (!value.startsWith("inat:")) {
+      setSpeciesId(value);
+      return;
+    }
+
+    const taxonId = Number(value.slice("inat:".length));
+    const taxon = inatResults.find((entry) => entry.id === taxonId);
+    if (!taxon) {
+      notifications.show({
+        title: "Species result unavailable",
+        message: "Refresh your search and try again.",
+        color: "orange",
+      });
+      return;
+    }
+
+    createSpeciesFromTaxon.mutate(taxon);
+  };
 
   const createMut = useMutation({
     mutationFn: (input: NewSeedLot) => commands.createSeedStoreItem(input),
@@ -158,13 +298,15 @@ function SeedFormModal({ opened, onClose, seedLot, speciesList }: SeedFormModalP
       <Stack gap="sm">
         <Select
           label="Species"
-          placeholder="Select species"
-          data={speciesList.map((s) => ({
-            value: s.id.toString(),
-            label: s.common_name,
-          }))}
+          placeholder="Search local species or iNaturalist"
+          description="Pick a local species, or choose an iNaturalist result to create it automatically."
+          data={speciesOptions}
           value={speciesId}
-          onChange={setSpeciesId}
+          onChange={handleSpeciesChange}
+          searchValue={speciesSearch}
+          onSearchChange={setSpeciesSearch}
+          rightSection={inatSearching || createSpeciesFromTaxon.isPending ? <Loader size={14} /> : null}
+          nothingFoundMessage={speciesSearch.trim().length < 2 ? "Type at least 2 characters." : "No local or iNaturalist matches."}
           searchable
           clearable
         />
@@ -246,7 +388,10 @@ function SeedFormModal({ opened, onClose, seedLot, speciesList }: SeedFormModalP
           <Button variant="default" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} loading={createMut.isPending || updateMut.isPending}>
+          <Button
+            onClick={handleSubmit}
+            loading={createMut.isPending || updateMut.isPending || createSpeciesFromTaxon.isPending}
+          >
             {seedLot ? "Save" : "Create"}
           </Button>
         </Group>

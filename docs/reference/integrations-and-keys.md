@@ -9,7 +9,7 @@ description: "Reference for provider configuration, map settings, and sync recor
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `provider` | enum | `inaturalist`, `wikipedia`, `osm`, `home_assistant`, `n8n` |
+| `provider` | enum | `inaturalist`, `wikipedia`, `eol`, `ean_search`, `osm`, `dropbox`, `google_drive`, `onedrive`, `home_assistant`, `n8n` |
 | `enabled` | boolean | Active/inactive state |
 | `auth_json` | string/null | Credential payload |
 | `settings_json` | string/null | Provider-specific settings |
@@ -18,6 +18,11 @@ description: "Reference for provider configuration, map settings, and sync recor
 | `rate_limit_per_minute` | integer/null | Request pacing |
 | `last_synced_at` | timestamp/null | Last sync time |
 | `last_error` | string/null | Most recent provider error |
+
+Cloud provider conventions:
+
+- `auth_json` should contain an OAuth token (`access_token`, `token`, or `bearer_token`).
+- `settings_json` can define default cloud folder settings such as `remote_path`.
 
 ## Map settings fields
 

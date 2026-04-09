@@ -13,6 +13,7 @@ use crate::db::{
 };
 use crate::db::models::*;
 use crate::services::{export, plant_category};
+use crate::AppStorageState;
 
 const EXAMPLE_ENV_NAME: &str = "DirtOS Example Garden";
 const EXAMPLE_FILE_NAME: &str = "DirtOS-Example-Garden.json";
@@ -79,13 +80,14 @@ pub async fn save_example_garden(app: AppHandle) -> Result<String, String> {
 #[specta::specta]
 pub async fn import_example_garden(
     pool: State<'_, SqlitePool>,
+    storage: State<'_, AppStorageState>,
     app: AppHandle,
 ) -> Result<ExampleGardenImportResult, String> {
     let output_path = default_example_output_path(&app)?;
     let content = build_example_garden_content().await?;
     let written = write_example_file(&output_path, &content)?;
 
-    let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let app_data_dir = storage.get_paths().data_dir;
     export::import_garden_data_json(&pool, &app_data_dir, &content).await?;
 
     Ok(ExampleGardenImportResult {
@@ -99,19 +101,15 @@ pub async fn write_example_garden_to_path(output_path: &Path) -> Result<PathBuf,
     write_example_file(output_path, &content)
 }
 
-pub fn default_documents_dir() -> Result<PathBuf, String> {
-    let home_dir = std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .ok_or_else(|| "Unable to resolve HOME for Documents fallback".to_string())?;
-
-    Ok(home_dir.join("Documents"))
+pub fn default_documents_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    crate::services::storage_paths::default_documents_dir(app)
 }
 
 pub fn default_example_output_path(app: &AppHandle) -> Result<PathBuf, String> {
     let docs = match app.path().document_dir() {
         Ok(path) => path,
         Err(err) => {
-            let fallback = default_documents_dir()?;
+            let fallback = default_documents_dir(app)?;
             tracing::warn!(
                 "Failed to resolve document_dir via platform APIs: {}. Falling back to {:?}",
                 err,

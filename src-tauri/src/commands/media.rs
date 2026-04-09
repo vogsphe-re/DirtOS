@@ -1,17 +1,18 @@
 use sqlx::SqlitePool;
-use tauri::{AppHandle, Manager, State};
+use tauri::State;
 
 use crate::db::{
     media as media_db,
     models::{Media, NewMedia},
 };
 use crate::services::media::MediaService;
+use crate::AppStorageState;
 
 #[tauri::command]
 #[specta::specta]
 pub async fn upload_media(
     pool: State<'_, SqlitePool>,
-    app: AppHandle,
+    storage: State<'_, AppStorageState>,
     entity_type: String,
     entity_id: i64,
     file_path: String,
@@ -24,7 +25,7 @@ pub async fn upload_media(
         .to_string();
 
     let file_bytes = std::fs::read(&src_path).map_err(|e| e.to_string())?;
-    let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let app_data_dir = storage.get_paths().data_dir;
     let svc = MediaService::new(app_data_dir);
     let stored = svc.store_file(&file_bytes, &file_name, &entity_type, entity_id)?;
 
@@ -60,7 +61,7 @@ pub async fn list_media(
 #[specta::specta]
 pub async fn delete_media(
     pool: State<'_, SqlitePool>,
-    app: AppHandle,
+    storage: State<'_, AppStorageState>,
     id: i64,
 ) -> Result<bool, String> {
     let media = media_db::delete_media(&pool, id)
@@ -68,7 +69,7 @@ pub async fn delete_media(
         .map_err(|e| e.to_string())?;
 
     if let Some(m) = media {
-        let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+        let app_data_dir = storage.get_paths().data_dir;
         let svc = MediaService::new(app_data_dir);
         svc.delete_files(&m.file_path, m.thumbnail_path.as_deref());
         Ok(true)
@@ -83,7 +84,7 @@ pub async fn delete_media(
 #[specta::specta]
 pub async fn read_media_base64(
     pool: State<'_, SqlitePool>,
-    app: AppHandle,
+    storage: State<'_, AppStorageState>,
     id: i64,
     thumbnail: bool,
 ) -> Result<MediaBase64, String> {
@@ -92,7 +93,7 @@ pub async fn read_media_base64(
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "Media not found".to_string())?;
 
-    let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let app_data_dir = storage.get_paths().data_dir;
     let svc = MediaService::new(app_data_dir);
 
     let (path, is_thumbnail) = if thumbnail {

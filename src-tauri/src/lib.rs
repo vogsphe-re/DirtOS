@@ -13,6 +13,44 @@ pub mod api;
 
 use commands::app::AppStartupStatus;
 
+#[derive(Debug, Clone)]
+pub struct StorageRuntimePaths {
+    pub data_dir: PathBuf,
+    pub backup_output_dir: PathBuf,
+}
+
+pub struct AppStorageState {
+    paths: RwLock<StorageRuntimePaths>,
+}
+
+impl AppStorageState {
+    pub fn new(data_dir: PathBuf, backup_output_dir: PathBuf) -> Self {
+        Self {
+            paths: RwLock::new(StorageRuntimePaths {
+                data_dir,
+                backup_output_dir,
+            }),
+        }
+    }
+
+    pub fn get_paths(&self) -> StorageRuntimePaths {
+        self.paths
+            .read()
+            .map(|paths| paths.clone())
+            .unwrap_or(StorageRuntimePaths {
+                data_dir: PathBuf::from("."),
+                backup_output_dir: PathBuf::from("./backups"),
+            })
+    }
+
+    pub fn set_paths(&self, data_dir: PathBuf, backup_output_dir: PathBuf) {
+        if let Ok(mut paths) = self.paths.write() {
+            paths.data_dir = data_dir;
+            paths.backup_output_dir = backup_output_dir;
+        }
+    }
+}
+
 pub struct AppStartupState {
     status: RwLock<AppStartupStatus>,
 }
@@ -53,6 +91,10 @@ impl AppStartupState {
 fn specta_builder() -> Builder<tauri::Wry> {
     Builder::<tauri::Wry>::new().commands(collect_commands![
         commands::get_app_startup_status,
+        commands::get_storage_settings,
+        commands::set_user_data_directory,
+        commands::clear_user_data_directory_override,
+        commands::set_backup_output_directory,
         commands::export_full_garden_data,
         commands::import_full_garden_data,
         commands::greet,
@@ -331,12 +373,27 @@ pub fn run() {
         .setup(|app| {
             app.manage(AppStartupState::default());
 
-            let app_data_dir = app
-                .path()
-                .app_data_dir()
-                .expect("Failed to resolve app data directory");
+            let resolved_paths = services::storage_paths::resolve_storage_paths(&app.handle())
+                .map_err(|err| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("Failed to resolve storage paths: {err}"),
+                    )
+                })?;
 
-            tracing::info!("DirtOS starting. Data dir: {:?}", app_data_dir);
+            app.manage(AppStorageState::new(
+                resolved_paths.data_dir.clone(),
+                resolved_paths.backup_output_dir.clone(),
+            ));
+
+            let app_data_dir = resolved_paths.data_dir;
+            let backup_output_dir = resolved_paths.backup_output_dir;
+
+            tracing::info!(
+                "DirtOS starting. Data dir: {:?}, backup dir: {:?}",
+                app_data_dir,
+                backup_output_dir
+            );
 
             // Database initialisation runs async; spawn onto the tokio runtime.
             let app_handle = app.handle().clone();
@@ -355,7 +412,7 @@ pub fn run() {
                             message: Some("Database startup failed. Attempting backup recovery.".to_string()),
                         });
 
-                        match services::backup::restore_latest_backup(&app_data_dir) {
+                        match services::backup::restore_latest_backup(&app_data_dir, &backup_output_dir) {
                             Ok(Some(path)) => {
                                 tracing::warn!("Restored database from backup {:?}", path);
                                 recovered_from_backup = true;
@@ -402,7 +459,16 @@ pub fn run() {
                 };
 
                 tracing::info!("Database initialised successfully");
-                services::backup::start_periodic_backups(app_data_dir.clone(), pool.clone());
+                services::backup::start_periodic_backups(
+                    app_data_dir.clone(),
+                    backup_output_dir.clone(),
+                    pool.clone(),
+                );
+                services::backup_jobs::start_backup_job_scheduler(
+                    app_data_dir.clone(),
+                    backup_output_dir.clone(),
+                    pool.clone(),
+                );
 
                 // Seed API keys from environment variables if not already set in DB
                 if let Ok(owm_key) = std::env::var("OPENWEATHERMAP_API_KEY") {
@@ -449,8 +515,9 @@ pub fn run() {
 
                 // Start the REST API server for plugin and integration access.
                 let api_pool = pool.clone();
+                let api_app = app_handle.clone();
                 tauri::async_runtime::spawn(async move {
-                    api::start(api_pool).await;
+                    api::start(api_pool, api_app).await;
                 });
 
                 // Ensure a clean importable example file exists under Documents/DirtOS/Examples.

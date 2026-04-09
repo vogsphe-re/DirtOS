@@ -30,10 +30,66 @@ import { useAppStore } from "../../stores/appStore";
 import type { Plant, PlantStatus, Species } from "./types";
 import { PLANT_STATUS_COLORS, PLANT_STATUS_LABELS } from "./types";
 
-export function PlantsList() {
+type LocationNavigationTarget = "/plants/trays" | "/garden/plots";
+
+interface PlantsListProps {
+  defaultStatusFilter?: PlantStatus | "";
+}
+
+interface ResolvedPlantLocation {
+  label: string;
+  navigationTarget: LocationNavigationTarget | null;
+}
+
+interface CanvasObjectReference {
+  id: string;
+  type: string;
+  label: string;
+  parentId: string | null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function parseCanvasObjects(canvasJson: string | null): CanvasObjectReference[] {
+  if (!canvasJson) return [];
+
+  try {
+    const parsed = JSON.parse(canvasJson);
+    if (!isRecord(parsed)) return [];
+    const objects = parsed.objects;
+    if (!Array.isArray(objects)) return [];
+
+    return objects
+      .filter((value): value is Record<string, unknown> => isRecord(value) && typeof value.id === "string")
+      .map((value) => ({
+        id: String(value.id),
+        type: typeof value.type === "string" ? value.type : "",
+        label: typeof value.label === "string" ? value.label : "",
+        parentId: typeof value.parentId === "string" ? value.parentId : null,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function getLocationNavigationTarget(location: Location): LocationNavigationTarget | null {
+  if (location.location_type === "SeedlingArea") return "/plants/trays";
+  if (
+    location.location_type === "Space"
+    || location.location_type === "PlotGroup"
+    || location.location_type === "OutdoorSite"
+  ) {
+    return "/garden/plots";
+  }
+  return null;
+}
+
+export function PlantsList({ defaultStatusFilter = "" }: PlantsListProps) {
   const navigate = useNavigate();
   const activeEnvId = useAppStore((s) => s.activeEnvironmentId);
-  const [statusFilter, setStatusFilter] = useState<PlantStatus | "">("");
+  const [statusFilter, setStatusFilter] = useState<PlantStatus | "">(defaultStatusFilter);
   const [addOpen, setAddOpen] = useState(false);
   const queryClient = useQueryClient();
 
@@ -91,10 +147,28 @@ export function PlantsList() {
     })),
   });
 
+  const canvasQueries = useQueries({
+    queries: environmentIds.map((environmentId) => ({
+      queryKey: ["canvas", environmentId],
+      queryFn: async () => {
+        const res = await commands.loadCanvas(environmentId);
+        if (res.status === "error") return [] as CanvasObjectReference[];
+        return parseCanvasObjects(res.data);
+      },
+    })),
+  });
+
   const locationsById = new Map<number, Location>();
   for (const query of locationQueries) {
     for (const location of query.data ?? []) {
       locationsById.set(location.id, location);
+    }
+  }
+
+  const canvasObjectsById = new Map<string, CanvasObjectReference>();
+  for (const query of canvasQueries) {
+    for (const object of query.data ?? []) {
+      canvasObjectsById.set(object.id, object);
     }
   }
 
@@ -124,83 +198,127 @@ export function PlantsList() {
     }
   });
 
-  const resolveLocationLabel = (plant: Plant): string => {
+  const resolveLocationInfo = (plant: Plant): ResolvedPlantLocation => {
     const trayCell = trayCellByPlant.get(plant.id);
     if (trayCell) {
       const tray = traysById.get(trayCell.trayId);
       if (tray) {
         const areaName = tray.location_id != null ? locationsById.get(tray.location_id)?.name : null;
         const trayLabel = `${tray.name} - Row ${trayCell.row + 1}, Col ${trayCell.col + 1}`;
-        return areaName ? `${areaName} / ${trayLabel}` : trayLabel;
+        return {
+          label: areaName ? `${areaName} / ${trayLabel}` : trayLabel,
+          navigationTarget: "/plants/trays",
+        };
       }
-      return `Tray #${trayCell.trayId} - Row ${trayCell.row + 1}, Col ${trayCell.col + 1}`;
+      return {
+        label: `Tray #${trayCell.trayId} - Row ${trayCell.row + 1}, Col ${trayCell.col + 1}`,
+        navigationTarget: "/plants/trays",
+      };
+    }
+
+    if (plant.canvas_object_id) {
+      const spaceObject = canvasObjectsById.get(plant.canvas_object_id);
+      if (spaceObject) {
+        const spaceLabel = spaceObject.label.trim() || "Canvas space";
+        const plotObject = spaceObject.parentId ? canvasObjectsById.get(spaceObject.parentId) : undefined;
+        const plotLabel = plotObject?.label.trim() || null;
+
+        return {
+          label: plotLabel ? `${plotLabel} / ${spaceLabel}` : spaceLabel,
+          navigationTarget: "/garden/plots",
+        };
+      }
+
+      return {
+        label: "Assigned on Garden Canvas",
+        navigationTarget: "/garden/plots",
+      };
     }
 
     if (plant.location_id != null) {
       const location = locationsById.get(plant.location_id);
       if (location) {
-        return location.label ? `${location.name} (${location.label})` : location.name;
+        return {
+          label: location.label ? `${location.name} (${location.label})` : location.name,
+          navigationTarget: getLocationNavigationTarget(location),
+        };
       }
-      return `Location #${plant.location_id}`;
+      return { label: `Location #${plant.location_id}`, navigationTarget: null };
     }
 
-    return "Unassigned";
+    return { label: "Unassigned", navigationTarget: null };
   };
 
-  const rows = filtered.map((p) => (
-    <Table.Tr
-      key={p.id}
-      style={{ cursor: "pointer" }}
-      onClick={() =>
-        navigate({ to: "/plants/individuals/$plantId", params: { plantId: String(p.id) } })
-      }
-    >
-      <Table.Td>
-        <Text fw={500}>{p.name}</Text>
-        {p.label && <Text size="xs" c="dimmed">{p.label}</Text>}
-      </Table.Td>
-      <Table.Td>
-        <Badge color={PLANT_STATUS_COLORS[p.status]} variant="light" size="sm">
-          {PLANT_STATUS_LABELS[p.status]}
-        </Badge>
-      </Table.Td>
-      <Table.Td>
-        <Text size="sm">{p.planted_date ?? "—"}</Text>
-      </Table.Td>
-      <Table.Td>
-        <Text size="sm" c="dimmed">{resolveLocationLabel(p)}</Text>
-      </Table.Td>
-      <Table.Td onClick={(e) => e.stopPropagation()}>
-        <Group gap={4}>
-          <Tooltip label="Edit">
-            <ActionIcon
+  const rows = filtered.map((p) => {
+    const locationInfo = resolveLocationInfo(p);
+
+    return (
+      <Table.Tr
+        key={p.id}
+        style={{ cursor: "pointer" }}
+        onClick={() =>
+          navigate({ to: "/plants/individuals/$plantId", params: { plantId: String(p.id) } })
+        }
+      >
+        <Table.Td>
+          <Text fw={500}>{p.name}</Text>
+          {p.label && <Text size="xs" c="dimmed">{p.label}</Text>}
+        </Table.Td>
+        <Table.Td>
+          <Badge color={PLANT_STATUS_COLORS[p.status]} variant="light" size="sm">
+            {PLANT_STATUS_LABELS[p.status]}
+          </Badge>
+        </Table.Td>
+        <Table.Td>
+          <Text size="sm">{p.planted_date ?? "—"}</Text>
+        </Table.Td>
+        <Table.Td onClick={(e) => e.stopPropagation()}>
+          {locationInfo.navigationTarget ? (
+            <Text
               size="sm"
-              variant="subtle"
-              onClick={() =>
-                navigate({ to: "/plants/individuals/$plantId", params: { plantId: String(p.id) } })
-              }
+              c="blue"
+              td="underline"
+              style={{ cursor: "pointer" }}
+              onClick={() => navigate({ to: locationInfo.navigationTarget! })}
             >
-              <IconEdit size={14} />
-            </ActionIcon>
-          </Tooltip>
-          <Tooltip label="Delete">
-            <ActionIcon
-              size="sm"
-              variant="subtle"
-              color="red"
-              loading={deleteMut.isPending}
-              onClick={() => {
-                if (confirm(`Delete plant "${p.name}"? This will also remove associated data.`))
-                  deleteMut.mutate(p.id);
-              }}
-            >
-              <IconTrash size={14} />
-            </ActionIcon>
-          </Tooltip>
-        </Group>
-      </Table.Td>
-    </Table.Tr>
-  ));
+              {locationInfo.label}
+            </Text>
+          ) : (
+            <Text size="sm" c="dimmed">{locationInfo.label}</Text>
+          )}
+        </Table.Td>
+        <Table.Td onClick={(e) => e.stopPropagation()}>
+          <Group gap={4}>
+            <Tooltip label="Edit">
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                onClick={() =>
+                  navigate({ to: "/plants/individuals/$plantId", params: { plantId: String(p.id) } })
+                }
+              >
+                <IconEdit size={14} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="Delete">
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                color="red"
+                loading={deleteMut.isPending}
+                onClick={() => {
+                  if (confirm(`Delete plant "${p.name}"? This will also remove associated data.`))
+                    deleteMut.mutate(p.id);
+                }}
+              >
+                <IconTrash size={14} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+        </Table.Td>
+      </Table.Tr>
+    );
+  });
 
   return (
     <Stack p="md" gap="md">

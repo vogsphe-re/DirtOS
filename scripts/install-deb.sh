@@ -51,6 +51,8 @@ if [[ ! -f "$EXAMPLE_PATH" ]] && command -v dirtos &> /dev/null; then
     fi
 fi
 
+echo "$BLUE_NEUTRAL User data is kept in ~/Documents/DirtOS on normal uninstall. Use package purge to remove it."
+
 # ── Post-installation script ─────────────────────────────────────────────────
 echo "$BLUE_NEUTRAL Running post-installation script..."
 "$ROOT/scripts/deb-postinst.sh"

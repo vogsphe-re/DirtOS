@@ -24,6 +24,7 @@ request/response schemas, and integration examples.
 - Weather provider settings
 - Species enrichment providers
 - Automation providers (for event routing)
+- Cloud backup providers (Dropbox, Google Drive, OneDrive)
 
 ## API key handling
 
@@ -35,8 +36,10 @@ request/response schemas, and integration examples.
 
 1. Configure weather API key.
 2. Configure plant enrichment provider key(s).
-3. Run one enrichment test on a known species.
-4. Verify map and weather overlays.
+3. Configure cloud backup provider token(s) and path prefix.
+4. Run one enrichment test on a known species.
+5. Create and run a backup job targeting a separate destination.
+6. Verify map and weather overlays.
 
 ## Troubleshooting checklist
 

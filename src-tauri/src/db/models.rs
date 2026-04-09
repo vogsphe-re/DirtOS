@@ -141,6 +141,13 @@ pub enum IntegrationProvider {
     Eol,
     EanSearch,
     Osm,
+    Dropbox,
+    #[serde(rename = "google_drive")]
+    #[sqlx(rename = "google_drive")]
+    GoogleDrive,
+    #[serde(rename = "onedrive")]
+    #[sqlx(rename = "onedrive")]
+    OneDrive,
     HomeAssistant,
     #[serde(rename = "n8n")]
     #[sqlx(rename = "n8n")]
@@ -163,6 +170,49 @@ pub enum BackupFormat {
     Json,
     Yaml,
     Archive,
+}
+
+#[derive(Debug, Clone, PartialEq, sqlx::Type, Serialize, Deserialize, Type)]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+pub enum BackupStrategy {
+    Full,
+    Incremental,
+    Hybrid,
+}
+
+impl Default for BackupStrategy {
+    fn default() -> Self {
+        Self::Full
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, sqlx::Type, Serialize, Deserialize, Type)]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+pub enum BackupDestinationKind {
+    Local,
+    Network,
+    Cloud,
+}
+
+impl Default for BackupDestinationKind {
+    fn default() -> Self {
+        Self::Local
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, sqlx::Type, Serialize, Deserialize, Type)]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+pub enum CloudStorageProvider {
+    Dropbox,
+    #[serde(rename = "google_drive")]
+    #[sqlx(rename = "google_drive")]
+    GoogleDrive,
+    #[serde(rename = "onedrive")]
+    #[sqlx(rename = "onedrive")]
+    OneDrive,
 }
 
 #[derive(Debug, Clone, PartialEq, sqlx::Type, Serialize, Deserialize, Type)]
@@ -1025,13 +1075,27 @@ pub struct AutomationEvent {
     pub processed_at: Option<NaiveDateTime>,
 }
 
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Type, FromRow)]
 pub struct BackupJob {
     pub id: i64,
     pub name: String,
     pub schedule_cron: Option<String>,
     pub format: BackupFormat,
+    #[serde(default)]
+    pub backup_strategy: BackupStrategy,
+    #[serde(default)]
+    pub destination_kind: BackupDestinationKind,
+    pub destination_path: Option<String>,
+    pub cloud_provider: Option<CloudStorageProvider>,
+    pub cloud_path_prefix: Option<String>,
+    pub lifecycle_policy_json: Option<String>,
     pub include_secrets: bool,
+    #[serde(default = "default_true")]
+    pub dedupe_enabled: bool,
     pub is_active: bool,
     pub last_run_status: Option<String>,
     pub last_run_at: Option<NaiveDateTime>,
@@ -1045,7 +1109,17 @@ pub struct NewBackupJob {
     pub name: String,
     pub schedule_cron: Option<String>,
     pub format: BackupFormat,
+    #[serde(default)]
+    pub backup_strategy: BackupStrategy,
+    #[serde(default)]
+    pub destination_kind: BackupDestinationKind,
+    pub destination_path: Option<String>,
+    pub cloud_provider: Option<CloudStorageProvider>,
+    pub cloud_path_prefix: Option<String>,
+    pub lifecycle_policy_json: Option<String>,
     pub include_secrets: bool,
+    #[serde(default = "default_true")]
+    pub dedupe_enabled: bool,
     pub is_active: bool,
 }
 
@@ -1054,7 +1128,14 @@ pub struct UpdateBackupJob {
     pub name: Option<String>,
     pub schedule_cron: Option<String>,
     pub format: Option<BackupFormat>,
+    pub backup_strategy: Option<BackupStrategy>,
+    pub destination_kind: Option<BackupDestinationKind>,
+    pub destination_path: Option<String>,
+    pub cloud_provider: Option<CloudStorageProvider>,
+    pub cloud_path_prefix: Option<String>,
+    pub lifecycle_policy_json: Option<String>,
     pub include_secrets: Option<bool>,
+    pub dedupe_enabled: Option<bool>,
     pub is_active: Option<bool>,
 }
 
@@ -1064,7 +1145,13 @@ pub struct BackupRun {
     pub backup_job_id: Option<i64>,
     pub status: String,
     pub format: BackupFormat,
+    #[serde(default)]
+    pub backup_kind: BackupStrategy,
     pub output_ref: Option<String>,
+    pub destination_ref: Option<String>,
+    pub content_hash: Option<String>,
+    #[serde(default)]
+    pub dedupe_skipped: bool,
     pub bytes_written: Option<i64>,
     pub error_message: Option<String>,
     pub started_at: NaiveDateTime,
