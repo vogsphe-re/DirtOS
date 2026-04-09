@@ -290,6 +290,18 @@ export function OutdoorPlotManager() {
   );
 
   useEffect(() => {
+    if (plots.length === 0) return;
+    const preferredId = localStorage.getItem('garden-active-plot-id');
+    if (!preferredId) return;
+
+    if (plots.some((plot) => plot.id === preferredId)) {
+      setActivePlotId(preferredId);
+    }
+
+    localStorage.removeItem('garden-active-plot-id');
+  }, [plots]);
+
+  useEffect(() => {
     if (plots.length === 0) {
       setActivePlotId(null);
       return;

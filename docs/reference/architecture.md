@@ -11,7 +11,7 @@ description: "Technical architecture overview of DirtOS frontend, backend, and d
 - Mantine UI shell and components
 - React Query for async command-backed state
 - Zustand for focused local stores
-- Konva and React Three Fiber for 2D/3D planning surfaces
+- Konva and Leaflet for 2D planning surfaces (layout editor, OpenStreetMap site map, and sun-track overlays)
 
 ## Backend
 

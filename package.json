@@ -29,8 +29,6 @@
     "@mantine/dates": "^8.3.18",
     "@mantine/hooks": "^8.3.18",
     "@mantine/notifications": "^8.3.18",
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.5.0",
     "@tabler/icons-react": "^3.40.0",
     "@tanstack/react-query": "^5.90.21",
     "@tanstack/react-router": "^1.167.4",
@@ -46,7 +44,6 @@
     "react-leaflet": "^5.0.0",
     "recharts": "^3.8.0",
     "suncalc": "^1.9.0",
-    "three": "^0.183.2",
     "zustand": "^5.0.12"
   },
   "devDependencies": {
@@ -64,7 +61,6 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/suncalc": "^1.9.2",
-    "@types/three": "^0.183.1",
     "@vitejs/plugin-react": "^6.0.1",
     "electron-devtools-installer": "^4.0.0",
     "eslint": "^10.0.3",
