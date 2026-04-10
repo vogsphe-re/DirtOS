@@ -237,7 +237,7 @@ export function AppLayout() {
   useEffect(() => {
     if (startupStatus?.ready !== true) return;
     commands.autoEnrichTrefle(null).catch(() => {/* no-op */});
-  }, [startupStatus?.ready]); // eslint-disable-line
+  }, [startupStatus?.ready]);
 
   if (startupLoading || !startupStatus) {
     return <AppSplash title="Starting DirtOS" message="Initializing the local database and desktop services." />;
