@@ -74,9 +74,13 @@ function SetupWizard({ onCreated }: { onCreated: (env: Environment) => void }) {
       if (seedResult.status !== "ok") throw new Error(seedResult.error);
       const envsResult = await commands.listEnvironments();
       if (envsResult.status !== "ok") throw new Error(envsResult.error);
+      const seededEnvironmentId = seedResult.data as number;
       const demoEnv = (envsResult.data as Environment[]).find(
-        (e) => e.name === "Demo Garden"
-      );
+        (e) => e.id === seededEnvironmentId
+      ) ??
+        (envsResult.data as Environment[]).find(
+          (e) => e.name === "DirtOS Example Garden" || e.name === "Demo Garden"
+        );
       if (!demoEnv) throw new Error("Demo environment not found after seeding");
       onCreated(demoEnv);
       close();
