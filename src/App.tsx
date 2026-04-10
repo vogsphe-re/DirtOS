@@ -72,7 +72,7 @@ function ThemedApp() {
           backgroundImage: `url(${sessionBg})`, // Random background image for the session
           backgroundSize: "cover",
           backgroundPosition: "center",
-          opacity: 0.5,  // Subtle opacity for the background image
+          opacity: 0.9,  // Subtle opacity for the background image
           filter: "blur(0)", // Slight blur for a softer look
           transform: "scale(1.0)",
           pointerEvents: "none",

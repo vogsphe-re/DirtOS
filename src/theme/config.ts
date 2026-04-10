@@ -294,7 +294,7 @@ export const dirtTheme = createTheme({
           transition: "transform 120ms ease, box-shadow 120ms ease",
           "&:hover:not([data-disabled])": {
             transform: "translateY(-2px)",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.18)",
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.28)",
           },
           "&:active:not([data-disabled])": {
             transform: "translateY(0)",
