@@ -57,8 +57,8 @@ body[data-ready="false"] {
 
 /* ---------- DARK MODE ---------- */
 [data-mantine-color-scheme="dark"] {
-  --dirtos-bg: rgba(29, 32, 33, 0.85);
-  --dirtos-bg-alt: rgba(40, 40, 40, 0.90);
+  --dirtos-bg: rgba(0, 0, 0, 0.65);
+  --dirtos-bg-alt: rgba(29, 32, 33, 0.90);
   --dirtos-fg: #fbf1c7;
   --dirtos-fg-muted: #bdae93;
   --dirtos-contrast: #d65d0e;
@@ -68,7 +68,7 @@ body[data-ready="false"] {
   --app-shell-border: rgba(168, 153, 132, 0.22);
 
   /* Mantine internal overrides */
-  --mantine-color-body: rgba(29, 32, 33, 0.85);
+  --mantine-color-body: rgba(0, 0, 0, 0.65);
   --mantine-color-default-border: #3c3836;
   --mantine-color-text: #fbf1c7;
   --mantine-color-dimmed: #7dae93;
