@@ -4,3 +4,6 @@
 [submodule "inc/ha-dirtos"]
 	path = inc/ha-dirtos
 	url = https://code.dev.nativeit.net/sdavis/ha-dirtos
+[submodule "inc/novu"]
+	path = inc/novu
+	url = https://github.com/silverXnoise/novu
