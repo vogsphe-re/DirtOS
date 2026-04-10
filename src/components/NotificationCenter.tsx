@@ -11,11 +11,18 @@ import {
   Text,
   Tooltip,
 } from "@mantine/core";
-import { IconBell, IconBellOff, IconCheck } from "@tabler/icons-react";
+import { IconBell, IconBellOff, IconCheck, IconSettings } from "@tabler/icons-react";
 import { listen } from "@tauri-apps/api/event";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { publishToNtfyNotification } from "../lib/ntfyNotifications";
 import { useNotificationStore } from "../stores/notificationStore";
+import {
+  isInternalNotificationEnabledForEvent,
+  isNtfyNotificationEnabledForEvent,
+  type NotificationEventType,
+  useNotificationSettingsStore,
+} from "../stores/notificationSettingsStore";
 
 interface ScheduleFiredPayload {
   schedule_id: number;
@@ -38,6 +45,14 @@ interface SensorLimitBreachPayload {
   description: string;
 }
 
+interface IncomingNotification {
+  eventType: NotificationEventType;
+  title: string;
+  body: string;
+  issue_id?: number;
+  schedule_id?: number;
+}
+
 export function NotificationCenter() {
   const navigate = useNavigate();
   const { notifications, addNotification, markRead, markAllRead, dismiss } =
@@ -45,11 +60,38 @@ export function NotificationCenter() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  const dispatchNotification = (notification: IncomingNotification) => {
+    const settings = useNotificationSettingsStore.getState();
+
+    if (
+      isInternalNotificationEnabledForEvent(settings.internal, notification.eventType)
+    ) {
+      addNotification({
+        title: notification.title,
+        body: notification.body,
+        issue_id: notification.issue_id,
+        schedule_id: notification.schedule_id,
+      });
+    }
+
+    if (isNtfyNotificationEnabledForEvent(settings.ntfy, notification.eventType)) {
+      void publishToNtfyNotification(settings.ntfy, {
+        eventType: notification.eventType,
+        title: notification.title,
+        body: notification.body,
+        issueId: notification.issue_id,
+      }).catch((error: unknown) => {
+        console.error("Failed to publish ntfy notification", error);
+      });
+    }
+  };
+
   // Listen for schedule:fired events from the Rust backend
   useEffect(() => {
     const unlisten = listen<ScheduleFiredPayload>("schedule:fired", (event) => {
       const { schedule_title, issue_id, issue_title, schedule_id } = event.payload;
-      addNotification({
+      dispatchNotification({
+        eventType: "schedule_fired",
         title: schedule_title,
         body: `Issue created: ${issue_title}`,
         issue_id,
@@ -66,7 +108,8 @@ export function NotificationCenter() {
   useEffect(() => {
     const unlisten = listen<WeatherAlertPayload>("weather:alert", (event) => {
       const { issue_id, title, body } = event.payload;
-      addNotification({
+      dispatchNotification({
+        eventType: "weather_alert",
         title: `⚠️ ${title}`,
         body,
         issue_id,
@@ -82,8 +125,9 @@ export function NotificationCenter() {
   // Listen for sensor:limit_breach events
   useEffect(() => {
     const unlisten = listen<SensorLimitBreachPayload>("sensor:limit_breach", (event) => {
-    const { sensor_name, issue_id, description } = event.payload;
-      addNotification({
+      const { sensor_name, issue_id, description } = event.payload;
+      dispatchNotification({
+        eventType: "sensor_limit_breach",
         title: `🔴 Sensor Alert: ${sensor_name}`,
         body: description,
         issue_id,
@@ -123,16 +167,28 @@ export function NotificationCenter() {
           <Text fw={600} size="sm">
             Notifications
           </Text>
-          {unreadCount > 0 && (
-            <Button
-              variant="subtle"
-              size="compact-xs"
-              leftSection={<IconCheck size={12} />}
-              onClick={markAllRead}
-            >
-              Mark all read
-            </Button>
-          )}
+          <Group gap={2}>
+            <Tooltip label="Notification settings">
+              <ActionIcon
+                variant="subtle"
+                size="sm"
+                aria-label="Notification settings"
+                onClick={() => navigate({ to: "/settings", hash: "notifications-settings" })}
+              >
+                <IconSettings size={14} />
+              </ActionIcon>
+            </Tooltip>
+            {unreadCount > 0 && (
+              <Button
+                variant="subtle"
+                size="compact-xs"
+                leftSection={<IconCheck size={12} />}
+                onClick={markAllRead}
+              >
+                Mark all read
+              </Button>
+            )}
+          </Group>
         </Group>
 
         <ScrollArea.Autosize mah={360} type="scroll">

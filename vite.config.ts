@@ -10,6 +10,11 @@ export default defineConfig(() => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "node:fs/promises": path.resolve(
+        __dirname,
+        "./src/lib/shims/nodeFsPromises.ts",
+      ),
+      "node:url": path.resolve(__dirname, "./src/lib/shims/nodeUrl.ts"),
     },
   },
   build: {

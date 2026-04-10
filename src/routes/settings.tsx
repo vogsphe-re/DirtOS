@@ -34,6 +34,7 @@ import {
   IntegrationExtensionsPanel,
 } from "../features/integrations/IntegrationExtensionsPanel";
 import { LabelManager } from "../features/issues/LabelManager";
+import { NotificationSettingsCard } from "../features/notifications/NotificationSettingsCard";
 import { useAppStore } from "../stores/appStore";
 import type { UnitSystem } from "../stores/appStore";
 import { useEnvironmentStore, type Environment } from "../stores/environmentStore";
@@ -298,6 +299,21 @@ function SettingsPage() {
     importDemoGardenMutation.mutate();
   };
 
+  useEffect(() => {
+    const scrollToNotificationSettings = () => {
+      if (window.location.hash !== "#notifications-settings") return;
+      const target = document.getElementById("notifications-settings");
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
+    scrollToNotificationSettings();
+    window.addEventListener("hashchange", scrollToNotificationSettings);
+
+    return () => {
+      window.removeEventListener("hashchange", scrollToNotificationSettings);
+    };
+  }, []);
+
   return (
     <Stack p="md" maw={720}>
       <Title order={2}>Settings</Title>
@@ -360,6 +376,8 @@ function SettingsPage() {
           ]}
         />
       </Card>
+
+      <NotificationSettingsCard />
 
       <StorageLocationsCard />
 

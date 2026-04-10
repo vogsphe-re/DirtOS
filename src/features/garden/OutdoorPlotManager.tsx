@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   Card,
+  Checkbox,
   Group,
   Modal,
   NumberInput,
@@ -17,7 +18,7 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconArrowLeft, IconExternalLink, IconLayoutGridAdd, IconMap2, IconPlant, IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconArrowLeft, IconEdit, IconExternalLink, IconLayoutGridAdd, IconMap2, IconPlant, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
@@ -27,11 +28,67 @@ import type { Species } from "../plants/types";
 import { PLANT_STATUS_COLORS, PLANT_STATUS_LABELS } from "../plants/types";
 import { AreaGeneratorModal } from "./AreaGeneratorModal";
 import { useCanvasStore } from "./canvasStore";
-import { buildRectGridObjects, type RectGridLayout } from "./layoutGeneration";
+import { buildPlotGroupObjects, buildRectGridObjects, type RectGridLayout } from "./layoutGeneration";
 import { PlantAssignmentModal } from "./PlantAssignmentModal";
 import { useCanvasPersistence } from "./hooks/useCanvasPersistence";
 import { generatePlotPrefix } from "./plotNameGenerator";
 import type { CanvasObject } from "./types";
+
+const CANVAS_PLOT_GROUP_LINK_NOTE_PREFIX = "plot-group-location-id:";
+
+function toGridRowLabel(index: number): string {
+  let label = "";
+  let current = index;
+
+  do {
+    label = String.fromCharCode(65 + (current % 26)) + label;
+    current = Math.floor(current / 26) - 1;
+  } while (current >= 0);
+
+  return label;
+}
+
+function plotGroupLinkNote(locationId: number): string {
+  return `${CANVAS_PLOT_GROUP_LINK_NOTE_PREFIX}${locationId}`;
+}
+
+function readLinkedPlotGroupLocationId(notes?: string | null): number | null {
+  if (!notes) return null;
+  const match = notes.match(/plot-group-location-id:(\d+)/);
+  if (!match) return null;
+  const parsed = Number(match[1]);
+  return Number.isInteger(parsed) ? parsed : null;
+}
+
+function parsePositiveInteger(value: number | string, label: string): number {
+  const parsed = typeof value === "number" ? value : Number(String(value).trim());
+
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`${label} must be a whole number greater than 0.`);
+  }
+
+  return parsed;
+}
+
+function parsePositiveNumber(value: number | string, label: string): number {
+  const parsed = typeof value === "number" ? value : Number(String(value).trim());
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error(`${label} must be greater than 0.`);
+  }
+
+  return parsed;
+}
+
+function parseNonNegativeNumber(value: number | string, label: string): number {
+  const parsed = typeof value === "number" ? value : Number(String(value).trim());
+
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new Error(`${label} cannot be negative.`);
+  }
+
+  return parsed;
+}
 
 interface PlotGridCellEntry {
   spaces: CanvasObject[];
@@ -276,6 +333,9 @@ export function OutdoorPlotManager() {
   const objects = useCanvasStore((state) => state.objects);
   const gridConfig = useCanvasStore((state) => state.gridConfig);
   const setObjects = useCanvasStore((state) => state.setObjects);
+  const setSelectedId = useCanvasStore((state) => state.setSelectedId);
+  const setEditingPlotId = useCanvasStore((state) => state.setEditingPlotId);
+  const setEditingPlotGroupId = useCanvasStore((state) => state.setEditingPlotGroupId);
   const setDirty = useCanvasStore((state) => state.setDirty);
   const { loadCanvas } = useCanvasPersistence();
 
@@ -287,7 +347,33 @@ export function OutdoorPlotManager() {
   const [plotGroupPrefix, setPlotGroupPrefix] = useState("");
   const [plotGroupRows, setPlotGroupRows] = useState<number | string>(2);
   const [plotGroupCols, setPlotGroupCols] = useState<number | string>(4);
+  const [plotGroupSpaceWidth, setPlotGroupSpaceWidth] = useState<number | string>(1);
+  const [plotGroupSpaceHeight, setPlotGroupSpaceHeight] = useState<number | string>(1);
+  const [plotGroupGapX, setPlotGroupGapX] = useState<number | string>(0);
+  const [plotGroupGapY, setPlotGroupGapY] = useState<number | string>(0);
+  const [plotGroupStartX, setPlotGroupStartX] = useState<number | string>(1);
+  const [plotGroupStartY, setPlotGroupStartY] = useState<number | string>(1);
   const [plotGroupSiteId, setPlotGroupSiteId] = useState<string | null>(null);
+
+  const [editingGroup, setEditingGroup] = useState<Location | null>(null);
+  const [editGroupOpen, setEditGroupOpen] = useState(false);
+  const [editGroupName, setEditGroupName] = useState("");
+  const [editGroupPrefix, setEditGroupPrefix] = useState("");
+  const [editGroupRows, setEditGroupRows] = useState<number | string>(2);
+  const [editGroupCols, setEditGroupCols] = useState<number | string>(4);
+  const [editGroupSiteId, setEditGroupSiteId] = useState<string | null>(null);
+
+  const [groupForCanvasGeneration, setGroupForCanvasGeneration] = useState<Location | null>(null);
+  const [generateGroupOpen, setGenerateGroupOpen] = useState(false);
+  const [generateGroupRows, setGenerateGroupRows] = useState<number | string>(2);
+  const [generateGroupCols, setGenerateGroupCols] = useState<number | string>(4);
+  const [generateGroupSpaceWidth, setGenerateGroupSpaceWidth] = useState<number | string>(1);
+  const [generateGroupSpaceHeight, setGenerateGroupSpaceHeight] = useState<number | string>(1);
+  const [generateGroupGapX, setGenerateGroupGapX] = useState<number | string>(0);
+  const [generateGroupGapY, setGenerateGroupGapY] = useState<number | string>(0);
+  const [generateGroupStartX, setGenerateGroupStartX] = useState<number | string>(1);
+  const [generateGroupStartY, setGenerateGroupStartY] = useState<number | string>(1);
+  const [replaceExistingCanvasGroup, setReplaceExistingCanvasGroup] = useState(true);
 
   useEffect(() => {
     if (activeEnvironmentId != null) {
@@ -461,42 +547,290 @@ export function OutdoorPlotManager() {
       if (!activeEnvironmentId) throw new Error("No active environment");
       if (!plotGroupName.trim()) throw new Error("Plot group name is required");
 
-      const rows = Number(plotGroupRows);
-      const cols = Number(plotGroupCols);
-      if (!Number.isInteger(rows) || rows <= 0) throw new Error("Rows must be a whole number > 0");
-      if (!Number.isInteger(cols) || cols <= 0) throw new Error("Columns must be a whole number > 0");
+      const rows = parsePositiveInteger(plotGroupRows, "Rows");
+      const cols = parsePositiveInteger(plotGroupCols, "Columns");
+      const cellWidthUnits = parsePositiveNumber(plotGroupSpaceWidth, "Space width");
+      const cellHeightUnits = parsePositiveNumber(plotGroupSpaceHeight, "Space height");
+      const gapXUnits = parseNonNegativeNumber(plotGroupGapX, "Horizontal gap");
+      const gapYUnits = parseNonNegativeNumber(plotGroupGapY, "Vertical gap");
+      const startXUnits = parsePositiveNumber(plotGroupStartX, "Starting X");
+      const startYUnits = parsePositiveNumber(plotGroupStartY, "Starting Y");
 
-      const result = await (commands as any).createPlotGroup({
+      const originXPx = startXUnits * gridConfig.pixelsPerUnit;
+      const originYPx = startYUnits * gridConfig.pixelsPerUnit;
+      const cellWidthPx = cellWidthUnits * gridConfig.pixelsPerUnit;
+      const cellHeightPx = cellHeightUnits * gridConfig.pixelsPerUnit;
+      const gapXPx = gapXUnits * gridConfig.pixelsPerUnit;
+      const gapYPx = gapYUnits * gridConfig.pixelsPerUnit;
+
+      const result = await commands.createPlotGroup({
         environment_id: activeEnvironmentId,
         parent_id: plotGroupSiteId ? Number(plotGroupSiteId) : null,
         name: plotGroupName.trim(),
         label_prefix: plotGroupPrefix.trim() || plotGroupName.trim(),
         rows,
         cols,
-        origin_x: null,
-        origin_y: null,
-        cell_width: gridConfig.spacingPx,
-        cell_height: gridConfig.spacingPx,
-        gap_x: 0,
-        gap_y: 0,
+        origin_x: originXPx,
+        origin_y: originYPx,
+        cell_width: cellWidthPx,
+        cell_height: cellHeightPx,
+        gap_x: gapXPx,
+        gap_y: gapYPx,
         notes: null,
       });
 
       if (result.status === "error") throw new Error(result.error);
-      return result.data;
+
+      return {
+        result: result.data,
+        rows,
+        columns: cols,
+        originXPx,
+        originYPx,
+        cellWidthPx,
+        cellHeightPx,
+        gapXPx,
+        gapYPx,
+      };
     },
-    onSuccess: () => {
+    onSuccess: async ({ result, rows, columns, originXPx, originYPx, cellWidthPx, cellHeightPx, gapXPx, gapYPx }) => {
+      await generatePlotGroupInCanvas({
+        sourceGroup: result.group,
+        rows,
+        columns,
+        originXPx,
+        originYPx,
+        cellWidthPx,
+        cellHeightPx,
+        gapXPx,
+        gapYPx,
+        replaceExisting: true,
+      });
+
       void queryClient.invalidateQueries({ queryKey: ["locations", activeEnvironmentId] });
-      notifications.show({ color: "green", message: "Plot group created." });
+      notifications.show({ color: "green", message: "Plot group created and generated in Garden Canvas." });
       setCreatePlotGroupOpen(false);
       setPlotGroupName("");
       setPlotGroupPrefix("");
       setPlotGroupRows(2);
       setPlotGroupCols(4);
+      setPlotGroupSpaceWidth(1);
+      setPlotGroupSpaceHeight(1);
+      setPlotGroupGapX(0);
+      setPlotGroupGapY(0);
+      setPlotGroupStartX(1);
+      setPlotGroupStartY(1);
       setPlotGroupSiteId(null);
     },
     onError: (error: Error) => {
       notifications.show({ color: "red", title: "Plot group creation failed", message: error.message });
+    },
+  });
+
+  const generatePlotGroupInCanvas = async ({
+    sourceGroup,
+    rows,
+    columns,
+    originXPx,
+    originYPx,
+    cellWidthPx,
+    cellHeightPx,
+    gapXPx,
+    gapYPx,
+    replaceExisting,
+  }: {
+    sourceGroup: Location;
+    rows: number;
+    columns: number;
+    originXPx: number;
+    originYPx: number;
+    cellWidthPx: number;
+    cellHeightPx: number;
+    gapXPx: number;
+    gapYPx: number;
+    replaceExisting: boolean;
+  }): Promise<string> => {
+    if (!activeEnvironmentId) throw new Error("No active environment");
+
+    const currentObjects = useCanvasStore.getState().objects;
+    const linkedGroup = currentObjects.find(
+      (object) => object.type === "plot-group" && readLinkedPlotGroupLocationId(object.notes) === sourceGroup.id,
+    );
+
+    const baseObjects = replaceExisting && linkedGroup
+      ? currentObjects.filter((object) => object.id !== linkedGroup.id && object.parentId !== linkedGroup.id)
+      : currentObjects;
+
+    const sourceName = sourceGroup.name.trim() || "Plot Group";
+    const sourcePrefix = (sourceGroup.label?.trim() || sourceName).trim();
+    const linkNote = plotGroupLinkNote(sourceGroup.id);
+
+    const { group, members } = buildPlotGroupObjects({
+      originX: originXPx,
+      originY: originYPx,
+      rows,
+      columns,
+      cellWidthPx,
+      cellHeightPx,
+      labelPrefix: sourceName,
+      childObjectType: "space",
+      gapXPx,
+      gapYPx,
+    });
+
+    const normalizedGroup: CanvasObject = {
+      ...group,
+      label: sourceName,
+      notes: linkNote,
+    };
+
+    const normalizedMembers = members.map((space, index) => {
+      const rowIndex = Math.floor(index / columns);
+      const columnIndex = index % columns;
+
+      return {
+        ...space,
+        label: `${sourcePrefix} ${toGridRowLabel(rowIndex)}${columnIndex + 1}`,
+        notes: linkNote,
+      };
+    });
+
+    const nextObjects = [...baseObjects, normalizedGroup, ...normalizedMembers];
+
+    const saveResult = await commands.saveCanvas(
+      activeEnvironmentId,
+      JSON.stringify({ objects: nextObjects, gridConfig }),
+    );
+    if (saveResult.status === "error") throw new Error(saveResult.error);
+
+    setObjects(nextObjects);
+    setSelectedId(normalizedGroup.id);
+    setEditingPlotId(null);
+    setEditingPlotGroupId(normalizedGroup.id);
+    setDirty(false);
+
+    return normalizedGroup.id;
+  };
+
+  const updatePlotGroup = useMutation({
+    mutationFn: async () => {
+      if (!editingGroup) throw new Error("No plot group selected");
+
+      const name = editGroupName.trim();
+      if (!name) throw new Error("Group name is required");
+
+      const rows = parsePositiveInteger(editGroupRows, "Rows");
+      const cols = parsePositiveInteger(editGroupCols, "Columns");
+      const nextPrefix = (editGroupPrefix.trim() || editingGroup.label || name).trim();
+
+      const result = await commands.updateLocation(editingGroup.id, {
+        parent_id: editGroupSiteId ? Number(editGroupSiteId) : null,
+        location_type: null,
+        name,
+        label: nextPrefix,
+        position_x: null,
+        position_y: null,
+        width: null,
+        height: null,
+        canvas_data_json: null,
+        notes: null,
+        grid_rows: rows,
+        grid_cols: cols,
+      });
+
+      if (result.status === "error") throw new Error(result.error);
+      if (!result.data) throw new Error("Plot group not found");
+
+      return result.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["locations", activeEnvironmentId] });
+      notifications.show({ color: "green", message: "Plot group updated." });
+      setEditGroupOpen(false);
+      setEditingGroup(null);
+    },
+    onError: (error: Error) => {
+      notifications.show({ color: "red", title: "Plot group update failed", message: error.message });
+    },
+  });
+
+  const deletePlotGroup = useMutation({
+    mutationFn: async (group: Location) => {
+      const childrenResult = await commands.listChildLocations(group.id);
+      if (childrenResult.status === "error") throw new Error(childrenResult.error);
+
+      for (const child of childrenResult.data) {
+        const deleteChild = await commands.deleteLocation(child.id);
+        if (deleteChild.status === "error") throw new Error(deleteChild.error);
+      }
+
+      const result = await commands.deleteLocation(group.id);
+      if (result.status === "error") throw new Error(result.error);
+      if (!result.data) throw new Error("Plot group not found");
+
+      const linkedGroup = objects.find(
+        (object) => object.type === "plot-group" && readLinkedPlotGroupLocationId(object.notes) === group.id,
+      );
+
+      if (linkedGroup && activeEnvironmentId != null) {
+        const nextObjects = objects.filter(
+          (object) => object.id !== linkedGroup.id && object.parentId !== linkedGroup.id,
+        );
+
+        const saveResult = await commands.saveCanvas(
+          activeEnvironmentId,
+          JSON.stringify({ objects: nextObjects, gridConfig }),
+        );
+        if (saveResult.status === "error") throw new Error(saveResult.error);
+
+        setObjects(nextObjects);
+        setDirty(false);
+      }
+
+      return group.id;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["locations", activeEnvironmentId] });
+      notifications.show({ color: "green", message: "Plot group deleted." });
+    },
+    onError: (error: Error) => {
+      notifications.show({ color: "red", title: "Delete failed", message: error.message });
+    },
+  });
+
+  const generateExistingPlotGroup = useMutation({
+    mutationFn: async () => {
+      if (!groupForCanvasGeneration) throw new Error("No plot group selected");
+
+      const rows = parsePositiveInteger(generateGroupRows, "Rows");
+      const columns = parsePositiveInteger(generateGroupCols, "Columns");
+      const cellWidthUnits = parsePositiveNumber(generateGroupSpaceWidth, "Space width");
+      const cellHeightUnits = parsePositiveNumber(generateGroupSpaceHeight, "Space height");
+      const gapXUnits = parseNonNegativeNumber(generateGroupGapX, "Horizontal gap");
+      const gapYUnits = parseNonNegativeNumber(generateGroupGapY, "Vertical gap");
+      const startXUnits = parsePositiveNumber(generateGroupStartX, "Starting X");
+      const startYUnits = parsePositiveNumber(generateGroupStartY, "Starting Y");
+
+      return generatePlotGroupInCanvas({
+        sourceGroup: groupForCanvasGeneration,
+        rows,
+        columns,
+        originXPx: startXUnits * gridConfig.pixelsPerUnit,
+        originYPx: startYUnits * gridConfig.pixelsPerUnit,
+        cellWidthPx: cellWidthUnits * gridConfig.pixelsPerUnit,
+        cellHeightPx: cellHeightUnits * gridConfig.pixelsPerUnit,
+        gapXPx: gapXUnits * gridConfig.pixelsPerUnit,
+        gapYPx: gapYUnits * gridConfig.pixelsPerUnit,
+        replaceExisting: replaceExistingCanvasGroup,
+      });
+    },
+    onSuccess: () => {
+      notifications.show({ color: "green", message: "Plot group generated in Garden Canvas." });
+      setGenerateGroupOpen(false);
+      navigate({ to: "/garden" });
+    },
+    onError: (error: Error) => {
+      notifications.show({ color: "red", title: "Canvas generation failed", message: error.message });
     },
   });
 
@@ -555,8 +889,54 @@ export function OutdoorPlotManager() {
     setPlotGroupPrefix("");
     setPlotGroupRows(2);
     setPlotGroupCols(4);
+    setPlotGroupSpaceWidth(1);
+    setPlotGroupSpaceHeight(1);
+    setPlotGroupGapX(0);
+    setPlotGroupGapY(0);
+    setPlotGroupStartX(1);
+    setPlotGroupStartY(1);
     setPlotGroupSiteId(null);
     setCreatePlotGroupOpen(true);
+  };
+
+  const openEditGroupModal = (group: Location) => {
+    setEditingGroup(group);
+    setEditGroupName(group.name);
+    setEditGroupPrefix(group.label ?? group.name);
+    setEditGroupRows(group.grid_rows ?? 2);
+    setEditGroupCols(group.grid_cols ?? 4);
+    setEditGroupSiteId(group.parent_id != null ? String(group.parent_id) : null);
+    setEditGroupOpen(true);
+  };
+
+  const openGenerateGroupModal = (group: Location) => {
+    const rows = Math.max(1, group.grid_rows ?? 2);
+    const columns = Math.max(1, group.grid_cols ?? 4);
+
+    const cellWidthUnits = (group.width != null && columns > 0)
+      ? group.width / columns / gridConfig.pixelsPerUnit
+      : 1;
+    const cellHeightUnits = (group.height != null && rows > 0)
+      ? group.height / rows / gridConfig.pixelsPerUnit
+      : 1;
+
+    setGroupForCanvasGeneration(group);
+    setGenerateGroupRows(rows);
+    setGenerateGroupCols(columns);
+    setGenerateGroupSpaceWidth(Math.max(0.1, Number(cellWidthUnits.toFixed(2))));
+    setGenerateGroupSpaceHeight(Math.max(0.1, Number(cellHeightUnits.toFixed(2))));
+    setGenerateGroupGapX(0);
+    setGenerateGroupGapY(0);
+    const startXUnits = group.position_x != null
+      ? Number((group.position_x / gridConfig.pixelsPerUnit).toFixed(2))
+      : 1;
+    const startYUnits = group.position_y != null
+      ? Number((group.position_y / gridConfig.pixelsPerUnit).toFixed(2))
+      : 1;
+    setGenerateGroupStartX(startXUnits > 0 ? startXUnits : 1);
+    setGenerateGroupStartY(startYUnits > 0 ? startYUnits : 1);
+    setReplaceExistingCanvasGroup(true);
+    setGenerateGroupOpen(true);
   };
 
   if (!activeEnvironmentId) {
@@ -604,16 +984,64 @@ export function OutdoorPlotManager() {
             <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="sm">
               {plotGroups.map((group) => {
                 const site = outdoorSites.find((candidate) => candidate.id === group.parent_id);
+                const linkedCanvasGroup = objects.find(
+                  (object) => object.type === "plot-group" && readLinkedPlotGroupLocationId(object.notes) === group.id,
+                );
                 return (
                   <Card key={group.id} withBorder padding="sm" radius="md">
                     <Stack gap={4}>
                       <Group justify="space-between" wrap="nowrap">
-                        <Text fw={600} lineClamp={1}>{group.name}</Text>
+                        <Button
+                          variant="subtle"
+                          size="compact-sm"
+                          p={0}
+                          onClick={() => openGenerateGroupModal(group)}
+                          style={{ justifyContent: "flex-start", flex: 1, minWidth: 0 }}
+                        >
+                          <Text fw={600} lineClamp={1}>{group.name}</Text>
+                        </Button>
+                        <Group gap={4} wrap="nowrap">
+                          <Tooltip label="Edit plot group">
+                            <ActionIcon
+                              size="sm"
+                              variant="subtle"
+                              onClick={() => openEditGroupModal(group)}
+                              aria-label="Edit plot group"
+                            >
+                              <IconEdit size={14} />
+                            </ActionIcon>
+                          </Tooltip>
+                          <Tooltip label="Delete plot group">
+                            <ActionIcon
+                              size="sm"
+                              variant="subtle"
+                              color="red"
+                              onClick={() => {
+                                const confirmed = window.confirm(
+                                  `Delete plot group \"${group.name}\" and its child spaces?`,
+                                );
+                                if (confirmed) deletePlotGroup.mutate(group);
+                              }}
+                              aria-label="Delete plot group"
+                            >
+                              <IconTrash size={14} />
+                            </ActionIcon>
+                          </Tooltip>
+                        </Group>
+                      </Group>
+                      <Group gap={6}>
                         <Badge variant="light" size="xs">{plotGroupSpaceCounts.get(group.id) ?? 0} spaces</Badge>
+                        <Badge variant="outline" size="xs">{group.grid_rows ?? "?"} x {group.grid_cols ?? "?"}</Badge>
+                        <Badge variant="outline" color={linkedCanvasGroup ? "green" : "gray"} size="xs">
+                          {linkedCanvasGroup ? "In Canvas" : "Not in Canvas"}
+                        </Badge>
                       </Group>
                       <Text size="xs" c="dimmed">Prefix: {group.label || "—"}</Text>
                       <Text size="xs" c="dimmed">
                         Site: {site?.name ?? "Unassigned"}
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        Click the group name to generate or regenerate this layout in Garden Canvas.
                       </Text>
                     </Stack>
                   </Card>
@@ -846,10 +1274,197 @@ export function OutdoorPlotManager() {
             <NumberInput label="Rows" min={1} value={plotGroupRows} onChange={setPlotGroupRows} />
             <NumberInput label="Columns" min={1} value={plotGroupCols} onChange={setPlotGroupCols} />
           </SimpleGrid>
+          <SimpleGrid cols={2} spacing="sm">
+            <NumberInput
+              label={`Space width (${gridConfig.unit})`}
+              min={0.1}
+              decimalScale={2}
+              value={plotGroupSpaceWidth}
+              onChange={setPlotGroupSpaceWidth}
+            />
+            <NumberInput
+              label={`Space height (${gridConfig.unit})`}
+              min={0.1}
+              decimalScale={2}
+              value={plotGroupSpaceHeight}
+              onChange={setPlotGroupSpaceHeight}
+            />
+          </SimpleGrid>
+          <SimpleGrid cols={2} spacing="sm">
+            <NumberInput
+              label={`Horizontal gap (${gridConfig.unit})`}
+              min={0}
+              decimalScale={2}
+              value={plotGroupGapX}
+              onChange={setPlotGroupGapX}
+            />
+            <NumberInput
+              label={`Vertical gap (${gridConfig.unit})`}
+              min={0}
+              decimalScale={2}
+              value={plotGroupGapY}
+              onChange={setPlotGroupGapY}
+            />
+          </SimpleGrid>
+          <SimpleGrid cols={2} spacing="sm">
+            <NumberInput
+              label={`Start X (${gridConfig.unit})`}
+              min={1}
+              decimalScale={2}
+              value={plotGroupStartX}
+              onChange={setPlotGroupStartX}
+            />
+            <NumberInput
+              label={`Start Y (${gridConfig.unit})`}
+              min={1}
+              decimalScale={2}
+              value={plotGroupStartY}
+              onChange={setPlotGroupStartY}
+            />
+          </SimpleGrid>
+          <Text size="xs" c="dimmed">
+            The row and column count will be used to generate this plot group in Garden Canvas using these dimensions and spacing values.
+          </Text>
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setCreatePlotGroupOpen(false)}>Cancel</Button>
             <Button loading={createPlotGroup.isPending} onClick={() => createPlotGroup.mutate()}>
               Create
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal
+        opened={editGroupOpen}
+        onClose={() => {
+          setEditGroupOpen(false);
+          setEditingGroup(null);
+        }}
+        title="Edit Plot Group"
+        size="sm"
+      >
+        <Stack gap="sm">
+          <TextInput
+            label="Group Name"
+            required
+            value={editGroupName}
+            onChange={(event) => setEditGroupName(event.currentTarget.value)}
+          />
+          <TextInput
+            label="Label Prefix"
+            value={editGroupPrefix}
+            onChange={(event) => setEditGroupPrefix(event.currentTarget.value)}
+          />
+          <Select
+            label="Outdoor Site"
+            placeholder="Current site"
+            value={editGroupSiteId}
+            onChange={setEditGroupSiteId}
+            data={outdoorSites.map((site) => ({ value: String(site.id), label: site.name }))}
+          />
+          <SimpleGrid cols={2} spacing="sm">
+            <NumberInput label="Rows" min={1} value={editGroupRows} onChange={setEditGroupRows} />
+            <NumberInput label="Columns" min={1} value={editGroupCols} onChange={setEditGroupCols} />
+          </SimpleGrid>
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => {
+                setEditGroupOpen(false);
+                setEditingGroup(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button loading={updatePlotGroup.isPending} onClick={() => updatePlotGroup.mutate()}>
+              Save changes
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal
+        opened={generateGroupOpen}
+        onClose={() => {
+          setGenerateGroupOpen(false);
+          setGroupForCanvasGeneration(null);
+        }}
+        title={groupForCanvasGeneration ? `Generate ${groupForCanvasGeneration.name} in Garden Canvas` : "Generate in Garden Canvas"}
+        size="sm"
+      >
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">
+            Use the plot group row and column values to generate spaces in Garden Canvas.
+          </Text>
+          <SimpleGrid cols={2} spacing="sm">
+            <NumberInput label="Rows" min={1} value={generateGroupRows} onChange={setGenerateGroupRows} />
+            <NumberInput label="Columns" min={1} value={generateGroupCols} onChange={setGenerateGroupCols} />
+          </SimpleGrid>
+          <SimpleGrid cols={2} spacing="sm">
+            <NumberInput
+              label={`Space width (${gridConfig.unit})`}
+              min={0.1}
+              decimalScale={2}
+              value={generateGroupSpaceWidth}
+              onChange={setGenerateGroupSpaceWidth}
+            />
+            <NumberInput
+              label={`Space height (${gridConfig.unit})`}
+              min={0.1}
+              decimalScale={2}
+              value={generateGroupSpaceHeight}
+              onChange={setGenerateGroupSpaceHeight}
+            />
+          </SimpleGrid>
+          <SimpleGrid cols={2} spacing="sm">
+            <NumberInput
+              label={`Horizontal gap (${gridConfig.unit})`}
+              min={0}
+              decimalScale={2}
+              value={generateGroupGapX}
+              onChange={setGenerateGroupGapX}
+            />
+            <NumberInput
+              label={`Vertical gap (${gridConfig.unit})`}
+              min={0}
+              decimalScale={2}
+              value={generateGroupGapY}
+              onChange={setGenerateGroupGapY}
+            />
+          </SimpleGrid>
+          <SimpleGrid cols={2} spacing="sm">
+            <NumberInput
+              label={`Start X (${gridConfig.unit})`}
+              min={1}
+              decimalScale={2}
+              value={generateGroupStartX}
+              onChange={setGenerateGroupStartX}
+            />
+            <NumberInput
+              label={`Start Y (${gridConfig.unit})`}
+              min={1}
+              decimalScale={2}
+              value={generateGroupStartY}
+              onChange={setGenerateGroupStartY}
+            />
+          </SimpleGrid>
+          <Checkbox
+            checked={replaceExistingCanvasGroup}
+            onChange={(event) => setReplaceExistingCanvasGroup(event.currentTarget.checked)}
+            label="Replace existing generated canvas group for this plot group"
+          />
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => {
+                setGenerateGroupOpen(false);
+                setGroupForCanvasGeneration(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button loading={generateExistingPlotGroup.isPending} onClick={() => generateExistingPlotGroup.mutate()}>
+              Generate in canvas
             </Button>
           </Group>
         </Stack>
