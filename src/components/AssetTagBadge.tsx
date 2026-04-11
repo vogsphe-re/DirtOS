@@ -66,7 +66,7 @@ export function AssetTagBadge({
 
   return (
     <Stack gap={4} align="center">
-      <div ref={svgRef}>
+      <div ref={svgRef} style={{ backgroundColor: "#ffffff", display: "inline-block", borderRadius: 4, padding: 2 }}>
         <Barcode
           value={tag}
           format="CODE128"
@@ -74,7 +74,7 @@ export function AssetTagBadge({
           height={barHeight}
           displayValue={false}
           margin={4}
-          background="transparent"
+          background="#ffffff"
         />
       </div>
 
