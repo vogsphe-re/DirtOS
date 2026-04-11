@@ -14,7 +14,6 @@ import { GridSettings } from './GridSettings';
 import { LayerPanel } from './LayerPanel';
 import { PlotManager } from './PlotManager';
 import { PropertiesPanel } from './PropertiesPanel';
-import { SpaceEditor } from './SpaceEditor';
 import { Toolbar } from './Toolbar';
 import { useCanvasStore } from './canvasStore';
 import { useCanvasPersistence } from './hooks/useCanvasPersistence';
@@ -213,7 +212,6 @@ export function GardenPage({ locationId: _locationId }: GardenPageProps) {
             <Toolbar />
             <Box style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
               <GardenCanvas environmentId={activeEnvironmentId} />
-              <SpaceEditor />
             </Box>
           </>
         ) : (

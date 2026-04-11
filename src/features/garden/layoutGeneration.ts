@@ -77,6 +77,8 @@ interface BuildRectGridObjectsInput {
   cellWidthPx: number;
   cellHeightPx: number;
   labelPrefix: string;
+  /** When true, each cell label is only the grid coordinate (e.g. "A1") with no prefix. */
+  coordsOnly?: boolean;
   gapXPx?: number;
   gapYPx?: number;
   gapEveryColumns?: number;
@@ -508,6 +510,7 @@ export function buildRectGridObjects({
   gapEveryColumns = 0,
   gapEveryRows = 0,
   parentId,
+  coordsOnly = false,
 }: BuildRectGridObjectsInput): CanvasObject[] {
   const defaults = OBJECT_DEFAULTS[objectType];
   const prefix = labelPrefix.trim()
@@ -522,6 +525,7 @@ export function buildRectGridObjects({
 
   for (let rowIndex = 0; rowIndex < rows; rowIndex += 1) {
     for (let columnIndex = 0; columnIndex < columns; columnIndex += 1) {
+      const coord = `${toGridRowLabel(rowIndex)}${columnIndex + 1}`;
       objects.push({
         id: crypto.randomUUID(),
         type: objectType,
@@ -535,7 +539,7 @@ export function buildRectGridObjects({
         strokeWidth: defaults.strokeWidth,
         opacity: 1,
         rotation: 0,
-        label: `${prefix} ${toGridRowLabel(rowIndex)}${columnIndex + 1}`,
+        label: coordsOnly ? coord : `${prefix} ${coord}`,
         notes: "",
         parentId: objectType === "space" || objectType === "plot" ? parentId ?? null : undefined,
       });
@@ -606,6 +610,7 @@ export function buildPlotGroupObjects({
     cellWidthPx,
     cellHeightPx,
     labelPrefix: groupLabel,
+    coordsOnly: true,
     gapXPx,
     gapYPx,
     gapEveryColumns,

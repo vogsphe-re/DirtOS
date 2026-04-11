@@ -51,10 +51,8 @@ function destinationPoint(lat: number, lon: number, bearingDeg: number, distance
   return [(lat2 * 180) / Math.PI, (lon2 * 180) / Math.PI];
 }
 
-function buildSunTrackPoints(lat: number, lon: number, day: Date): L.LatLngExpression[] {
+function buildSunTrackPoints(lat: number, lon: number, day: Date, maxRadiusMeters: number): L.LatLngExpression[] {
   const points: L.LatLngExpression[] = [];
-  const maxRadiusMeters = 120;
-
   for (let hour = 0; hour < 24; hour += 0.25) {
     const sample = new Date(day);
     sample.setHours(Math.floor(hour), Math.round((hour % 1) * 60), 0, 0);
@@ -76,6 +74,7 @@ export function OutdoorSiteMapView({ environmentId, plots, onOpenPlot }: Outdoor
   const labelsLayerRef = useRef<L.LayerGroup | null>(null);
   const sunTrackLayerRef = useRef<L.Polyline | null>(null);
   const [day, setDay] = useState(() => new Date());
+  const [mapZoom, setMapZoom] = useState<number>(19);
 
   const { data: environment } = useQuery({
     queryKey: ['environment-map', environmentId],
@@ -135,6 +134,10 @@ export function OutdoorSiteMapView({ environmentId, plots, onOpenPlot }: Outdoor
     labelsLayerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
 
+    map.on('zoomend', () => {
+      setMapZoom(map.getZoom());
+    });
+
     const ro = new ResizeObserver((entries) => {
       const rect = entries[0]?.contentRect;
       if (rect && rect.width > 0 && rect.height > 0) {
@@ -167,8 +170,19 @@ export function OutdoorSiteMapView({ environmentId, plots, onOpenPlot }: Outdoor
       }).addTo(map);
     }
 
-    sunTrackLayerRef.current.setLatLngs(buildSunTrackPoints(lat, lon, day));
-  }, [day, lat, lon]);
+    // Compute radius from the map's current visible bounds so the arc
+    // always occupies a consistent proportion of the viewport regardless
+    // of zoom level.
+    const bounds = map.getBounds();
+    const ne = bounds.getNorthEast();
+    const sw = bounds.getSouthWest();
+    const halfLatMeters = Math.abs(ne.lat - sw.lat) * 0.5 * 111320;
+    const halfLonMeters =
+      Math.abs(ne.lng - sw.lng) * 0.5 * 111320 * Math.cos((lat * Math.PI) / 180);
+    const maxRadiusMeters = Math.min(halfLatMeters, halfLonMeters) * 0.7;
+
+    sunTrackLayerRef.current.setLatLngs(buildSunTrackPoints(lat, lon, day, maxRadiusMeters));
+  }, [day, lat, lon, mapZoom]);
 
   useEffect(() => {
     const map = mapRef.current;

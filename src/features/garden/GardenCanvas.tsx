@@ -13,6 +13,7 @@ import {
   Transformer,
 } from 'react-konva';
 import { ActionIcon, Box, Text as MText, Tooltip, useComputedColorScheme } from '@mantine/core';
+import { SpaceEditor } from './SpaceEditor';
 import { IconArrowBackUp, IconArrowForwardUp } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useCanvasStore } from './canvasStore';
@@ -242,13 +243,25 @@ const CanvasShape = memo(function CanvasShape({
 // ObjectLabel
 // ---------------------------------------------------------------------------
 
-function ObjectLabel({ obj, fill }: { obj: CanvasObject; fill: string }) {
-  if (!obj.label) return null;
+function ObjectLabel({ obj, fill, displayLabel }: { obj: CanvasObject; fill: string; displayLabel?: string }) {
+  const text = displayLabel ?? obj.label;
+  if (!text) return null;
   const isPolyline = POLYLINE_TOOLS.has(obj.type);
-  const x = isPolyline ? (obj.points?.[0] ?? obj.x) : obj.x + 4;
-  const y = isPolyline ? (obj.points?.[1] ?? obj.y) - 16 : obj.y + 4;
+  let x: number;
+  let y: number;
+  if (obj.type === 'plot-group') {
+    // Render the group label below the group container so it appears once, outside the grid
+    x = obj.x + 4;
+    y = obj.y + (obj.height ?? 0) + 5;
+  } else if (isPolyline) {
+    x = obj.points?.[0] ?? obj.x;
+    y = (obj.points?.[1] ?? obj.y) - 16;
+  } else {
+    x = obj.x + 4;
+    y = obj.y + 4;
+  }
   return (
-    <Text x={x} y={y} text={obj.label} fontSize={11} fill={fill} listening={false} />
+    <Text x={x} y={y} text={text} fontSize={obj.type === 'plot-group' ? 12 : 11} fill={fill} listening={false} />
   );
 }
 
@@ -713,6 +726,12 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
     [visibleObjects],
   );
 
+  // IDs of plot-group container objects — used to strip prefixes on member labels
+  const plotGroupIdSet = useMemo(
+    () => new Set(objects.filter((o) => o.type === 'plot-group').map((o) => o.id)),
+    [objects],
+  );
+
   const coordLabel = `${(cursor.x / gridConfig.pixelsPerUnit).toFixed(1)} ${gridConfig.unit}, ${(cursor.y / gridConfig.pixelsPerUnit).toFixed(1)} ${gridConfig.unit}`;
 
   return (
@@ -785,9 +804,17 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
               ))}
               {byLayer[layerName]
                 .filter((o) => o.label && o.type !== 'text')
-                .map((o) => (
-                  <ObjectLabel key={`lbl-${o.id}`} obj={o} fill={labelFill} />
-                ))}
+                .map((o) => {
+                  // For children of plot-groups show only the trailing grid coordinate (e.g. "A1")
+                  // to avoid repeating the group prefix inside every cell. This also handles legacy
+                  // objects whose labels were saved with the full prefix included.
+                  let displayLabel: string | undefined;
+                  if (o.parentId && plotGroupIdSet.has(o.parentId)) {
+                    const match = /([A-Z]+\d+)$/.exec(o.label);
+                    displayLabel = match ? match[1] : o.label;
+                  }
+                  return <ObjectLabel key={`lbl-${o.id}`} obj={o} fill={labelFill} displayLabel={displayLabel} />;
+                })}
               {byLayer[layerName]
                 .filter((o) => PLANT_ASSIGNABLE_TYPES.has(o.type) && plantByCanvasId.has(o.id))
                 .map((o) => {
@@ -896,6 +923,8 @@ export function GardenCanvas({ environmentId }: { environmentId: number | null }
           }}
         />
       )}
+
+      <SpaceEditor />
     </Box>
   );
 }

@@ -995,7 +995,16 @@ export function OutdoorPlotManager() {
                           variant="subtle"
                           size="compact-sm"
                           p={0}
-                          onClick={() => openGenerateGroupModal(group)}
+                          onClick={() => {
+                            if (linkedCanvasGroup) {
+                              // Group already in canvas — jump straight there and select it
+                              setSelectedId(linkedCanvasGroup.id);
+                              setEditingPlotGroupId(linkedCanvasGroup.id);
+                              navigate({ to: "/garden" });
+                            } else {
+                              openGenerateGroupModal(group);
+                            }
+                          }}
                           style={{ justifyContent: "flex-start", flex: 1, minWidth: 0 }}
                         >
                           <Text fw={600} lineClamp={1}>{group.name}</Text>
