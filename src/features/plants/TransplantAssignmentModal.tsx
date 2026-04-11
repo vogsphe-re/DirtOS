@@ -41,6 +41,7 @@ interface TransplantAssignmentModalProps {
   environmentId: number | null;
   plant: Plant | null;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
 function buildLocationPatch(locationId: number | null): UpdatePlant {
@@ -75,6 +76,7 @@ export function TransplantAssignmentModal({
   environmentId,
   plant,
   onClose,
+  onSuccess,
 }: TransplantAssignmentModalProps) {
   const queryClient = useQueryClient();
 
@@ -254,8 +256,10 @@ export function TransplantAssignmentModal({
         throw new Error("Choose a tray space before transplanting.");
       }
 
-      const transition = await commands.transitionPlantStatus(plant.id, "active");
-      if (transition.status === "error") throw new Error(transition.error);
+      if ((plant.status as string).toLowerCase() !== "active") {
+        const transition = await commands.transitionPlantStatus(plant.id, "active");
+        if (transition.status === "error") throw new Error(transition.error);
+      }
 
       if (effectiveDestinationKind === "plot") {
         const locationId = Number(selectedPlotId);
@@ -301,14 +305,16 @@ export function TransplantAssignmentModal({
       queryClient.invalidateQueries({ queryKey: ["plants-all"] });
       queryClient.invalidateQueries({ queryKey: ["tray-cells"] });
 
+      const isRelocation = (plant?.status as string | undefined)?.toLowerCase() === "active";
       notifications.show({
         message:
           kind === "plot"
-            ? "Plant transplanted to Active and assigned to a plot space."
-            : "Plant transplanted to Active and assigned to a tray space.",
+            ? isRelocation ? "Plant moved to a new plot space." : "Plant transplanted to Active and assigned to a plot space."
+            : isRelocation ? "Plant moved to a new tray space." : "Plant transplanted to Active and assigned to a tray space.",
         color: "green",
       });
 
+      onSuccess?.();
       onClose();
     },
     onError: (err: Error) => {
@@ -329,12 +335,15 @@ export function TransplantAssignmentModal({
     <Modal
       opened={opened}
       onClose={onClose}
-      title="Transplant and assign destination"
+      title={(plant?.status as string | undefined)?.toLowerCase() === "active" ? "Move plant to another space" : "Transplant and assign destination"}
       size="sm"
     >
       <Stack gap="sm">
         <Text size="sm">
-          Move <strong>{plant?.name ?? "this seedling"}</strong> to Active and choose where it should be assigned.
+          {(plant?.status as string | undefined)?.toLowerCase() === "active"
+            ? <>Reassign <strong>{plant?.name ?? "this plant"}</strong> to a different space.</>          
+            : <>Move <strong>{plant?.name ?? "this seedling"}</strong> to Active and choose where it should be assigned.</>
+          }
         </Text>
 
         <Radio.Group
@@ -391,7 +400,10 @@ export function TransplantAssignmentModal({
         )}
 
         <Text size="xs" c="dimmed">
-          Transplant sets today's transplant date and updates the seedling to Active status.
+          {(plant?.status as string | undefined)?.toLowerCase() === "active"
+            ? "This will update the plant's assigned location."
+            : "Transplant sets today's transplant date and updates the seedling to Active status."
+          }
         </Text>
 
         <Group justify="flex-end">
@@ -405,7 +417,7 @@ export function TransplantAssignmentModal({
             onClick={() => transplantMutation.mutate()}
             disabled={!canSubmit}
           >
-            Transplant
+            {(plant?.status as string | undefined)?.toLowerCase() === "active" ? "Move" : "Transplant"}
           </Button>
         </Group>
       </Stack>

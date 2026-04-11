@@ -16,7 +16,7 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconArrowLeft, IconEdit, IconTrash } from "@tabler/icons-react";
+import { IconArrowLeft, IconArrowsTransferUp, IconEdit, IconTrash } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -28,6 +28,7 @@ import { GenealogyView } from "./GenealogyView";
 import type { Plant, PlantStatus, Species } from "./types";
 import { PLANT_STATUS_COLORS, PLANT_STATUS_LABELS } from "./types";
 import { AssetTagBadge } from "../../components/AssetTagBadge";
+import { TransplantAssignmentModal } from "./TransplantAssignmentModal";
 
 interface PlantDetailProps {
   plantId: number;
@@ -89,6 +90,7 @@ export function PlantDetail({ plantId }: PlantDetailProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
+  const [transplantOpen, setTransplantOpen] = useState(false);
 
   const { data: plant, isLoading, isError } = useQuery({
     queryKey: ["plant", plantId],
@@ -308,6 +310,17 @@ export function PlantDetail({ plantId }: PlantDetailProps) {
               Cycle to Seedling
             </Button>
           )}
+          {(plant.status === "seedling" || plant.status === "active") && (
+            <Button
+              size="xs"
+              variant="light"
+              color="blue"
+              leftSection={<IconArrowsTransferUp size={14} />}
+              onClick={() => setTransplantOpen(true)}
+            >
+              {plant.status === "active" ? "Move" : "Transplant"}
+            </Button>
+          )}
           <Tooltip label="Delete plant">
             <Button
               size="xs"
@@ -433,6 +446,18 @@ export function PlantDetail({ plantId }: PlantDetailProps) {
           {plant && <GenealogyView plant={plant} />}
         </Tabs.Panel>
       </Tabs>
+
+      <TransplantAssignmentModal
+        opened={transplantOpen}
+        environmentId={plant.environment_id}
+        plant={plant}
+        onClose={() => setTransplantOpen(false)}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["plant", plantId] });
+          queryClient.invalidateQueries({ queryKey: ["plant-location-label", plant.id] });
+          setTransplantOpen(false);
+        }}
+      />
     </Stack>
   );
 }

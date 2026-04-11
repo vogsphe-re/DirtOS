@@ -248,11 +248,12 @@ export function SeedlingPlanner() {
     queryFn: async () => {
       const res = await commands.listAllPlants(500, 0);
       if (res.status === "error") throw new Error(res.error);
-      const plants = res.data as Plant[];
-      return plants.filter(
-        (p) => (p.status as string).toLowerCase() === "seedling" && p.environment_id === activeEnvId,
-      );
+      return res.data as Plant[];
     },
+    select: (plants) =>
+      plants.filter(
+        (p) => (p.status as string).toLowerCase() === "seedling" && p.environment_id === activeEnvId,
+      ),
     enabled: activeEnvId != null,
   });
 

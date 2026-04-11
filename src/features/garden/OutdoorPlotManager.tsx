@@ -604,7 +604,7 @@ export function OutdoorPlotManager() {
         cellHeightPx,
         gapXPx,
         gapYPx,
-        replaceExisting: true,
+        replaceExisting: false,
       });
 
       void queryClient.invalidateQueries({ queryKey: ["locations", activeEnvironmentId] });
@@ -652,7 +652,9 @@ export function OutdoorPlotManager() {
   }): Promise<string> => {
     if (!activeEnvironmentId) throw new Error("No active environment");
 
-    const currentObjects = useCanvasStore.getState().objects;
+    const storeState = useCanvasStore.getState();
+    const currentObjects = storeState.objects;
+    const currentGridConfig = storeState.gridConfig;
     const linkedGroup = currentObjects.find(
       (object) => object.type === "plot-group" && readLinkedPlotGroupLocationId(object.notes) === sourceGroup.id,
     );
@@ -699,7 +701,7 @@ export function OutdoorPlotManager() {
 
     const saveResult = await commands.saveCanvas(
       activeEnvironmentId,
-      JSON.stringify({ objects: nextObjects, gridConfig }),
+      JSON.stringify({ objects: nextObjects, gridConfig: currentGridConfig }),
     );
     if (saveResult.status === "error") throw new Error(saveResult.error);
 
@@ -768,18 +770,20 @@ export function OutdoorPlotManager() {
       if (result.status === "error") throw new Error(result.error);
       if (!result.data) throw new Error("Plot group not found");
 
-      const linkedGroup = objects.find(
+      const freshObjects = useCanvasStore.getState().objects;
+      const freshGridConfig = useCanvasStore.getState().gridConfig;
+      const linkedGroup = freshObjects.find(
         (object) => object.type === "plot-group" && readLinkedPlotGroupLocationId(object.notes) === group.id,
       );
 
       if (linkedGroup && activeEnvironmentId != null) {
-        const nextObjects = objects.filter(
+        const nextObjects = freshObjects.filter(
           (object) => object.id !== linkedGroup.id && object.parentId !== linkedGroup.id,
         );
 
         const saveResult = await commands.saveCanvas(
           activeEnvironmentId,
-          JSON.stringify({ objects: nextObjects, gridConfig }),
+          JSON.stringify({ objects: nextObjects, gridConfig: freshGridConfig }),
         );
         if (saveResult.status === "error") throw new Error(saveResult.error);
 
