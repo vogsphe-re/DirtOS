@@ -194,6 +194,25 @@ function formatSpaceSize(space: CanvasObject, pixelsPerUnit: number, unit: strin
   return `${width} x ${height} ${unit}`;
 }
 
+function getPlotSpaceDisplayLabel(space: CanvasObject, plotGroup?: Location | null): string {
+  const label = space.label?.trim();
+  if (!label) return "Unnamed space";
+  if (!plotGroup) return label;
+
+  const prefixCandidates = [plotGroup.label, plotGroup.name]
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value))
+    .sort((left, right) => right.length - left.length);
+
+  for (const prefix of prefixCandidates) {
+    if (label.length > prefix.length && label.startsWith(`${prefix} `)) {
+      return label.slice(prefix.length).trimStart();
+    }
+  }
+
+  return label;
+}
+
 function summarizePlot(spaces: CanvasObject[], plantsBySpace: Map<string, Plant[]>): PlotOccupancySummary {
   const summary: PlotOccupancySummary = {
     totalSpaces: spaces.length,
@@ -222,6 +241,7 @@ function summarizePlot(spaces: CanvasObject[], plantsBySpace: Map<string, Plant[
 
 function PlotSpaceCard({
   space,
+  spaceTitle,
   plant,
   species,
   duplicateCount,
@@ -232,6 +252,7 @@ function PlotSpaceCard({
   onOpenPlant,
 }: {
   space?: CanvasObject;
+  spaceTitle: string;
   plant?: Plant;
   species?: Species;
   duplicateCount: number;
@@ -254,15 +275,13 @@ function PlotSpaceCard({
     );
   }
 
-  const title = space.label?.trim() || "Unnamed space";
-
   if (!plant) {
     return (
       <Card withBorder padding="sm" radius="md" style={{ minHeight: 148 }}>
         <Stack gap="xs" h="100%">
           <Group justify="space-between" align="flex-start" wrap="nowrap">
             <Stack gap={2} style={{ flex: 1 }}>
-              <Text fw={600} size="sm" lineClamp={1}>{title}</Text>
+              <Text fw={600} size="sm" lineClamp={1}>{spaceTitle}</Text>
               <Text size="xs" c="dimmed">{formatSpaceSize(space, pixelsPerUnit, unit)}</Text>
             </Stack>
             {duplicateCount > 0 && (
@@ -288,7 +307,7 @@ function PlotSpaceCard({
         <Group justify="space-between" align="flex-start" wrap="nowrap">
           <Stack gap={2} style={{ flex: 1 }}>
             <Text fw={600} size="sm" lineClamp={1}>{plant.name}</Text>
-            <Text size="xs" c="dimmed" lineClamp={1}>{title}</Text>
+            <Text size="xs" c="dimmed" lineClamp={1}>{spaceTitle}</Text>
           </Stack>
           <Group gap={4} wrap="nowrap">
             <Badge variant="light" color={PLANT_STATUS_COLORS[plant.status]} size="xs">
@@ -1180,6 +1199,9 @@ export function OutdoorPlotManager() {
                           {Array.from({ length: Math.max(1, activeGroupGrid.columnCount) }, (_, columnIndex) => {
                             const cell = activeGroupGrid.cells.get(`${rowIndex}:${columnIndex}`);
                             const primarySpace = cell?.spaces[0];
+                            const spaceTitle = primarySpace
+                              ? getPlotSpaceDisplayLabel(primarySpace, activeGroup)
+                              : "Unnamed space";
                             const assignedPlants = primarySpace ? canvasPlantsBySpace.get(primarySpace.id) ?? [] : [];
                             const assignedPlant = assignedPlants[0];
                             const species = assignedPlant?.species_id != null ? speciesById.get(assignedPlant.species_id) : undefined;
@@ -1188,6 +1210,7 @@ export function OutdoorPlotManager() {
                               <PlotSpaceCard
                                 key={`${rowIndex}-${columnIndex}`}
                                 space={primarySpace}
+                                spaceTitle={spaceTitle}
                                 plant={assignedPlant}
                                 species={species}
                                 duplicateCount={Math.max(0, (cell?.spaces.length ?? 0) - 1) + Math.max(0, assignedPlants.length - 1)}
@@ -1217,7 +1240,7 @@ export function OutdoorPlotManager() {
         <PlantAssignmentModal
           opened
           spaceId={assigningSpace.id}
-          spaceLabel={assigningSpace.label || undefined}
+          spaceLabel={getPlotSpaceDisplayLabel(assigningSpace, activeGroup)}
           targetKindLabel="space"
           currentPlantId={canvasPlantsBySpace.get(assigningSpace.id)?.[0]?.id ?? null}
           onClose={() => setAssigningSpaceId(null)}
