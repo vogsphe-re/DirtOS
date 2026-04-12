@@ -74,7 +74,13 @@ function SeedlingCard({ plant, species, observations, onLogObs, onTransplant }: 
     >
       <Stack gap={4}>
         <Group gap={4} justify="space-between">
-          <Text size="xs" fw={600} lineClamp={1} style={{ maxWidth: 110 }}>
+          <Text
+            size="xs"
+            fw={600}
+            lineClamp={1}
+            style={{ maxWidth: 110, cursor: "pointer", textDecoration: "underline" }}
+            onClick={() => navigate({ to: "/plants/individuals/$plantId", params: { plantId: String(plant.id) } })}
+          >
             {plant.name}
           </Text>
           {ready && (

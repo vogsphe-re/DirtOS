@@ -339,7 +339,7 @@ export function OutdoorPlotManager() {
   const setDirty = useCanvasStore((state) => state.setDirty);
   const { loadCanvas } = useCanvasPersistence();
 
-  const [activePlotId, setActivePlotId] = useState<string | null>(null);
+  const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
   const [assigningSpaceId, setAssigningSpaceId] = useState<string | null>(null);
   const [subdivideOpen, setSubdivideOpen] = useState(false);
   const [createPlotGroupOpen, setCreatePlotGroupOpen] = useState(false);
@@ -381,33 +381,6 @@ export function OutdoorPlotManager() {
     }
   }, [activeEnvironmentId, loadCanvas]);
 
-  const plots = useMemo(
-    () => [...objects.filter((object) => object.type === "plot")].sort((left, right) => left.y - right.y || left.x - right.x),
-    [objects],
-  );
-
-  useEffect(() => {
-    if (plots.length === 0) return;
-    const preferredId = localStorage.getItem('garden-active-plot-id');
-    if (!preferredId) return;
-
-    if (plots.some((plot) => plot.id === preferredId)) {
-      setActivePlotId(preferredId);
-    }
-
-    localStorage.removeItem('garden-active-plot-id');
-  }, [plots]);
-
-  useEffect(() => {
-    if (plots.length === 0) {
-      setActivePlotId(null);
-      return;
-    }
-
-    if (!activePlotId || !plots.some((plot) => plot.id === activePlotId)) {
-      setActivePlotId(plots[0].id);
-    }
-  }, [activePlotId, plots]);
 
   const { data: allPlants = [] } = useQuery({
     queryKey: ["plants-all"],
@@ -451,8 +424,6 @@ export function OutdoorPlotManager() {
     enabled: activeEnvironmentId != null,
   });
 
-  const activePlot = plots.find((plot) => plot.id === activePlotId) ?? null;
-
   const clearAssignment = useMutation({
     mutationFn: async (plantId: number) => {
       const result = await commands.unassignPlantFromCanvasObject(plantId);
@@ -480,9 +451,11 @@ export function OutdoorPlotManager() {
       replaceExistingSpaces: boolean;
     }) => {
       if (!activeEnvironmentId) throw new Error("No active environment");
-      if (!activePlot) throw new Error("No plot selected");
+      // linkedCanvasForActiveGroup captured from closure at call time
+      const container = linkedCanvasForActiveGroup;
+      if (!container) throw new Error("No canvas group selected");
 
-      const existingSpaces = objects.filter((object) => object.type === "space" && object.parentId === activePlot.id);
+      const existingSpaces = objects.filter((object) => object.type === "space" && object.parentId === container.id);
       const assignedPlantIds = replaceExistingSpaces
         ? existingSpaces.flatMap((space) => (canvasPlantsBySpace.get(space.id) ?? []).map((plant) => plant.id))
         : [];
@@ -493,13 +466,13 @@ export function OutdoorPlotManager() {
       }
 
       const baseObjects = replaceExistingSpaces
-        ? objects.filter((object) => !(object.type === "space" && object.parentId === activePlot.id))
+        ? objects.filter((object) => !(object.type === "space" && object.parentId === container.id))
         : objects;
 
       const generatedSpaces: CanvasObject[] = buildRectGridObjects({
         objectType: "space",
-        originX: activePlot.x,
-        originY: activePlot.y,
+        originX: container.x,
+        originY: container.y,
         rows: layout.rows,
         columns: layout.columns,
         cellWidthPx: layout.cellWidthPx,
@@ -509,7 +482,7 @@ export function OutdoorPlotManager() {
         gapYPx: layout.pathwayYPx,
         gapEveryColumns: layout.pathwayEveryColumns,
         gapEveryRows: layout.pathwayEveryRows,
-        parentId: activePlot.id,
+        parentId: container.id,
       });
 
       const nextObjects = [...baseObjects, ...generatedSpaces];
@@ -608,6 +581,7 @@ export function OutdoorPlotManager() {
       });
 
       void queryClient.invalidateQueries({ queryKey: ["locations", activeEnvironmentId] });
+      setActiveGroupId(result.group.id);
       notifications.show({ color: "green", message: "Plot group created and generated in Garden Canvas." });
       setCreatePlotGroupOpen(false);
       setPlotGroupName("");
@@ -831,7 +805,6 @@ export function OutdoorPlotManager() {
     onSuccess: () => {
       notifications.show({ color: "green", message: "Plot group generated in Garden Canvas." });
       setGenerateGroupOpen(false);
-      navigate({ to: "/garden" });
     },
     onError: (error: Error) => {
       notifications.show({ color: "red", title: "Canvas generation failed", message: error.message });
@@ -870,22 +843,44 @@ export function OutdoorPlotManager() {
     return map;
   }, [canvasPlants]);
 
-  const plotSummaries = useMemo(
-    () => new Map(plots.map((plot) => {
-      const spaces = objects.filter((object) => object.type === "space" && object.parentId === plot.id);
-      return [plot.id, summarizePlot(spaces, canvasPlantsBySpace)];
-    })),
-    [canvasPlantsBySpace, objects, plots],
+  const activeGroup = useMemo(
+    () => plotGroups.find((g) => g.id === activeGroupId) ?? null,
+    [plotGroups, activeGroupId],
   );
-  const activePlotSpaces = useMemo(
-    () => objects
-      .filter((object) => object.type === "space" && object.parentId === activePlotId)
-      .sort((left, right) => left.y - right.y || left.x - right.x),
-    [activePlotId, objects],
+  const linkedCanvasForActiveGroup = useMemo(
+    () =>
+      activeGroup
+        ? (objects.find(
+            (o) => o.type === "plot-group" && readLinkedPlotGroupLocationId(o.notes) === activeGroup.id,
+          ) ?? null)
+        : null,
+    [activeGroup, objects],
   );
-  const grid = useMemo(() => buildPlotGrid(activePlotSpaces), [activePlotSpaces]);
-  const assigningSpace = activePlotSpaces.find((space) => space.id === assigningSpaceId) ?? null;
-  const activePlotSummary = summarizePlot(activePlotSpaces, canvasPlantsBySpace);
+  const activeGroupSpaces = useMemo(
+    () =>
+      linkedCanvasForActiveGroup
+        ? objects
+            .filter((o) => o.type === "space" && o.parentId === linkedCanvasForActiveGroup.id)
+            .sort((a, b) => a.y - b.y || a.x - b.x)
+        : [],
+    [linkedCanvasForActiveGroup, objects],
+  );
+  const activeGroupGrid = useMemo(() => buildPlotGrid(activeGroupSpaces), [activeGroupSpaces]);
+  const activeGroupSummary = useMemo(
+    () => summarizePlot(activeGroupSpaces, canvasPlantsBySpace),
+    [activeGroupSpaces, canvasPlantsBySpace],
+  );
+  const assigningSpace = activeGroupSpaces.find((space) => space.id === assigningSpaceId) ?? null;
+
+  // Auto-select the first plot group when groups load or the active one is deleted
+  useEffect(() => {
+    if (
+      plotGroups.length > 0
+      && (activeGroupId == null || !plotGroups.some((g) => g.id === activeGroupId))
+    ) {
+      setActiveGroupId(plotGroups[0].id);
+    }
+  }, [plotGroups, activeGroupId]);
 
   const openCreatePlotGroupModal = () => {
     const existingGroupNames = plotGroups.map((group) => group.name);
@@ -981,32 +976,278 @@ export function OutdoorPlotManager() {
               Create Plot Group
             </Button>
           </Group>
+        </Stack>
+      </Card>
 
-          {plotGroups.length === 0 ? (
-            <Text size="sm" c="dimmed">No plot groups yet.</Text>
-          ) : (
-            <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="sm">
-              {plotGroups.map((group) => {
-                const site = outdoorSites.find((candidate) => candidate.id === group.parent_id);
-                const linkedCanvasGroup = objects.find(
-                  (object) => object.type === "plot-group" && readLinkedPlotGroupLocationId(object.notes) === group.id,
+      {/* Main two-panel layout */}
+      <Group align="flex-start" gap="md" wrap="nowrap" style={{ minHeight: 320 }}>
+        {/* Left sidebar: selectable group list */}
+        <Card withBorder padding="sm" radius="md" style={{ width: 220, flexShrink: 0 }}>
+          <Stack gap={6}>
+            {plotGroups.length === 0 ? (
+              <Stack gap="xs">
+                <Text size="xs" c="dimmed">No plot groups yet.</Text>
+                <Button size="xs" variant="light" leftSection={<IconPlus size={12} />} onClick={openCreatePlotGroupModal}>
+                  Create first group
+                </Button>
+              </Stack>
+            ) : (
+              plotGroups.map((group) => {
+                const isActive = group.id === activeGroupId;
+                const spaceCount = plotGroupSpaceCounts.get(group.id) ?? 0;
+                const site = outdoorSites.find((s) => s.id === group.parent_id);
+                const linkedCanvas = objects.find(
+                  (o) => o.type === "plot-group" && readLinkedPlotGroupLocationId(o.notes) === group.id,
                 );
                 return (
-                  <Card key={group.id} withBorder padding="sm" radius="md">
-                    <Stack gap={4}>
-                      <Group justify="space-between" wrap="nowrap">
-                        <Button
-                          variant="subtle"
-                          size="compact-sm"
-                          p={0}
-                          onClick={() => {
-                            if (linkedCanvasGroup) {
-                              // Group already in canvas — jump straight there and select it
-                              setSelectedId(linkedCanvasGroup.id);
-                              setEditingPlotGroupId(linkedCanvasGroup.id);
-                              navigate({ to: "/garden" });
-                            } else {
-                              openGenerateGroupModal(group);
+                  <Card
+                    key={group.id}
+                    withBorder
+                    padding="xs"
+                    radius="sm"
+                    style={{
+                      cursor: "pointer",
+                      borderColor: isActive ? "var(--dirtos-accent)" : undefined,
+                      boxShadow: isActive ? "0 0 0 1px var(--dirtos-accent) inset" : undefined,
+                    }}
+                    onClick={() => setActiveGroupId(group.id)}
+                  >
+                    <Group justify="space-between" wrap="nowrap" gap={4}>
+                      <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
+                        <Text size="xs" fw={600} lineClamp={1}>{group.name}</Text>
+                        <Group gap={4} wrap="wrap">
+                          <Badge size="xs" variant="light">{spaceCount} spaces</Badge>
+                          <Badge size="xs" variant="outline" color={linkedCanvas ? "green" : "gray"}>
+                            {linkedCanvas ? "In Canvas" : "No Canvas"}
+                          </Badge>
+                        </Group>
+                        {site && <Text size="xs" c="dimmed" lineClamp={1}>{site.name}</Text>}
+                      </Stack>
+                      <Group gap={2} wrap="nowrap" style={{ flexShrink: 0 }}>
+                        <Tooltip label="Edit group">
+                          <ActionIcon
+                            size="xs"
+                            variant="subtle"
+                            onClick={(e) => { e.stopPropagation(); openEditGroupModal(group); }}
+                            aria-label="Edit plot group"
+                          >
+                            <IconEdit size={11} />
+                          </ActionIcon>
+                        </Tooltip>
+                        <Tooltip label="Delete group">
+                          <ActionIcon
+                            size="xs"
+                            variant="subtle"
+                            color="red"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm(`Delete plot group "${group.name}" and its child spaces?`)) {
+                                deletePlotGroup.mutate(group);
+                              }
+                            }}
+                            aria-label="Delete plot group"
+                          >
+                            <IconTrash size={11} />
+                          </ActionIcon>
+                        </Tooltip>
+                      </Group>
+                    </Group>
+                  </Card>
+                );
+              })
+            )}
+          </Stack>
+        </Card>
+
+        {/* Right panel: spaces for the selected group */}
+        <Stack gap="md" style={{ flex: 1, minWidth: 0 }}>
+          {activeGroup == null ? (
+            <Box
+              p="xl"
+              style={{
+                textAlign: "center",
+                border: "1px dashed var(--mantine-color-default-border)",
+                borderRadius: 8,
+              }}
+            >
+              <IconMap2 size={28} color="var(--mantine-color-dimmed)" />
+              <Text mt="sm" c="dimmed">Select a plot group to view and manage its spaces.</Text>
+            </Box>
+          ) : (
+            <>
+              {/* Group header */}
+              <Group justify="space-between" wrap="wrap" gap="xs">
+                <Group gap="sm" wrap="wrap">
+                  <Title order={3}>{activeGroup.name}</Title>
+                  <Badge variant="light">{activeGroupSpaces.length} spaces</Badge>
+                  {activeGroupSpaces.length > 0 && (
+                    <>
+                      <Badge variant="light" color="green">{activeGroupSummary.activeCount} active</Badge>
+                      <Badge variant="light" color="lime">{activeGroupSummary.seedlingCount} seedling</Badge>
+                      <Badge variant="light" color="gray">{activeGroupSummary.plannedCount} planned</Badge>
+                      <Badge variant="light" color="yellow">{activeGroupSummary.emptySpaces} empty</Badge>
+                    </>
+                  )}
+                </Group>
+                <Group gap="xs">
+                  {linkedCanvasForActiveGroup ? (
+                    <>
+                      <Button
+                        size="xs"
+                        variant="light"
+                        leftSection={<IconLayoutGridAdd size={14} />}
+                        onClick={() => setSubdivideOpen(true)}
+                      >
+                        Auto-generate spaces
+                      </Button>
+                      <Button
+                        size="xs"
+                        variant="subtle"
+                        leftSection={<IconArrowLeft size={14} />}
+                        onClick={() => {
+                          setSelectedId(linkedCanvasForActiveGroup.id);
+                          setEditingPlotGroupId(linkedCanvasForActiveGroup.id);
+                          navigate({ to: "/garden" });
+                        }}
+                      >
+                        Open in Canvas
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      size="xs"
+                      variant="filled"
+                      color="blue"
+                      onClick={() => openGenerateGroupModal(activeGroup)}
+                    >
+                      Generate in Canvas
+                    </Button>
+                  )}
+                </Group>
+              </Group>
+
+              {/* Spaces content */}
+              {!linkedCanvasForActiveGroup ? (
+                <Box
+                  p="xl"
+                  style={{
+                    textAlign: "center",
+                    border: "1px dashed var(--mantine-color-default-border)",
+                    borderRadius: 8,
+                  }}
+                >
+                  <IconMap2 size={28} color="var(--mantine-color-dimmed)" />
+                  <Text mt="sm">This plot group is not yet in Garden Canvas.</Text>
+                  <Text size="sm" c="dimmed" mt={4}>
+                    Generate it in the canvas to create and manage individual plot spaces.
+                  </Text>
+                  <Group justify="center" mt="md">
+                    <Button variant="light" onClick={() => openGenerateGroupModal(activeGroup)}>
+                      Generate in Canvas
+                    </Button>
+                  </Group>
+                </Box>
+              ) : activeGroupSpaces.length === 0 ? (
+                <Box
+                  p="xl"
+                  style={{
+                    textAlign: "center",
+                    border: "1px dashed var(--mantine-color-default-border)",
+                    borderRadius: 8,
+                  }}
+                >
+                  <Text>No spaces defined in this plot group yet.</Text>
+                  <Text size="sm" c="dimmed" mt={4}>
+                    Use "Auto-generate spaces" to divide this group into assignable outdoor spaces.
+                  </Text>
+                </Box>
+              ) : (
+                <>
+                  <Text size="xs" c="dimmed">
+                    {activeGroupSummary.occupiedSpaces} assigned · {activeGroupGrid.rowCount} rows · {activeGroupGrid.columnCount} columns · Arranged from Garden Canvas positions.
+                  </Text>
+                  <ScrollArea>
+                    <Stack gap={6}>
+                      {Array.from({ length: activeGroupGrid.rowCount }, (_, rowIndex) => (
+                        <div
+                          key={`row-${rowIndex}`}
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: `repeat(${Math.max(1, activeGroupGrid.columnCount)}, minmax(140px, 1fr))`,
+                            gap: 6,
+                          }}
+                        >
+                          {Array.from({ length: Math.max(1, activeGroupGrid.columnCount) }, (_, columnIndex) => {
+                            const cell = activeGroupGrid.cells.get(`${rowIndex}:${columnIndex}`);
+                            const primarySpace = cell?.spaces[0];
+                            const assignedPlants = primarySpace ? canvasPlantsBySpace.get(primarySpace.id) ?? [] : [];
+                            const assignedPlant = assignedPlants[0];
+                            const species = assignedPlant?.species_id != null ? speciesById.get(assignedPlant.species_id) : undefined;
+
+                            return (
+                              <PlotSpaceCard
+                                key={`${rowIndex}-${columnIndex}`}
+                                space={primarySpace}
+                                plant={assignedPlant}
+                                species={species}
+                                duplicateCount={Math.max(0, (cell?.spaces.length ?? 0) - 1) + Math.max(0, assignedPlants.length - 1)}
+                                pixelsPerUnit={gridConfig.pixelsPerUnit}
+                                unit={gridConfig.unit}
+                                onAssign={() => primarySpace && setAssigningSpaceId(primarySpace.id)}
+                                onClear={() => assignedPlant && clearAssignment.mutate(assignedPlant.id)}
+                                onOpenPlant={() => assignedPlant && navigate({
+                                  to: "/plants/individuals/$plantId",
+                                  params: { plantId: String(assignedPlant.id) },
+                                })}
+                              />
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </Stack>
+                  </ScrollArea>
+                </>
+              )}
+            </>
+          )}
+        </Stack>
+      </Group>
+
+      {assigningSpace && (
+        <PlantAssignmentModal
+          opened
+          spaceId={assigningSpace.id}
+          spaceLabel={assigningSpace.label || undefined}
+          targetKindLabel="space"
+          currentPlantId={canvasPlantsBySpace.get(assigningSpace.id)?.[0]?.id ?? null}
+          onClose={() => setAssigningSpaceId(null)}
+          onAssigned={() => {
+            void queryClient.invalidateQueries({ queryKey: ["canvas-plants", activeEnvironmentId] });
+            void queryClient.invalidateQueries({ queryKey: ["plants-all"] });
+            setAssigningSpaceId(null);
+          }}
+        />
+      )}
+
+      {linkedCanvasForActiveGroup && (
+        <AreaGeneratorModal
+          opened={subdivideOpen}
+          onClose={() => setSubdivideOpen(false)}
+          onGenerate={(input) => subdividePlot.mutate(input)}
+          title={`Generate spaces in ${activeGroup?.name ?? "plot group"}`}
+          description="Generate planting spaces from direct dimensions, target density, or explicit row and column counts."
+          unit={gridConfig.unit}
+          pixelsPerUnit={gridConfig.pixelsPerUnit}
+          containerWidthPx={linkedCanvasForActiveGroup.width ?? 0}
+          containerHeightPx={linkedCanvasForActiveGroup.height ?? 0}
+          defaultLabelPrefix={activeGroup?.label ?? "Space"}
+          loading={subdividePlot.isPending}
+          submitLabel="Create spaces"
+        />
+      )}
+
+      <Modal
+        opened={createPlotGroupOpen}
                             }
                           }}
                           style={{ justifyContent: "flex-start", flex: 1, minWidth: 0 }}
@@ -1030,231 +1271,6 @@ export function OutdoorPlotManager() {
                               variant="subtle"
                               color="red"
                               onClick={() => {
-                                const confirmed = window.confirm(
-                                  `Delete plot group \"${group.name}\" and its child spaces?`,
-                                );
-                                if (confirmed) deletePlotGroup.mutate(group);
-                              }}
-                              aria-label="Delete plot group"
-                            >
-                              <IconTrash size={14} />
-                            </ActionIcon>
-                          </Tooltip>
-                        </Group>
-                      </Group>
-                      <Group gap={6}>
-                        <Badge variant="light" size="xs">{plotGroupSpaceCounts.get(group.id) ?? 0} spaces</Badge>
-                        <Badge variant="outline" size="xs">{group.grid_rows ?? "?"} x {group.grid_cols ?? "?"}</Badge>
-                        <Badge variant="outline" color={linkedCanvasGroup ? "green" : "gray"} size="xs">
-                          {linkedCanvasGroup ? "In Canvas" : "Not in Canvas"}
-                        </Badge>
-                      </Group>
-                      <Text size="xs" c="dimmed">Prefix: {group.label || "—"}</Text>
-                      <Text size="xs" c="dimmed">
-                        Site: {site?.name ?? "Unassigned"}
-                      </Text>
-                      <Text size="xs" c="dimmed">
-                        Click the group name to generate or regenerate this layout in Garden Canvas.
-                      </Text>
-                    </Stack>
-                  </Card>
-                );
-              })}
-            </SimpleGrid>
-          )}
-        </Stack>
-      </Card>
-
-      {plots.length === 0 ? (
-        <Box
-          p="xl"
-          style={{
-            textAlign: "center",
-            border: "1px dashed var(--mantine-color-default-border)",
-            borderRadius: 8,
-          }}
-        >
-          <IconMap2 size={32} color="var(--mantine-color-dimmed)" />
-          <Text mt="sm">No outdoor plots found for this environment.</Text>
-          <Text size="sm" c="dimmed" mt={4}>
-            Create plots and spaces in Garden Canvas first, then return here to manage assignments.
-          </Text>
-          <Group justify="center" mt="md">
-            <Button variant="light" onClick={() => navigate({ to: "/garden" })}>Go to Garden Canvas</Button>
-          </Group>
-        </Box>
-      ) : (
-        <>
-          <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="md">
-            {plots.map((plot) => {
-              const spaces = objects.filter((object) => object.type === "space" && object.parentId === plot.id);
-              const summary = plotSummaries.get(plot.id) ?? summarizePlot(spaces, canvasPlantsBySpace);
-              const isActive = plot.id === activePlotId;
-
-              return (
-                <Card
-                  key={plot.id}
-                  withBorder
-                  padding="md"
-                  radius="md"
-                  style={{
-                    cursor: "pointer",
-                    borderColor: isActive ? "var(--dirtos-accent)" : undefined,
-                    boxShadow: isActive ? "0 0 0 1px var(--dirtos-accent) inset" : undefined,
-                  }}
-                  onClick={() => setActivePlotId(plot.id)}
-                >
-                  <Stack gap="xs">
-                    <Group justify="space-between" align="flex-start">
-                      <Text fw={600} lineClamp={1}>{plot.label || "Unnamed plot"}</Text>
-                      <Badge variant="light" size="sm">{summary.occupiedSpaces}/{summary.totalSpaces}</Badge>
-                    </Group>
-                    <Text size="xs" c="dimmed">{spaces.length} space{spaces.length === 1 ? "" : "s"}</Text>
-                    <Group gap={6}>
-                      <Badge size="xs" variant="outline" color="green">{summary.activeCount} active</Badge>
-                      <Badge size="xs" variant="outline" color="gray">{summary.plannedCount} planned</Badge>
-                      <Badge size="xs" variant="outline" color="yellow">{summary.emptySpaces} empty</Badge>
-                    </Group>
-                    {plot.notes && <Text size="xs" c="dimmed" lineClamp={2}>{plot.notes}</Text>}
-                  </Stack>
-                </Card>
-              );
-            })}
-          </SimpleGrid>
-
-          {activePlot && (
-            <Stack gap="sm">
-              <Group justify="space-between" wrap="wrap">
-                <Group gap="sm">
-                  <Title order={3}>{activePlot.label || "Unnamed plot"}</Title>
-                  <Badge variant="light">{activePlotSpaces.length} spaces</Badge>
-                </Group>
-                <Group gap="xs">
-                  <Badge variant="light" color="green">{activePlotSummary.activeCount} active</Badge>
-                  <Badge variant="light" color="gray">{activePlotSummary.plannedCount} planned</Badge>
-                  <Badge variant="light" color="lime">{activePlotSummary.seedlingCount} seedling</Badge>
-                  <Badge variant="light" color="yellow">{activePlotSummary.emptySpaces} empty</Badge>
-                </Group>
-              </Group>
-
-              <Group justify="space-between" wrap="wrap">
-                <Text size="sm" c="dimmed">
-                  {activePlotSummary.occupiedSpaces} assigned · {grid.rowCount || 0} rows · {grid.columnCount || 0} columns
-                </Text>
-                <Button
-                  size="xs"
-                  variant="light"
-                  leftSection={<IconLayoutGridAdd size={14} />}
-                  onClick={() => setSubdivideOpen(true)}
-                >
-                  Auto-generate areas
-                </Button>
-              </Group>
-
-              {activePlotSpaces.length === 0 ? (
-                <Box
-                  p="xl"
-                  style={{
-                    textAlign: "center",
-                    border: "1px dashed var(--mantine-color-default-border)",
-                    borderRadius: 8,
-                  }}
-                >
-                  <Text>No spaces defined inside this plot yet.</Text>
-                  <Text size="sm" c="dimmed" mt={4}>
-                    Use Garden Canvas space editing to divide this plot into assignable outdoor spaces.
-                  </Text>
-                </Box>
-              ) : (
-                <ScrollArea>
-                  <Stack gap={6}>
-                    {Array.from({ length: grid.rowCount }, (_, rowIndex) => (
-                      <div
-                        key={`row-${rowIndex}`}
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: `repeat(${Math.max(1, grid.columnCount)}, minmax(140px, 1fr))`,
-                          gap: 6,
-                        }}
-                      >
-                        {Array.from({ length: Math.max(1, grid.columnCount) }, (_, columnIndex) => {
-                          const cell = grid.cells.get(`${rowIndex}:${columnIndex}`);
-                          const primarySpace = cell?.spaces[0];
-                          const assignedPlants = primarySpace ? canvasPlantsBySpace.get(primarySpace.id) ?? [] : [];
-                          const assignedPlant = assignedPlants[0];
-                          const species = assignedPlant?.species_id != null ? speciesById.get(assignedPlant.species_id) : undefined;
-
-                          return (
-                            <PlotSpaceCard
-                              key={`${rowIndex}-${columnIndex}`}
-                              space={primarySpace}
-                              plant={assignedPlant}
-                              species={species}
-                              duplicateCount={Math.max(0, (cell?.spaces.length ?? 0) - 1) + Math.max(0, assignedPlants.length - 1)}
-                              pixelsPerUnit={gridConfig.pixelsPerUnit}
-                              unit={gridConfig.unit}
-                              onAssign={() => primarySpace && setAssigningSpaceId(primarySpace.id)}
-                              onClear={() => assignedPlant && clearAssignment.mutate(assignedPlant.id)}
-                              onOpenPlant={() => assignedPlant && navigate({
-                                to: "/plants/individuals/$plantId",
-                                params: { plantId: String(assignedPlant.id) },
-                              })}
-                            />
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </Stack>
-                </ScrollArea>
-              )}
-
-              <Text size="xs" c="dimmed">
-                Spaces are arranged from their Garden Canvas positions into a management grid for quick assignment and review.
-              </Text>
-            </Stack>
-          )}
-        </>
-      )}
-
-      {assigningSpace && (
-        <PlantAssignmentModal
-          opened
-          spaceId={assigningSpace.id}
-          spaceLabel={assigningSpace.label || undefined}
-          targetKindLabel="space"
-          currentPlantId={canvasPlantsBySpace.get(assigningSpace.id)?.[0]?.id ?? null}
-          onClose={() => setAssigningSpaceId(null)}
-          onAssigned={() => {
-            void queryClient.invalidateQueries({ queryKey: ["canvas-plants", activeEnvironmentId] });
-            void queryClient.invalidateQueries({ queryKey: ["plants-all"] });
-            setAssigningSpaceId(null);
-          }}
-        />
-      )}
-
-      {activePlot && (
-        <AreaGeneratorModal
-          opened={subdivideOpen}
-          onClose={() => setSubdivideOpen(false)}
-          onGenerate={(input) => subdividePlot.mutate(input)}
-          title={`Generate areas in ${activePlot.label || "plot"}`}
-          description="Generate planting areas from direct dimensions, target density, or explicit row and column counts."
-          unit={gridConfig.unit}
-          pixelsPerUnit={gridConfig.pixelsPerUnit}
-          containerWidthPx={activePlot.width ?? 0}
-          containerHeightPx={activePlot.height ?? 0}
-          defaultLabelPrefix="Space"
-          loading={subdividePlot.isPending}
-          submitLabel="Create areas"
-        />
-      )}
-
-      {envPlants.length === 0 && plots.length > 0 && (
-        <Text size="sm" c="dimmed">
-          No plants exist in this environment yet. Create one from an assignment dialog or from the plants workspace.
-        </Text>
-      )}
-
       <Modal
         opened={createPlotGroupOpen}
         onClose={() => setCreatePlotGroupOpen(false)}
