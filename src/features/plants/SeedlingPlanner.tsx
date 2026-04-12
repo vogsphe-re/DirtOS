@@ -149,14 +149,14 @@ function SeedlingCard({ plant, species, observations, onLogObs, onTransplant }: 
 // LogObservationModal
 // ---------------------------------------------------------------------------
 
-interface LogObservationModalProps {
+export interface LogObservationModalProps {
   plant: Plant;
   opened: boolean;
   onClose: () => void;
   onSaved: () => void;
 }
 
-function LogObservationModal({ plant, opened, onClose, onSaved }: LogObservationModalProps) {
+export function LogObservationModal({ plant, opened, onClose, onSaved }: LogObservationModalProps) {
   const [heightCm, setHeightCm] = useState<number | string>("");
   const [stemMm, setStemMm] = useState<number | string>("");
   const [leafCount, setLeafCount] = useState<number | string>("");

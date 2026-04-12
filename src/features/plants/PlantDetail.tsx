@@ -29,6 +29,7 @@ import type { Plant, PlantStatus, Species } from "./types";
 import { PLANT_STATUS_COLORS, PLANT_STATUS_LABELS } from "./types";
 import { AssetTagBadge } from "../../components/AssetTagBadge";
 import { TransplantAssignmentModal } from "./TransplantAssignmentModal";
+import { LogObservationModal } from "./SeedlingPlanner";
 
 interface PlantDetailProps {
   plantId: number;
@@ -91,6 +92,7 @@ export function PlantDetail({ plantId }: PlantDetailProps) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [transplantOpen, setTransplantOpen] = useState(false);
+  const [logObsOpen, setLogObsOpen] = useState(false);
 
   const { data: plant, isLoading, isError } = useQuery({
     queryKey: ["plant", plantId],
@@ -321,6 +323,16 @@ export function PlantDetail({ plantId }: PlantDetailProps) {
               {plant.status === "active" ? "Move" : "Transplant"}
             </Button>
           )}
+          {plant.status === "seedling" && (
+            <Button
+              size="xs"
+              variant="light"
+              color="teal"
+              onClick={() => setLogObsOpen(true)}
+            >
+              Log Growth
+            </Button>
+          )}
           <Tooltip label="Delete plant">
             <Button
               size="xs"
@@ -458,6 +470,18 @@ export function PlantDetail({ plantId }: PlantDetailProps) {
           setTransplantOpen(false);
         }}
       />
+
+      {logObsOpen && (
+        <LogObservationModal
+          plant={plant}
+          opened={logObsOpen}
+          onClose={() => setLogObsOpen(false)}
+          onSaved={() => {
+            queryClient.invalidateQueries({ queryKey: ["seedling-obs"] });
+            setLogObsOpen(false);
+          }}
+        />
+      )}
     </Stack>
   );
 }
