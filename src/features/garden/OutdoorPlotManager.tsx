@@ -1248,31 +1248,6 @@ export function OutdoorPlotManager() {
 
       <Modal
         opened={createPlotGroupOpen}
-                            }
-                          }}
-                          style={{ justifyContent: "flex-start", flex: 1, minWidth: 0 }}
-                        >
-                          <Text fw={600} lineClamp={1}>{group.name}</Text>
-                        </Button>
-                        <Group gap={4} wrap="nowrap">
-                          <Tooltip label="Edit plot group">
-                            <ActionIcon
-                              size="sm"
-                              variant="subtle"
-                              onClick={() => openEditGroupModal(group)}
-                              aria-label="Edit plot group"
-                            >
-                              <IconEdit size={14} />
-                            </ActionIcon>
-                          </Tooltip>
-                          <Tooltip label="Delete plot group">
-                            <ActionIcon
-                              size="sm"
-                              variant="subtle"
-                              color="red"
-                              onClick={() => {
-      <Modal
-        opened={createPlotGroupOpen}
         onClose={() => setCreatePlotGroupOpen(false)}
         title="Create Plot Group"
         size="sm"
