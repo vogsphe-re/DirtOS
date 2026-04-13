@@ -1,0 +1,102 @@
+{
+  "info": {
+    "name": "DirtOS Debug - EoL",
+    "description": "EoL requests mirrored from scripts/debug/eol-debug.sh and src-tauri/src/services/eol.rs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "dirtos-eol-debug"
+  },
+  "item": [
+    {
+      "name": "Search pages",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "{{ua}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{eolBase}}/api/search/1.0.json?q={{speciesQuery}}&page=1&per_page={{limit}}&exact=false"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('EoL search returns 200', function () { pm.response.to.have.status(200); });",
+              "var body = pm.response.json();",
+              "if (body && body.results && body.results.length > 0 && body.results[0].id) {",
+              "  pm.environment.set('eolPageId', String(body.results[0].id));",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Page detail",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "{{ua}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{eolBase}}/api/pages/1.0.json?id={{eolPageId}}&details=true&taxonomy=true&images_per_page=1&texts_per_page=5&language=en&videos_per_page=0&sounds_per_page=0&vetted=2"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('EoL detail returns 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "TraitBank cypher",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "{{ua}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{eolBase}}/service/cypher?query=MATCH (t:Trait)<-[:trait]-(p:Page{page_id:{{eolPageId}}}) OPTIONAL MATCH (t)-[:predicate]->(pred:Term) OPTIONAL MATCH (t)-[:object_term]->(obj:Term) RETURN pred.name, t.measurement, t.units_name, obj.name LIMIT 200",
+          "host": [
+            "{{eolBase}}"
+          ],
+          "path": [
+            "service",
+            "cypher"
+          ],
+          "query": [
+            {
+              "key": "query",
+              "value": "MATCH (t:Trait)<-[:trait]-(p:Page{page_id:{{eolPageId}}}) OPTIONAL MATCH (t)-[:predicate]->(pred:Term) OPTIONAL MATCH (t)-[:object_term]->(obj:Term) RETURN pred.name, t.measurement, t.units_name, obj.name LIMIT 200"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,194 @@
+{
+  "info": {
+    "name": "DirtOS Debug - GBIF",
+    "description": "GBIF requests mirrored from scripts/debug/gbif-debug.sh and src-tauri/src/services/gbif.rs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "dirtos-gbif-debug"
+  },
+  "item": [
+    {
+      "name": "Match species",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "{{ua}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{gbifBase}}/species/match?name={{speciesQuery}}&kingdom=Plantae&strict=false",
+          "host": [
+            "{{gbifBase}}"
+          ],
+          "path": [
+            "species",
+            "match"
+          ],
+          "query": [
+            {
+              "key": "name",
+              "value": "{{speciesQuery}}"
+            },
+            {
+              "key": "kingdom",
+              "value": "Plantae"
+            },
+            {
+              "key": "strict",
+              "value": "false"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GBIF match returns 200', function () { pm.response.to.have.status(200); });",
+              "var body = pm.response.json();",
+              "if (body && body.usageKey) { pm.environment.set('gbifUsageKey', String(body.usageKey)); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Search species",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "{{ua}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{gbifBase}}/species/search?q={{speciesQuery}}&rank=SPECIES&highertaxonKey=6&status=ACCEPTED&limit={{limit}}",
+          "host": [
+            "{{gbifBase}}"
+          ],
+          "path": [
+            "species",
+            "search"
+          ],
+          "query": [
+            {
+              "key": "q",
+              "value": "{{speciesQuery}}"
+            },
+            {
+              "key": "rank",
+              "value": "SPECIES"
+            },
+            {
+              "key": "highertaxonKey",
+              "value": "6"
+            },
+            {
+              "key": "status",
+              "value": "ACCEPTED"
+            },
+            {
+              "key": "limit",
+              "value": "{{limit}}"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GBIF search returns 200', function () { pm.response.to.have.status(200); });",
+              "var body = pm.response.json();",
+              "if (body && body.results && body.results.length > 0 && body.results[0].key) {",
+              "  pm.environment.set('gbifUsageKey', String(body.results[0].key));",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Detail by usageKey",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "{{ua}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{gbifBase}}/species/{{gbifUsageKey}}"
+      }
+    },
+    {
+      "name": "Vernacular names",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "{{ua}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{gbifBase}}/species/{{gbifUsageKey}}/vernacularNames?limit=50"
+      }
+    },
+    {
+      "name": "Species profiles",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "{{ua}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{gbifBase}}/species/{{gbifUsageKey}}/speciesProfiles?limit=50"
+      }
+    },
+    {
+      "name": "Distributions",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "{{ua}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{gbifBase}}/species/{{gbifUsageKey}}/distributions?limit=100"
+      }
+    }
+  ]
+}

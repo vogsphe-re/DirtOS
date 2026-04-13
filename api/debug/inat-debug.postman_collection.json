@@ -1,0 +1,96 @@
+{
+  "info": {
+    "name": "DirtOS Debug - iNaturalist",
+    "description": "iNaturalist requests mirrored from scripts/debug/inat-debug.sh and src-tauri/src/services/inaturalist.rs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "dirtos-inat-debug"
+  },
+  "item": [
+    {
+      "name": "Search taxa",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "{{ua}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{inatBase}}/taxa?q={{speciesQuery}}&per_page=20&rank=species,subspecies,variety&locale=en",
+          "host": [
+            "{{inatBase}}"
+          ],
+          "path": [
+            "taxa"
+          ],
+          "query": [
+            {
+              "key": "q",
+              "value": "{{speciesQuery}}"
+            },
+            {
+              "key": "per_page",
+              "value": "20"
+            },
+            {
+              "key": "rank",
+              "value": "species,subspecies,variety"
+            },
+            {
+              "key": "locale",
+              "value": "en"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('iNaturalist search returns 200', function () { pm.response.to.have.status(200); });",
+              "var body = pm.response.json();",
+              "if (body && body.results && body.results.length > 0 && body.results[0].id) {",
+              "  pm.environment.set('inatTaxonId', String(body.results[0].id));",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Taxon detail",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "{{ua}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{inatBase}}/taxa/{{inatTaxonId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('iNaturalist detail returns 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

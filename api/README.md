@@ -81,6 +81,21 @@ execute requests against the running DirtOS API directly.
 2. Set the **DirtOS — Local** environment as active.
 3. Use `{{baseUrl}}` and `{{environmentId}}` variables in your requests.
 
+### Integration Debug Pack (Postman)
+
+For external integration debugging (GBIF, iNaturalist, EoL, Trefle,
+EAN-Search, Wikipedia), import assets from [`api/debug`](./debug/):
+
+1. Import [`DirtOS.integrations.postman_environment.json`](./debug/DirtOS.integrations.postman_environment.json).
+2. Import one or more `*-debug.postman_collection.json` collections from [`api/debug`](./debug/).
+3. (Optional) Sync secrets from `.env` by running:
+
+```bash
+./scripts/debug/postman-debug.sh
+```
+
+See [`api/debug/README.md`](./debug/README.md) for full details.
+
 ## CORS
 
 The API allows requests from any origin, so browser-based tools and local web

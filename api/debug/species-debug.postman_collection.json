@@ -1,0 +1,95 @@
+{
+  "info": {
+    "name": "DirtOS Debug - Species Multi Source",
+    "description": "Cross-provider query pack aligned with scripts/debug/species-debug.sh",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "dirtos-species-multi-debug"
+  },
+  "item": [
+    {
+      "name": "GBIF search",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "{{ua}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{gbifBase}}/species/search?q={{speciesQuery}}&rank=SPECIES&highertaxonKey=6&status=ACCEPTED&limit={{limit}}"
+      }
+    },
+    {
+      "name": "iNaturalist search",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "{{ua}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{inatBase}}/taxa?q={{speciesQuery}}&per_page=20&rank=species,subspecies,variety&locale=en"
+      }
+    },
+    {
+      "name": "EoL search",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "{{ua}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{eolBase}}/api/search/1.0.json?q={{speciesQuery}}&page=1&per_page={{limit}}&exact=false"
+      }
+    },
+    {
+      "name": "Trefle search",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "{{ua}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{trefleBase}}/plants/search?q={{speciesQuery}}&token={{trefleToken}}"
+      }
+    },
+    {
+      "name": "Wikipedia OpenSearch",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "{{ua}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{wikiApiBase}}?action=opensearch&search={{speciesQuery}}&limit={{limit}}&namespace=0&format=json&redirects=resolve"
+      }
+    }
+  ]
+}

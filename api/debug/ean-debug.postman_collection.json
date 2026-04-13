@@ -1,0 +1,48 @@
+{
+  "info": {
+    "name": "DirtOS Debug - EAN Search",
+    "description": "EAN-Search requests mirrored from scripts/debug/ean-debug.sh and src-tauri/src/services/ean_search.rs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "dirtos-ean-debug"
+  },
+  "item": [
+    {
+      "name": "Lookup public (no token)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "{{ua}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{eanBase}}?ean={{eanCode}}"
+      }
+    },
+    {
+      "name": "Lookup with token",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "{{ua}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "token",
+            "value": "{{eanToken}}"
+          }
+        ],
+        "url": "{{eanBase}}?ean={{eanCode}}"
+      }
+    }
+  ]
+}

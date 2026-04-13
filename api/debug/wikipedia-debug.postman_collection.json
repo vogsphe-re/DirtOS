@@ -1,0 +1,68 @@
+{
+  "info": {
+    "name": "DirtOS Debug - Wikipedia",
+    "description": "Wikipedia requests mirrored from scripts/debug/wikipedia-debug.sh and src-tauri/src/services/wikipedia.rs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "dirtos-wikipedia-debug"
+  },
+  "item": [
+    {
+      "name": "OpenSearch",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "{{ua}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{wikiApiBase}}?action=opensearch&search={{speciesQuery}}&limit={{limit}}&namespace=0&format=json&redirects=resolve"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Wikipedia search returns 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Page summary",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "{{ua}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{wikiRestBase}}/page/summary/{{wikiTitle}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Wikipedia summary returns 200 or 404', function () {",
+              "  pm.expect([200, 404]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

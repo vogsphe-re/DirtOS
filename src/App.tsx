@@ -8,6 +8,7 @@ import { routeTree } from "./routeTree.gen";
 import { useAppStore } from "./stores/appStore";
 import { dirtTheme, gruvboxResolver } from "./theme/config";
 
+/*
 import bg03 from "../assets/background/active/bg03.jpg";
 import bg13 from "../assets/background/active/bg13.jpg";
 import bg14 from "../assets/background/active/bg14.jpg";
@@ -16,7 +17,7 @@ import bg16 from "../assets/background/active/bg16.jpg";
 import bg17 from "../assets/background/active/bg17.jpg";
 import bg18 from "../assets/background/active/bg18.jpg";
 
-const BG_IMAGES = [bg03, bg13, bg14, bg15, bg16, bg17, bg18, bg18, bg18, bg18, bg18]; // Duplicate some images to increase their chances of being selected
+const BG_IMAGES = [bg03, bg13, bg14, bg15, bg16, bg17, bg18]; // Duplicate some images to increase their chances of being selected
 const sessionBg = BG_IMAGES[Math.floor(Math.random() * BG_IMAGES.length)];
 
 const queryClient = new QueryClient({
@@ -27,6 +28,9 @@ const queryClient = new QueryClient({
     },
   },
 });
+*/
+import bg18 from "../assets/background/active/bg18.jpg";
+const sessionBg = bg18;
 
 const router = createRouter({ routeTree });
 
@@ -74,8 +78,8 @@ function ThemedApp() {
           backgroundSize: "cover",
           backgroundPosition: "center",
           opacity: 0.9,  // Subtle opacity for the background image
-          filter: "blur(0)", // Slight blur for a softer look
-          transform: "scale(1.0)",
+          filter: "blur(3px)", // Slight blur for a softer look
+          transform: "scale(1.1)",
           pointerEvents: "none",
         }}
       />

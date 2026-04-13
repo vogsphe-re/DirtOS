@@ -1,0 +1,70 @@
+{
+  "info": {
+    "name": "DirtOS Debug - Trefle",
+    "description": "Trefle requests mirrored from scripts/debug/trefle-debug.sh and src-tauri/src/services/trefle.rs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "dirtos-trefle-debug"
+  },
+  "item": [
+    {
+      "name": "Search plants",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "{{ua}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{trefleBase}}/plants/search?q={{speciesQuery}}&token={{trefleToken}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Trefle search returns 200', function () { pm.response.to.have.status(200); });",
+              "var body = pm.response.json();",
+              "if (body && body.data && body.data.length > 0 && body.data[0].id) {",
+              "  pm.environment.set('treflePlantId', String(body.data[0].id));",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Plant detail",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "{{ua}}"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{trefleBase}}/plants/{{treflePlantId}}?token={{trefleToken}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Trefle detail returns 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
