@@ -70,9 +70,9 @@ Open [`swagger-ui.html`](./swagger-ui.html) in a browser. It loads
 [`openapi.yaml`](./openapi.yaml) from the same directory and lets you
 execute requests against the running DirtOS API directly.
 
-> **Note:** Browsers enforce CORS for file:// origins. Serve the file locally
-> if you hit CORS issues:
-> `npx serve api` then open [http://localhost:3000/swagger-ui.html](http://localhost:3000/swagger-ui.html)
+The page now includes an embedded fallback copy of the spec, so opening
+`swagger-ui.html` directly from disk also works in browsers that block
+`file://` fetches.
 
 ### Postman
 

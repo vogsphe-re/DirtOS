@@ -196,13 +196,8 @@ The `api/` directory at the project root contains:
 Open `api/swagger-ui.html` in a browser while DirtOS is running. The **Try it
 out** button on each operation sends live requests to the API.
 
-> If you load the file directly via `file://`, some browsers may block the
-> request. Serve the directory locally if needed:
->
-> ```bash
-> npx serve api/
-> # open http://localhost:3000/swagger-ui.html
-> ```
+The page includes an embedded fallback copy of the OpenAPI spec, so it also
+works when opened directly from `file://`.
 
 ### Using Postman
 
@@ -215,14 +210,17 @@ out** button on each operation sends live requests to the API.
 1. Import `api/debug/DirtOS.integrations.postman_environment.json`.
 2. Import one or more collections from `api/debug/`.
 3. Run `./scripts/debug/postman-debug.sh` to sync `trefleToken` and `eanToken` from `.env`.
-4. Execute requests in the order documented for each provider:
-  - [`api/debug/gbif-debug.README.md`](../../api/debug/gbif-debug.README.md)
-  - [`api/debug/inat-debug.README.md`](../../api/debug/inat-debug.README.md)
-  - [`api/debug/eol-debug.README.md`](../../api/debug/eol-debug.README.md)
-  - [`api/debug/trefle-debug.README.md`](../../api/debug/trefle-debug.README.md)
-  - [`api/debug/ean-debug.README.md`](../../api/debug/ean-debug.README.md)
-  - [`api/debug/wikipedia-debug.README.md`](../../api/debug/wikipedia-debug.README.md)
-  - [`api/debug/species-debug.README.md`](../../api/debug/species-debug.README.md)
+4. Execute requests in the order documented for each provider.
+
+Provider docs:
+
+- [`api/debug/gbif-debug.README.md`](../../api/debug/gbif-debug.README.md)
+- [`api/debug/inat-debug.README.md`](../../api/debug/inat-debug.README.md)
+- [`api/debug/eol-debug.README.md`](../../api/debug/eol-debug.README.md)
+- [`api/debug/trefle-debug.README.md`](../../api/debug/trefle-debug.README.md)
+- [`api/debug/ean-debug.README.md`](../../api/debug/ean-debug.README.md)
+- [`api/debug/wikipedia-debug.README.md`](../../api/debug/wikipedia-debug.README.md)
+- [`api/debug/species-debug.README.md`](../../api/debug/species-debug.README.md)
 
 Expected provider-specific behavior while testing:
 
