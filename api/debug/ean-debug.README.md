@@ -16,10 +16,12 @@ Debug EAN-Search barcode lookup behavior in both anonymous and token-authenticat
 ## Requests
 
 1. `Lookup public (no token)`
+
 - Endpoint: `GET {{eanBase}}?ean={{eanCode}}`
 - Notes: Uses no token header.
 
-2. `Lookup with token`
+1. `Lookup with token`
+
 - Endpoint: `GET {{eanBase}}?ean={{eanCode}}`
 - Notes: Sends `token: {{eanToken}}` header.
 

@@ -16,10 +16,12 @@ Debug iNaturalist taxon search and taxon detail calls used by DirtOS.
 ## Requests
 
 1. `Search taxa`
+
 - Endpoint: `GET {{inatBase}}/taxa`
 - Notes: Sets `inatTaxonId` from the first result `id`.
 
-2. `Taxon detail`
+1. `Taxon detail`
+
 - Endpoint: `GET {{inatBase}}/taxa/{{inatTaxonId}}`
 
 ## Quick Run Order

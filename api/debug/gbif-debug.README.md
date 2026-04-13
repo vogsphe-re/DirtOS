@@ -17,23 +17,29 @@ Debug GBIF species match/search/enrichment calls used by DirtOS.
 ## Requests
 
 1. `Match species`
+
 - Endpoint: `GET {{gbifBase}}/species/match`
 - Notes: Sets `gbifUsageKey` from `usageKey` when available.
 
-2. `Search species`
+1. `Search species`
+
 - Endpoint: `GET {{gbifBase}}/species/search`
 - Notes: Sets `gbifUsageKey` from the first result key.
 
-3. `Detail by usageKey`
+1. `Detail by usageKey`
+
 - Endpoint: `GET {{gbifBase}}/species/{{gbifUsageKey}}`
 
-4. `Vernacular names`
+1. `Vernacular names`
+
 - Endpoint: `GET {{gbifBase}}/species/{{gbifUsageKey}}/vernacularNames?limit=50`
 
-5. `Species profiles`
+1. `Species profiles`
+
 - Endpoint: `GET {{gbifBase}}/species/{{gbifUsageKey}}/speciesProfiles?limit=50`
 
-6. `Distributions`
+1. `Distributions`
+
 - Endpoint: `GET {{gbifBase}}/species/{{gbifUsageKey}}/distributions?limit=100`
 
 ## Quick Run Order

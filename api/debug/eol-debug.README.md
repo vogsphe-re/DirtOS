@@ -17,13 +17,16 @@ Debug Encyclopedia of Life search, page detail, and TraitBank Cypher calls used 
 ## Requests
 
 1. `Search pages`
+
 - Endpoint: `GET {{eolBase}}/api/search/1.0.json`
 - Notes: Sets `eolPageId` from the first search result `id`.
 
-2. `Page detail`
+1. `Page detail`
+
 - Endpoint: `GET {{eolBase}}/api/pages/1.0.json`
 
-3. `TraitBank cypher`
+1. `TraitBank cypher`
+
 - Endpoint: `GET {{eolBase}}/service/cypher`
 - Notes: Query uses `eolPageId` in a Cypher expression.
 
