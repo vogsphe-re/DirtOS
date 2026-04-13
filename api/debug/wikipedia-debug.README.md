@@ -17,11 +17,13 @@ Debug Wikipedia OpenSearch and page summary calls used by DirtOS.
 
 ## Requests
 
-1. `OpenSearch`
+### OpenSearch
+
 - Endpoint: `GET {{wikiApiBase}}`
 - Notes: Returns candidate titles for `speciesQuery`.
 
-2. `Page summary`
+### Page summary
+
 - Endpoint: `GET {{wikiRestBase}}/page/summary/{{wikiTitle}}`
 - Notes: Collection test accepts `200` or `404`.
 

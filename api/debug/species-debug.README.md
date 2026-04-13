@@ -20,20 +20,25 @@ Run one species query across all major external providers used by DirtOS.
 
 ## Requests
 
-1. `GBIF search`
+### `GBIF search`
+
 - Endpoint: `GET {{gbifBase}}/species/search`
 
-2. `iNaturalist search`
+### `iNaturalist search`
+
 - Endpoint: `GET {{inatBase}}/taxa`
 
-3. `EoL search`
+### `EoL search`
+
 - Endpoint: `GET {{eolBase}}/api/search/1.0.json`
 
-4. `Trefle search`
+### `Trefle search`
+
 - Endpoint: `GET {{trefleBase}}/plants/search`
 - Notes: Requires `trefleToken`.
 
-5. `Wikipedia OpenSearch`
+### `Wikipedia OpenSearch`
+
 - Endpoint: `GET {{wikiApiBase}}`
 
 ## Quick Run Order

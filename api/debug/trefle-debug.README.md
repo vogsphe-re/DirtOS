@@ -16,11 +16,13 @@ Debug Trefle search and detail calls used by DirtOS enrichment flows.
 
 ## Requests
 
-1. `Search plants`
+### `Search plants`
+
 - Endpoint: `GET {{trefleBase}}/plants/search`
 - Notes: Requires `trefleToken`. Sets `treflePlantId` from the first result `id`.
 
-2. `Plant detail`
+### `Plant detail`
+
 - Endpoint: `GET {{trefleBase}}/plants/{{treflePlantId}}?token={{trefleToken}}`
 
 ## Quick Run Order
