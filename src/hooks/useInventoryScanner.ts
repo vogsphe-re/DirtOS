@@ -34,7 +34,10 @@ export function useInventoryScanner(
   const buffer = useRef<string>('');
   const lastTime = useRef<number>(0);
   const onScanRef = useRef(onScan);
-  onScanRef.current = onScan;
+
+  useEffect(() => {
+    onScanRef.current = onScan;
+  }, [onScan]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     const now = Date.now();

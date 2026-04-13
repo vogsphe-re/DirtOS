@@ -563,8 +563,12 @@ export function SpeciesDetail({ speciesId }: SpeciesDetailProps) {
               <InfoItem label="Establishment" value={species.establishment_means} />
             </SimpleGrid>
             {species.tags && (() => {
-              let parsed: string[] = [];
-              try { parsed = JSON.parse(species.tags); } catch {}
+              let parsed: string[];
+              try {
+                parsed = JSON.parse(species.tags);
+              } catch {
+                parsed = [];
+              }
               return parsed.length > 0 ? (
                 <Group gap="xs" mt="xs">
                   {parsed.map((tag) => (

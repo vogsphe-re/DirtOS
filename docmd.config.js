@@ -3,7 +3,7 @@ const path = require("node:path");
 const { defineConfig } = require("@docmd/core");
 
 const docsVersioning = JSON.parse(
-  readFileSync(path.resolve(__dirname, "docs.versions.json"), "utf8"),
+  readFileSync(path.resolve(__dirname, "docs.versions.json"), "utf8")
 );
 
 const siteUrl = docsVersioning.siteUrl || "";
@@ -89,7 +89,11 @@ module.exports = defineConfig({
       children: [
         { title: "Core Workflow", path: "guides/core-workflow", icon: "workflow" },
         { title: "Common Tasks", path: "guides/common-tasks", icon: "check-square" },
-        { title: "Import, Export, Backup", path: "guides/import-export-backup", icon: "database-backup" },
+        {
+          title: "Import, Export, Backup",
+          path: "guides/import-export-backup",
+          icon: "database-backup",
+        },
         { title: "Integrations", path: "guides/integrations", icon: "plug" },
       ],
     },
@@ -98,7 +102,11 @@ module.exports = defineConfig({
       icon: "file-text",
       children: [
         { title: "Feature Matrix", path: "reference/feature-matrix", icon: "layout-grid" },
-        { title: "Environments & Locations", path: "reference/environments-locations", icon: "map" },
+        {
+          title: "Environments & Locations",
+          path: "reference/environments-locations",
+          icon: "map",
+        },
         { title: "Plants & Species", path: "reference/plants-species", icon: "sprout" },
         { title: "Seedlings & Trays", path: "reference/seedlings-trays", icon: "grid-3x3" },
         { title: "Indoor Environments", path: "reference/indoor-environments", icon: "warehouse" },
@@ -108,7 +116,11 @@ module.exports = defineConfig({
         { title: "Journal", path: "reference/journal", icon: "notebook" },
         { title: "Weather", path: "reference/weather", icon: "cloud-sun" },
         { title: "Reports", path: "reference/reports", icon: "bar-chart-3" },
-        { title: "Integrations & API Keys", path: "reference/integrations-and-keys", icon: "key-round" },
+        {
+          title: "Integrations & API Keys",
+          path: "reference/integrations-and-keys",
+          icon: "key-round",
+        },
         { title: "Architecture", path: "reference/architecture", icon: "blocks" },
         { title: "Glossary", path: "reference/glossary", icon: "list" },
       ],

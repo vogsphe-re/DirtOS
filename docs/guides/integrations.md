@@ -41,19 +41,19 @@ same request patterns used by DirtOS scripts and services.
 ### Collection run order
 
 - GBIF: `Match species` or `Search species` → detail/resources (`gbifUsageKey` auto-set).
-	See [`api/debug/gbif-debug.README.md`](../../api/debug/gbif-debug.README.md).
+  See [`api/debug/gbif-debug.README.md`](../../api/debug/gbif-debug.README.md).
 - iNaturalist: `Search taxa` → `Taxon detail` (`inatTaxonId` auto-set).
-	See [`api/debug/inat-debug.README.md`](../../api/debug/inat-debug.README.md).
+  See [`api/debug/inat-debug.README.md`](../../api/debug/inat-debug.README.md).
 - EoL: `Search pages` → `Page detail` → `TraitBank cypher` (`eolPageId` auto-set).
-	See [`api/debug/eol-debug.README.md`](../../api/debug/eol-debug.README.md).
+  See [`api/debug/eol-debug.README.md`](../../api/debug/eol-debug.README.md).
 - Trefle: `Search plants` → `Plant detail` (`treflePlantId` auto-set, token required).
-	See [`api/debug/trefle-debug.README.md`](../../api/debug/trefle-debug.README.md).
+  See [`api/debug/trefle-debug.README.md`](../../api/debug/trefle-debug.README.md).
 - EAN Search: `Lookup public (no token)` and `Lookup with token` for side-by-side behavior.
-	See [`api/debug/ean-debug.README.md`](../../api/debug/ean-debug.README.md).
+  See [`api/debug/ean-debug.README.md`](../../api/debug/ean-debug.README.md).
 - Wikipedia: `OpenSearch` → set `wikiTitle` → `Page summary`.
-	See [`api/debug/wikipedia-debug.README.md`](../../api/debug/wikipedia-debug.README.md).
+  See [`api/debug/wikipedia-debug.README.md`](../../api/debug/wikipedia-debug.README.md).
 - Multi-source comparison: run the cross-provider collection with one query.
-	See [`api/debug/species-debug.README.md`](../../api/debug/species-debug.README.md).
+  See [`api/debug/species-debug.README.md`](../../api/debug/species-debug.README.md).
 
 ### Known API behavior during development
 
