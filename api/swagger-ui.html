@@ -2308,7 +2308,6 @@ components:
   </script>
   <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
   <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
-  <script src="https://unpkg.com/js-yaml@4/dist/js-yaml.min.js"></script>
   <script>
     window.onload = function () {
       var swaggerConfig = {
@@ -2327,7 +2326,9 @@ components:
       };
 
       if (window.location.protocol === "file:") {
-        swaggerConfig.spec = jsyaml.load(document.getElementById("openapi-spec").textContent);
+        swaggerConfig.url =
+          "data:application/yaml;charset=utf-8," +
+          encodeURIComponent(document.getElementById("openapi-spec").textContent.replace(/^\n/, ""));
       } else {
         swaggerConfig.url = "./openapi.yaml";
       }
