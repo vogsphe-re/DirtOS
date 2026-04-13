@@ -24,7 +24,7 @@ import { useAppStore } from "../stores/appStore";
 
 const NAV_ITEMS = [
   { label: "Dashboard", icon: IconLayoutDashboard, to: "/" as const },
-  { label: "Garden", icon: IconMap2, to: "/garden/plots" as const },
+  { label: "Outdoor", icon: IconMap2, to: "/garden/plots" as const },
   { label: "Plants", icon: IconLeaf, to: "/plants" as const },
   { label: "Seedlings", icon: IconSeeding, to: "/plants/seedlings" as const },
   { label: "Trays", icon: IconGridDots, to: "/plants/trays" as const },

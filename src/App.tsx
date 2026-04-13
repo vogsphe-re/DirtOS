@@ -16,7 +16,7 @@ import bg16 from "../assets/background/active/bg16.jpg";
 import bg17 from "../assets/background/active/bg17.jpg";
 import bg18 from "../assets/background/active/bg18.jpg";
 
-const BG_IMAGES = [bg03, bg13, bg14, bg15, bg16, bg17, bg18];
+const BG_IMAGES = [bg03, bg13, bg14, bg15, bg16, bg17, bg18, bg18, bg18, bg18, bg18]; // Duplicate some images to increase their chances of being selected
 const sessionBg = BG_IMAGES[Math.floor(Math.random() * BG_IMAGES.length)];
 
 const queryClient = new QueryClient({

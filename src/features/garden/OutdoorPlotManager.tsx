@@ -339,15 +339,15 @@ function PlotSpaceCard({
   return (
     <Card withBorder padding="sm" radius="md" style={{ minHeight: 148 }}>
       <Stack gap="xs" h="100%">
-        <Group justify="space-between" align="flex-start" wrap="nowrap">
-          <Stack gap={2} style={{ flex: 1 }}>
-            <Text fw={600} size="sm" lineClamp={1}>{plant.name}</Text>
-            <Text size="xs" c="dimmed" lineClamp={1}>{spaceTitle}</Text>
-          </Stack>
-          <Group gap={4} wrap="nowrap">
-            <Badge variant="light" color={PLANT_STATUS_COLORS[plant.status]} size="xs">
-              {PLANT_STATUS_LABELS[plant.status]}
-            </Badge>
+        <Stack gap={1}>
+          <Text fw={600} size="sm" lineClamp={2}>{plant.name}</Text>
+          <Text size="xs" c="dimmed" lineClamp={2}>{spaceTitle}</Text>
+        </Stack>
+        <Group justify="space-between" align="center" wrap="nowrap" gap={6}>
+          <Badge variant="light" color={PLANT_STATUS_COLORS[plant.status]} size="xs">
+            {PLANT_STATUS_LABELS[plant.status]}
+          </Badge>
+          <Group gap={4} wrap="nowrap" style={{ flexShrink: 0 }}>
             {onOpenPlant && (
               <Tooltip label="Open plant details">
                 <ActionIcon size="sm" variant="subtle" onClick={onOpenPlant}>
