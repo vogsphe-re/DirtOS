@@ -187,6 +187,8 @@ The `api/` directory at the project root contains:
 | [`openapi.yaml`](../../api/openapi.yaml) | Full OpenAPI 3.1 spec with schemas for every resource |
 | [`swagger-ui.html`](../../api/swagger-ui.html) | Swagger UI — open in a browser to browse and execute requests |
 | [`DirtOS.postman_environment.json`](../../api/DirtOS.postman_environment.json) | Postman environment with `baseUrl` and `environmentId` variables |
+| [`api/debug/DirtOS.integrations.postman_environment.json`](../../api/debug/DirtOS.integrations.postman_environment.json) | Postman environment for external provider debugging |
+| [`api/debug/*.postman_collection.json`](../../api/debug/README.md) | Provider-specific Postman collections (GBIF, iNaturalist, EoL, Trefle, EAN, Wikipedia, cross-source) |
 | [`README.md`](../../api/README.md) | Integration quick-start with n8n and Home Assistant examples |
 
 ### Using Swagger UI
@@ -207,6 +209,26 @@ out** button on each operation sends live requests to the API.
 1. **Environments → Import** → select `api/DirtOS.postman_environment.json`.
 2. Set **DirtOS — Local** as the active environment.
 3. Use `{{baseUrl}}` and `{{environmentId}}` variables in requests.
+
+### Using Postman for provider development
+
+1. Import `api/debug/DirtOS.integrations.postman_environment.json`.
+2. Import one or more collections from `api/debug/`.
+3. Run `./scripts/debug/postman-debug.sh` to sync `trefleToken` and `eanToken` from `.env`.
+4. Execute requests in the order documented for each provider:
+  - [`api/debug/gbif-debug.README.md`](../../api/debug/gbif-debug.README.md)
+  - [`api/debug/inat-debug.README.md`](../../api/debug/inat-debug.README.md)
+  - [`api/debug/eol-debug.README.md`](../../api/debug/eol-debug.README.md)
+  - [`api/debug/trefle-debug.README.md`](../../api/debug/trefle-debug.README.md)
+  - [`api/debug/ean-debug.README.md`](../../api/debug/ean-debug.README.md)
+  - [`api/debug/wikipedia-debug.README.md`](../../api/debug/wikipedia-debug.README.md)
+  - [`api/debug/species-debug.README.md`](../../api/debug/species-debug.README.md)
+
+Expected provider-specific behavior while testing:
+
+- EoL TraitBank Cypher may return `401`.
+- EAN public mode can be rate-limited.
+- Trefle endpoints require a token.
 
 ## Integration patterns
 

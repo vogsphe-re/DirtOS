@@ -19,6 +19,48 @@ sensors, issues, journal entries, and harvests — and is designed for:
 See the [REST API reference](../reference/rest-api.md) for the full endpoint list,
 request/response schemas, and integration examples.
 
+## Development
+
+Use the integration debug Postman pack to validate provider behavior against the
+same request patterns used by DirtOS scripts and services.
+
+### Development assets
+
+- Environment: [`api/debug/DirtOS.integrations.postman_environment.json`](../../api/debug/DirtOS.integrations.postman_environment.json)
+- Collection docs index: [`api/debug/README.md`](../../api/debug/README.md)
+- Token sync helper: [`scripts/debug/postman-debug.sh`](../../scripts/debug/postman-debug.sh)
+
+### Setup workflow
+
+1. Import `api/debug/DirtOS.integrations.postman_environment.json` into Postman.
+2. Import the provider collection(s) you want to debug from `api/debug/`.
+3. Run `./scripts/debug/postman-debug.sh` to sync provider tokens from `.env`.
+4. Set `speciesQuery` (and `limit` if needed) in the Postman environment.
+5. Run each collection in its documented order to auto-populate IDs.
+
+### Collection run order
+
+- GBIF: `Match species` or `Search species` → detail/resources (`gbifUsageKey` auto-set).
+	See [`api/debug/gbif-debug.README.md`](../../api/debug/gbif-debug.README.md).
+- iNaturalist: `Search taxa` → `Taxon detail` (`inatTaxonId` auto-set).
+	See [`api/debug/inat-debug.README.md`](../../api/debug/inat-debug.README.md).
+- EoL: `Search pages` → `Page detail` → `TraitBank cypher` (`eolPageId` auto-set).
+	See [`api/debug/eol-debug.README.md`](../../api/debug/eol-debug.README.md).
+- Trefle: `Search plants` → `Plant detail` (`treflePlantId` auto-set, token required).
+	See [`api/debug/trefle-debug.README.md`](../../api/debug/trefle-debug.README.md).
+- EAN Search: `Lookup public (no token)` and `Lookup with token` for side-by-side behavior.
+	See [`api/debug/ean-debug.README.md`](../../api/debug/ean-debug.README.md).
+- Wikipedia: `OpenSearch` → set `wikiTitle` → `Page summary`.
+	See [`api/debug/wikipedia-debug.README.md`](../../api/debug/wikipedia-debug.README.md).
+- Multi-source comparison: run the cross-provider collection with one query.
+	See [`api/debug/species-debug.README.md`](../../api/debug/species-debug.README.md).
+
+### Known API behavior during development
+
+- EoL TraitBank can return `401 Unauthorized` depending on API access policy.
+- EAN anonymous requests can be rate-limited or rejected without a token.
+- Trefle requests require `trefleToken`.
+
 ## Core integration areas
 
 - Weather provider settings
