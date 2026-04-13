@@ -7,12 +7,19 @@ external integrations used by DirtOS debug scripts in `scripts/debug/`.
 
 - `DirtOS.integrations.postman_environment.json`
 - `gbif-debug.postman_collection.json`
+- `gbif-debug.README.md`
 - `inat-debug.postman_collection.json`
+- `inat-debug.README.md`
 - `eol-debug.postman_collection.json`
+- `eol-debug.README.md`
 - `trefle-debug.postman_collection.json`
+- `trefle-debug.README.md`
 - `ean-debug.postman_collection.json`
+- `ean-debug.README.md`
 - `wikipedia-debug.postman_collection.json`
+- `wikipedia-debug.README.md`
 - `species-debug.postman_collection.json`
+- `species-debug.README.md`
 
 ## Import Order
 
