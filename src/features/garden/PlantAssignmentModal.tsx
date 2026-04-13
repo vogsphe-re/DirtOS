@@ -24,10 +24,14 @@ interface PlantAssignmentModalProps {
   spaceId: string;
   /** canvas-level label for the space, shown in title */
   spaceLabel?: string;
+  /** linked DB location for the target space when one exists */
+  targetLocationId?: number | null;
   /** semantic label shown in the dialog title */
   targetKindLabel?: string;
   /** If already assigned, the current plant id */
   currentPlantId?: number | null;
+  /** Controls whether clearing removes only the canvas link or the full local assignment. */
+  clearAssignmentMode?: "canvas-only" | "local-assignment";
   onClose: () => void;
   onAssigned: (plantId: number | null) => void;
 }
@@ -36,13 +40,24 @@ export function PlantAssignmentModal({
   opened,
   spaceId,
   spaceLabel,
+  targetLocationId = null,
   targetKindLabel = "space",
   currentPlantId,
+  clearAssignmentMode = "canvas-only",
   onClose,
   onAssigned,
 }: PlantAssignmentModalProps) {
   const activeEnvId = useAppStore((s) => s.activeEnvironmentId);
   const queryClient = useQueryClient();
+
+  const clearCurrentAssignment = async (plantId: number) => {
+    const result = clearAssignmentMode === "local-assignment"
+      ? await commands.clearPlantLocalAssignment(plantId)
+      : await commands.unassignPlantFromCanvasObject(plantId);
+
+    if (result.status === "error") throw new Error(result.error);
+    return result.data;
+  };
 
   // Existing assignable plants
   const { data: allPlants = [], isLoading: plantsLoading } = useQuery({
@@ -86,12 +101,11 @@ export function PlantAssignmentModal({
       if (!newName.trim()) throw new Error("Plant name is required");
       if (!activeEnvId) throw new Error("No active environment");
       if (currentPlantId) {
-        const clearResult = await commands.unassignPlantFromCanvasObject(currentPlantId);
-        if (clearResult.status === "error") throw new Error(clearResult.error);
+        await clearCurrentAssignment(currentPlantId);
       }
       const res = await commands.createPlant({
         species_id: newSpeciesId ? parseInt(newSpeciesId) : null,
-        location_id: null,
+        location_id: targetLocationId,
         environment_id: activeEnvId,
         status: "planned",
         name: newName.trim(),
@@ -122,10 +136,9 @@ export function PlantAssignmentModal({
       if (!pickedPlantId) throw new Error("No plant selected");
       const plantId = parseInt(pickedPlantId);
       if (currentPlantId && currentPlantId !== plantId) {
-        const clearResult = await commands.unassignPlantFromCanvasObject(currentPlantId);
-        if (clearResult.status === "error") throw new Error(clearResult.error);
+        await clearCurrentAssignment(currentPlantId);
       }
-      const res = await commands.assignPlantToCanvasObject(plantId, spaceId, null);
+      const res = await commands.assignPlantToCanvasObject(plantId, spaceId, targetLocationId);
       if (res.status === "error") throw new Error(res.error);
       return res.data as Plant;
     },
@@ -141,8 +154,7 @@ export function PlantAssignmentModal({
   const doClearAssignment = useMutation({
     mutationFn: async () => {
       if (!currentPlantId) return;
-      const res = await commands.unassignPlantFromCanvasObject(currentPlantId);
-      if (res.status === "error") throw new Error(res.error);
+      await clearCurrentAssignment(currentPlantId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["plants-all"] });

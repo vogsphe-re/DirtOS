@@ -292,6 +292,28 @@ pub async fn unassign_plant_from_canvas_object(
         .ok_or(sqlx::Error::RowNotFound)
 }
 
+/// Clear a plant's local garden assignment by removing both location_id and
+/// canvas_object_id.
+pub async fn clear_plant_local_assignment(
+    pool: &SqlitePool,
+    plant_id: i64,
+) -> Result<Plant, sqlx::Error> {
+    sqlx::query(
+        "UPDATE plants
+         SET canvas_object_id = NULL,
+             location_id = NULL,
+             updated_at = datetime('now')
+         WHERE id = ?",
+    )
+    .bind(plant_id)
+    .execute(pool)
+    .await?;
+
+    get_plant(pool, plant_id)
+        .await?
+        .ok_or(sqlx::Error::RowNotFound)
+}
+
 /// Return all plants in an environment that are assigned to a canvas object.
 pub async fn get_plants_for_canvas(
     pool: &SqlitePool,

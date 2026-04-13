@@ -35,6 +35,7 @@ import { generatePlotPrefix } from "./plotNameGenerator";
 import type { CanvasObject } from "./types";
 
 const CANVAS_PLOT_GROUP_LINK_NOTE_PREFIX = "plot-group-location-id:";
+const CANVAS_PLOT_SPACE_LINK_NOTE_PREFIX = "plot-space-location-id:";
 
 function toGridRowLabel(index: number): string {
   let label = "";
@@ -52,12 +53,46 @@ function plotGroupLinkNote(locationId: number): string {
   return `${CANVAS_PLOT_GROUP_LINK_NOTE_PREFIX}${locationId}`;
 }
 
+function plotSpaceLinkNote(locationId: number): string {
+  return `${CANVAS_PLOT_SPACE_LINK_NOTE_PREFIX}${locationId}`;
+}
+
 function readLinkedPlotGroupLocationId(notes?: string | null): number | null {
   if (!notes) return null;
   const match = notes.match(/plot-group-location-id:(\d+)/);
   if (!match) return null;
   const parsed = Number(match[1]);
   return Number.isInteger(parsed) ? parsed : null;
+}
+
+function readLinkedPlotSpaceLocationId(notes?: string | null): number | null {
+  if (!notes) return null;
+  const match = notes.match(/plot-space-location-id:(\d+)/);
+  if (!match) return null;
+  const parsed = Number(match[1]);
+  return Number.isInteger(parsed) ? parsed : null;
+}
+
+function mergeCanvasLinkNotes(...notes: Array<string | null | undefined>): string | null {
+  const values = notes
+    .map((note) => note?.trim())
+    .filter((note): note is string => Boolean(note));
+
+  return values.length > 0 ? values.join("\n") : null;
+}
+
+function normalizeSpaceLookupKey(value?: string | null): string | null {
+  const normalized = value?.trim().replace(/\s+/g, " ").toLowerCase();
+  return normalized ? normalized : null;
+}
+
+function sortPlotSpaceLocations(locations: Location[]): Location[] {
+  return [...locations].sort(
+    (left, right) =>
+      (left.position_y ?? 0) - (right.position_y ?? 0)
+      || (left.position_x ?? 0) - (right.position_x ?? 0)
+      || left.name.localeCompare(right.name),
+  );
 }
 
 function parsePositiveInteger(value: number | string, label: string): number {
@@ -411,17 +446,6 @@ export function OutdoorPlotManager() {
     enabled: activeEnvironmentId != null,
   });
 
-  const { data: canvasPlants = [] } = useQuery({
-    queryKey: ["canvas-plants", activeEnvironmentId],
-    queryFn: async () => {
-      if (activeEnvironmentId == null) return [] as Plant[];
-      const result = await commands.getPlantsForCanvas(activeEnvironmentId);
-      if (result.status === "error") throw new Error(result.error);
-      return result.data as Plant[];
-    },
-    enabled: activeEnvironmentId != null,
-  });
-
   const { data: speciesList = [] } = useQuery({
     queryKey: ["species", null, null, null, null, 500, 0],
     queryFn: async () => {
@@ -445,7 +469,7 @@ export function OutdoorPlotManager() {
 
   const clearAssignment = useMutation({
     mutationFn: async (plantId: number) => {
-      const result = await commands.unassignPlantFromCanvasObject(plantId);
+      const result = await commands.clearPlantLocalAssignment(plantId);
       if (result.status === "error") throw new Error(result.error);
       return result.data;
     },
@@ -476,17 +500,18 @@ export function OutdoorPlotManager() {
 
       const existingSpaces = objects.filter((object) => object.type === "space" && object.parentId === container.id);
       const assignedPlantIds = replaceExistingSpaces
-        ? existingSpaces.flatMap((space) => (canvasPlantsBySpace.get(space.id) ?? []).map((plant) => plant.id))
+        ? existingSpaces.flatMap((space) => (plantsBySpace.get(space.id) ?? []).map((plant) => plant.id))
         : [];
 
       for (const plantId of new Set(assignedPlantIds)) {
-        const result = await commands.unassignPlantFromCanvasObject(plantId);
+        const result = await commands.clearPlantLocalAssignment(plantId);
         if (result.status === "error") throw new Error(result.error);
       }
 
       const baseObjects = replaceExistingSpaces
         ? objects.filter((object) => !(object.type === "space" && object.parentId === container.id))
         : objects;
+      const sourceSpaceLocations = sortPlotSpaceLocations(activeGroupLocationSpaces);
 
       const generatedSpaces: CanvasObject[] = buildRectGridObjects({
         objectType: "space",
@@ -504,7 +529,17 @@ export function OutdoorPlotManager() {
         parentId: container.id,
       });
 
-      const nextObjects = [...baseObjects, ...generatedSpaces];
+      const normalizedGeneratedSpaces = generatedSpaces.map((space, index) => {
+        const linkedLocation = sourceSpaceLocations[index];
+        if (!linkedLocation) return space;
+
+        return {
+          ...space,
+          notes: mergeCanvasLinkNotes(space.notes, plotSpaceLinkNote(linkedLocation.id)),
+        };
+      });
+
+      const nextObjects = [...baseObjects, ...normalizedGeneratedSpaces];
       const saveResult = await commands.saveCanvas(
         activeEnvironmentId,
         JSON.stringify({ objects: nextObjects, gridConfig }),
@@ -513,7 +548,7 @@ export function OutdoorPlotManager() {
 
       return {
         nextObjects,
-        generatedCount: generatedSpaces.length,
+        generatedCount: normalizedGeneratedSpaces.length,
         rows: layout.rows,
         columns: layout.columns,
       };
@@ -588,6 +623,7 @@ export function OutdoorPlotManager() {
     onSuccess: async ({ result, rows, columns, originXPx, originYPx, cellWidthPx, cellHeightPx, gapXPx, gapYPx }) => {
       await generatePlotGroupInCanvas({
         sourceGroup: result.group,
+        sourceSpaces: result.spaces,
         rows,
         columns,
         originXPx,
@@ -622,6 +658,7 @@ export function OutdoorPlotManager() {
 
   const generatePlotGroupInCanvas = async ({
     sourceGroup,
+    sourceSpaces,
     rows,
     columns,
     originXPx,
@@ -633,6 +670,7 @@ export function OutdoorPlotManager() {
     replaceExisting,
   }: {
     sourceGroup: Location;
+    sourceSpaces?: Location[];
     rows: number;
     columns: number;
     originXPx: number;
@@ -659,6 +697,11 @@ export function OutdoorPlotManager() {
     const sourceName = sourceGroup.name.trim() || "Plot Group";
     const sourcePrefix = (sourceGroup.label?.trim() || sourceName).trim();
     const linkNote = plotGroupLinkNote(sourceGroup.id);
+    const sourceSpaceLocations = sortPlotSpaceLocations(
+      sourceSpaces ?? hierarchyLocations.filter(
+        (location) => location.location_type === "Space" && location.parent_id === sourceGroup.id,
+      ),
+    );
 
     const { group, members } = buildPlotGroupObjects({
       originX: originXPx,
@@ -680,13 +723,15 @@ export function OutdoorPlotManager() {
     };
 
     const normalizedMembers = members.map((space, index) => {
+      const linkedLocation = sourceSpaceLocations[index];
       const rowIndex = Math.floor(index / columns);
       const columnIndex = index % columns;
+      const fallbackLabel = `${sourcePrefix} ${toGridRowLabel(rowIndex)}${columnIndex + 1}`;
 
       return {
         ...space,
-        label: `${sourcePrefix} ${toGridRowLabel(rowIndex)}${columnIndex + 1}`,
-        notes: linkNote,
+        label: linkedLocation?.label?.trim() || linkedLocation?.name?.trim() || fallbackLabel,
+        notes: mergeCanvasLinkNotes(linkNote, linkedLocation ? plotSpaceLinkNote(linkedLocation.id) : null),
       };
     });
 
@@ -851,20 +896,19 @@ export function OutdoorPlotManager() {
     }
     return counts;
   }, [hierarchyLocations]);
-  const canvasPlantsBySpace = useMemo(() => {
-    const map = new Map<string, Plant[]>();
-    for (const plant of canvasPlants) {
-      if (!plant.canvas_object_id) continue;
-      const existing = map.get(plant.canvas_object_id);
-      if (existing) existing.push(plant);
-      else map.set(plant.canvas_object_id, [plant]);
-    }
-    return map;
-  }, [canvasPlants]);
 
   const activeGroup = useMemo(
     () => plotGroups.find((g) => g.id === activeGroupId) ?? null,
     [plotGroups, activeGroupId],
+  );
+  const activeGroupLocationSpaces = useMemo(
+    () =>
+      activeGroup
+        ? hierarchyLocations.filter(
+            (location) => location.location_type === "Space" && location.parent_id === activeGroup.id,
+          )
+        : [],
+    [activeGroup, hierarchyLocations],
   );
   const linkedCanvasForActiveGroup = useMemo(
     () =>
@@ -884,12 +928,77 @@ export function OutdoorPlotManager() {
         : [],
     [linkedCanvasForActiveGroup, objects],
   );
+  const spaceLocationIdByCanvasSpaceId = useMemo(() => {
+    const locationsById = new Map(activeGroupLocationSpaces.map((location) => [location.id, location]));
+    const locationIdsByLookupKey = new Map<string, number>();
+
+    for (const location of activeGroupLocationSpaces) {
+      for (const candidate of [location.label, location.name]) {
+        const key = normalizeSpaceLookupKey(candidate);
+        if (!key || locationIdsByLookupKey.has(key)) continue;
+        locationIdsByLookupKey.set(key, location.id);
+      }
+    }
+
+    const map = new Map<string, number>();
+    for (const space of activeGroupSpaces) {
+      const linkedLocationId = readLinkedPlotSpaceLocationId(space.notes);
+      if (linkedLocationId != null && locationsById.has(linkedLocationId)) {
+        map.set(space.id, linkedLocationId);
+        continue;
+      }
+
+      const labelKey = normalizeSpaceLookupKey(space.label);
+      if (!labelKey) continue;
+
+      const matchedLocationId = locationIdsByLookupKey.get(labelKey);
+      if (matchedLocationId != null) {
+        map.set(space.id, matchedLocationId);
+      }
+    }
+
+    return map;
+  }, [activeGroupLocationSpaces, activeGroupSpaces]);
+  const canvasSpaceIdByLocationId = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const [spaceId, locationId] of spaceLocationIdByCanvasSpaceId.entries()) {
+      if (!map.has(locationId)) {
+        map.set(locationId, spaceId);
+      }
+    }
+    return map;
+  }, [spaceLocationIdByCanvasSpaceId]);
+  const plantsBySpace = useMemo(() => {
+    const visibleSpaceIds = new Set(activeGroupSpaces.map((space) => space.id));
+    const map = new Map<string, Plant[]>();
+
+    for (const plant of envPlants) {
+      const locationSpaceId = plant.location_id != null
+        ? (canvasSpaceIdByLocationId.get(plant.location_id) ?? null)
+        : null;
+      const canvasSpaceId = plant.canvas_object_id && visibleSpaceIds.has(plant.canvas_object_id)
+        ? plant.canvas_object_id
+        : null;
+      const resolvedSpaceId = locationSpaceId ?? canvasSpaceId;
+
+      if (!resolvedSpaceId) continue;
+
+      const existing = map.get(resolvedSpaceId);
+      if (existing) existing.push(plant);
+      else map.set(resolvedSpaceId, [plant]);
+    }
+
+    return map;
+  }, [activeGroupSpaces, canvasSpaceIdByLocationId, envPlants]);
   const activeGroupGrid = useMemo(() => buildPlotGrid(activeGroupSpaces), [activeGroupSpaces]);
   const activeGroupSummary = useMemo(
-    () => summarizePlot(activeGroupSpaces, canvasPlantsBySpace),
-    [activeGroupSpaces, canvasPlantsBySpace],
+    () => summarizePlot(activeGroupSpaces, plantsBySpace),
+    [activeGroupSpaces, plantsBySpace],
   );
   const assigningSpace = activeGroupSpaces.find((space) => space.id === assigningSpaceId) ?? null;
+  const assigningSpaceLocationId = assigningSpace
+    ? (spaceLocationIdByCanvasSpaceId.get(assigningSpace.id) ?? null)
+    : null;
 
   // Auto-select the first plot group when groups load or the active one is deleted
   useEffect(() => {
@@ -1202,7 +1311,7 @@ export function OutdoorPlotManager() {
                             const spaceTitle = primarySpace
                               ? getPlotSpaceDisplayLabel(primarySpace, activeGroup)
                               : "Unnamed space";
-                            const assignedPlants = primarySpace ? canvasPlantsBySpace.get(primarySpace.id) ?? [] : [];
+                            const assignedPlants = primarySpace ? plantsBySpace.get(primarySpace.id) ?? [] : [];
                             const assignedPlant = assignedPlants[0];
                             const species = assignedPlant?.species_id != null ? speciesById.get(assignedPlant.species_id) : undefined;
 
@@ -1241,8 +1350,10 @@ export function OutdoorPlotManager() {
           opened
           spaceId={assigningSpace.id}
           spaceLabel={getPlotSpaceDisplayLabel(assigningSpace, activeGroup)}
+          targetLocationId={assigningSpaceLocationId}
           targetKindLabel="space"
-          currentPlantId={canvasPlantsBySpace.get(assigningSpace.id)?.[0]?.id ?? null}
+          clearAssignmentMode={assigningSpaceLocationId != null ? "local-assignment" : "canvas-only"}
+          currentPlantId={plantsBySpace.get(assigningSpace.id)?.[0]?.id ?? null}
           onClose={() => setAssigningSpaceId(null)}
           onAssigned={() => {
             void queryClient.invalidateQueries({ queryKey: ["canvas-plants", activeEnvironmentId] });

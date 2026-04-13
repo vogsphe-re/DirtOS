@@ -781,6 +781,18 @@ async unassignPlantFromCanvasObject(plantId: number) : Promise<Result<Plant, str
 }
 },
 /**
+ * Clear a plant's local garden assignment, removing both location_id and
+ * canvas_object_id.
+ */
+async clearPlantLocalAssignment(plantId: number) : Promise<Result<Plant, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("clear_plant_local_assignment", { plantId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
  * Return all plants in an environment that are currently assigned to a canvas object.
  */
 async getPlantsForCanvas(environmentId: number) : Promise<Result<Plant[], string>> {

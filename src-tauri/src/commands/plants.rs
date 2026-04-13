@@ -337,6 +337,19 @@ pub async fn unassign_plant_from_canvas_object(
         .map_err(|e| e.to_string())
 }
 
+/// Clear a plant's local garden assignment, removing both location_id and
+/// canvas_object_id.
+#[tauri::command]
+#[specta::specta]
+pub async fn clear_plant_local_assignment(
+    pool: State<'_, SqlitePool>,
+    plant_id: i64,
+) -> Result<Plant, String> {
+    plants::clear_plant_local_assignment(&pool, plant_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /// Return all plants in an environment that are currently assigned to a canvas object.
 #[tauri::command]
 #[specta::specta]
