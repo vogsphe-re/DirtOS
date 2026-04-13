@@ -1,137 +1,235 @@
+/* =============================================================================
+   DirtOS Documentation — Gruvbox theme for docmd v0.6+
+   Overrides docmd CSS custom properties to mirror the main application's
+   Gruvbox-based palette. Applies to both light and dark appearances.
+
+   Palette reference
+   ─────────────────
+   Light  bg0_h=#f9f5d7  bg0=#fbf1c7  bg0_s=#f2e5bc  bg1=#ebdbb2
+          bg2=#d5c4a1    bg3=#bdae93   bg4=#a89984    gray=#928374
+          fg0=#282828    fg1=#3c3836   fg2=#504945    fg3=#665c54   fg4=#7c6f64
+          blue=#458588   blue_h=#076678  aqua=#689d6a  aqua_h=#427b58
+
+   Dark   bg0_h=#1d2021  bg0=#282828  bg0_s=#32302f   bg1=#3c3836
+          bg2=#504945    bg3=#665c54   bg4=#7c6f64    gray=#928374
+          fg0=#fbf1c7    fg1=#ebdbb2   fg2=#d5c4a1    fg3=#bdae93   fg4=#a89984
+          blue=#458588   blue_h=#83a598  aqua=#689d6a  aqua_h=#8ec07c
+   ============================================================================= */
+
+/* ═══ Light mode (Gruvbox light) ═════════════════════════════════════════════ */
 :root {
-  --dirtos-docs-bg: #f9f5e8;
-  --dirtos-docs-fg: #2f2a24;
-  --dirtos-docs-muted: #665c54;
-  --dirtos-docs-accent: #3f7a6b;
-  --dirtos-docs-accent-strong: #2f5d53;
-  --dirtos-docs-border: #d8ccb8;
-  --dirtos-docs-code-bg: #f1e8d5;
+  /* Background & text */
+  --bg-color:                   #fbf1c7;   /* bg0    */
+  --text-color:                 #3c3836;   /* fg1    */
+  --text-muted:                 #7c6f64;   /* fg4    */
+  --text-heading:               #282828;   /* fg0    */
+
+  /* Links */
+  --link-color:                 #458588;   /* blue   */
+  --link-color-hover:           #076678;   /* blue_h */
+
+  /* Borders */
+  --border-color:               #d5c4a1;   /* bg2    */
+  --border-color-codeblock:     rgba(189, 174, 147, 0.42);
+  --border-color-hover:         #bdae93;   /* bg3    */
+
+  /* Header */
+  --header-bg:                  rgba(242, 229, 188, 0.88);  /* bg0_s + α */
+  --header-border:              #d5c4a1;
+
+  /* Sidebar */
+  --sidebar-bg:                 #f2e5bc;   /* bg0_s  */
+  --sidebar-text:               #504945;   /* fg2    */
+  --sidebar-link-active-bg:     rgba(69, 133, 136, 0.12);
+  --sidebar-link-active-text:   #458588;
+
+  /* Code */
+  --code-bg:                    rgba(213, 196, 161, 0.38);  /* bg2 tinted */
+  --code-text:                  #282828;
+
+  /* Scrollbar */
+  --scrollbar-thumb:            #d5c4a1;
+  --scrollbar-thumb-hover:      #bdae93;
+
+  /* Typography */
+  --font-family-sans:           Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-family-mono:           "Roboto Mono", "JetBrains Mono", "SFMono-Regular", Consolas,
+                                "Liberation Mono", Menlo, monospace;
 }
 
+/* ═══ Dark mode (Gruvbox dark) ═══════════════════════════════════════════════ */
+:root[data-theme="dark"] {
+  --bg-color:                   #282828;   /* bg0    */
+  --text-color:                 #ebdbb2;   /* fg1    */
+  --text-muted:                 #928374;   /* gray   */
+  --text-heading:               #fbf1c7;   /* fg0    */
+  --link-color:                 #83a598;   /* blue_h */
+  --link-color-hover:           #8ec07c;   /* aqua_h */
+  --border-color:               #3c3836;   /* bg1    */
+  --border-color-codeblock:     rgba(60, 56, 54, 0.65);
+  --border-color-hover:         #504945;   /* bg2    */
+  --header-bg:                  rgba(29, 32, 33, 0.92);    /* bg0_h + α */
+  --header-border:              #3c3836;
+  --sidebar-bg:                 #1d2021;   /* bg0_h  */
+  --sidebar-text:               #d5c4a1;   /* fg2    */
+  --sidebar-link-active-bg:     rgba(131, 165, 152, 0.14);
+  --sidebar-link-active-text:   #83a598;
+  --code-bg:                    #32302f;   /* bg0_s  */
+  --code-text:                  #ebdbb2;
+  --scrollbar-thumb:            #3c3836;
+  --scrollbar-thumb-hover:      #504945;
+}
+
+/* ═══ System dark-preference fallback (before JS sets data-theme) ═══════════ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-color:                   #282828;
+    --text-color:                 #ebdbb2;
+    --text-muted:                 #928374;
+    --text-heading:               #fbf1c7;
+    --link-color:                 #83a598;
+    --link-color-hover:           #8ec07c;
+    --border-color:               #3c3836;
+    --border-color-codeblock:     rgba(60, 56, 54, 0.65);
+    --border-color-hover:         #504945;
+    --header-bg:                  rgba(29, 32, 33, 0.92);
+    --header-border:              #3c3836;
+    --sidebar-bg:                 #1d2021;
+    --sidebar-text:               #d5c4a1;
+    --sidebar-link-active-bg:     rgba(131, 165, 152, 0.14);
+    --sidebar-link-active-text:   #83a598;
+    --code-bg:                    #32302f;
+    --code-text:                  #ebdbb2;
+    --scrollbar-thumb:            #3c3836;
+    --scrollbar-thumb-hover:      #504945;
+  }
+}
+
+/* ═══ Page background – warm radial gradient ═════════════════════════════════ */
 html,
 body {
-  background: radial-gradient(circle at top left, #fdf7ee 0%, #f8f1e0 42%, #f3ead6 100%);
+  background: radial-gradient(circle at top left, #fdf7ee 0%, #f8f1e0 40%, #f3ead6 100%);
 }
 
+html[data-theme="dark"],
+html[data-theme="dark"] body {
+  background: radial-gradient(circle at top left, #2c2a25 0%, #282828 45%, #1d2021 100%);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]),
+  html:not([data-theme="light"]) body {
+    background: radial-gradient(circle at top left, #2c2a25 0%, #282828 45%, #1d2021 100%);
+  }
+}
+
+/* ═══ Base typography ════════════════════════════════════════════════════════ */
 body {
-  color: var(--dirtos-docs-fg);
-  font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   text-rendering: optimizeLegibility;
   line-height: 1.65;
 }
 
+/* Headings: IM Fell English serif matches the main app's brand voice */
 h1,
 h2,
 h3,
 h4,
 h5,
 h6 {
-  color: #2b241d;
   font-family: "IM Fell English", Georgia, "Times New Roman", serif;
+  font-weight: 400;
   letter-spacing: 0.01em;
-  line-height: 1.25;
-}
-
-h1 {
-  font-size: clamp(2rem, 2.2vw + 1rem, 2.85rem);
-}
-
-h2 {
-  font-size: clamp(1.5rem, 1.3vw + 0.9rem, 2rem);
-  margin-top: 2rem;
-  border-bottom: 1px solid var(--dirtos-docs-border);
-  padding-bottom: 0.35rem;
 }
 
 a {
-  color: var(--dirtos-docs-accent);
   text-decoration-thickness: 0.08em;
   text-underline-offset: 0.14em;
 }
 
-a:hover {
-  color: var(--dirtos-docs-accent-strong);
-}
-
-code,
+/* ═══ Code ═══════════════════════════════════════════════════════════════════ */
 pre {
-  font-family: "Roboto Mono", Consolas, "Liberation Mono", Menlo, monospace;
-}
-
-pre {
-  border: 1px solid var(--dirtos-docs-border);
   border-radius: 10px;
-  background: var(--dirtos-docs-code-bg);
 }
 
 code {
-  background: color-mix(in srgb, var(--dirtos-docs-code-bg) 82%, white 18%);
   border-radius: 6px;
-  padding: 0.12rem 0.34rem;
+  padding: 0.12rem 0.36rem;
 }
 
-table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 1rem 0;
-  font-size: 0.96rem;
-}
-
-table th,
-table td {
-  border: 1px solid var(--dirtos-docs-border);
-  padding: 0.55rem 0.7rem;
-  vertical-align: top;
-}
-
-table th {
-  background: #efe6d4;
-  text-align: left;
-}
-
+/* ═══ Blockquotes ════════════════════════════════════════════════════════════ */
 blockquote {
-  border-left: 4px solid #8f7e6a;
-  margin: 1rem 0;
-  padding: 0.4rem 0.9rem;
-  color: #4b4036;
-  background: #f6eddc;
+  border-left: 4px solid var(--border-color-hover);
+  margin: 1.25rem 0;
+  padding: 0.4rem 1rem;
+  color: var(--text-muted);
+  background-color: var(--sidebar-bg);
+  border-radius: 0 6px 6px 0;
+}
+
+/* ═══ Callouts – Gruvbox-accented ════════════════════════════════════════════ */
+/* Light */
+.callout-info {
+  border-color: #458588;
+  background-color: rgba(69, 133, 136, 0.09);
+}
+
+.callout-warning {
+  border-color: #d79921;
+  background-color: rgba(215, 153, 33, 0.09);
+}
+
+.callout-success,
+.callout-tip {
+  border-color: #689d6a;
+  background-color: rgba(104, 157, 106, 0.09);
+}
+
+.callout-danger {
+  border-color: #cc241d;
+  background-color: rgba(204, 36, 29, 0.09);
+}
+
+/* Dark */
+:root[data-theme="dark"] .callout-info {
+  border-color: #83a598;
+  background-color: rgba(131, 165, 152, 0.11);
+}
+
+:root[data-theme="dark"] .callout-warning {
+  border-color: #fabd2f;
+  background-color: rgba(250, 189, 47, 0.11);
+}
+
+:root[data-theme="dark"] .callout-success,
+:root[data-theme="dark"] .callout-tip {
+  border-color: #b8bb26;
+  background-color: rgba(184, 187, 38, 0.11);
+}
+
+:root[data-theme="dark"] .callout-danger {
+  border-color: #fb4934;
+  background-color: rgba(251, 73, 52, 0.11);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --dirtos-docs-bg: #1f1d1a;
-    --dirtos-docs-fg: #e9ddc8;
-    --dirtos-docs-muted: #bfae96;
-    --dirtos-docs-accent: #8db7ad;
-    --dirtos-docs-accent-strong: #b5d4cd;
-    --dirtos-docs-border: #4b4339;
-    --dirtos-docs-code-bg: #2b2722;
+  :root:not([data-theme="light"]) .callout-info {
+    border-color: #83a598;
+    background-color: rgba(131, 165, 152, 0.11);
   }
 
-  html,
-  body {
-    background: radial-gradient(circle at top left, #2c2a25 0%, #1f1d1a 45%, #171513 100%);
+  :root:not([data-theme="light"]) .callout-warning {
+    border-color: #fabd2f;
+    background-color: rgba(250, 189, 47, 0.11);
   }
 
-  body {
-    color: var(--dirtos-docs-fg);
+  :root:not([data-theme="light"]) .callout-success,
+  :root:not([data-theme="light"]) .callout-tip {
+    border-color: #b8bb26;
+    background-color: rgba(184, 187, 38, 0.11);
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    color: #f0e4cd;
-  }
-
-  table th {
-    background: #2d2822;
-  }
-
-  blockquote {
-    background: #2b2620;
-    color: #dacbb4;
+  :root:not([data-theme="light"]) .callout-danger {
+    border-color: #fb4934;
+    background-color: rgba(251, 73, 52, 0.11);
   }
 }
