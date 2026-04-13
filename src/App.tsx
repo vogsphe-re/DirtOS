@@ -19,6 +19,9 @@ import bg18 from "../assets/background/active/bg18.jpg";
 
 const BG_IMAGES = [bg03, bg13, bg14, bg15, bg16, bg17, bg18]; // Duplicate some images to increase their chances of being selected
 const sessionBg = BG_IMAGES[Math.floor(Math.random() * BG_IMAGES.length)];
+*/
+import bg18 from "../assets/background/active/bg18.jpg";
+const sessionBg = bg18;
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,9 +31,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-*/
-import bg18 from "../assets/background/active/bg18.jpg";
-const sessionBg = bg18;
 
 const router = createRouter({ routeTree });
 
