@@ -340,7 +340,15 @@ function PlotSpaceCard({
     <Card withBorder padding="sm" radius="md" style={{ minHeight: 148 }}>
       <Stack gap="xs" h="100%">
         <Stack gap={1}>
-          <Text fw={600} size="sm" lineClamp={2}>{plant.name}</Text>
+          <Text
+            fw={600}
+            size="sm"
+            lineClamp={2}
+            style={onOpenPlant ? { cursor: "pointer", textDecoration: "underline dotted" } : undefined}
+            onClick={onOpenPlant}
+          >
+            {plant.name}
+          </Text>
           <Text size="xs" c="dimmed" lineClamp={2}>{spaceTitle}</Text>
         </Stack>
         <Group justify="space-between" align="center" wrap="nowrap" gap={6}>
@@ -1330,6 +1338,7 @@ export function OutdoorPlotManager() {
                                 onOpenPlant={() => assignedPlant && navigate({
                                   to: "/plants/individuals/$plantId",
                                   params: { plantId: String(assignedPlant.id) },
+                                  search: { from: "plots" },
                                 })}
                               />
                             );

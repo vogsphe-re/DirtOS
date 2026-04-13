@@ -33,6 +33,7 @@ import { LogObservationModal } from "./SeedlingPlanner";
 
 interface PlantDetailProps {
   plantId: number;
+  from?: string;
 }
 
 type LocationNavigationTarget = "/plants/trays" | "/garden/plots";
@@ -87,7 +88,7 @@ function getLocationNavigationTarget(location: Location): LocationNavigationTarg
   return null;
 }
 
-export function PlantDetail({ plantId }: PlantDetailProps) {
+export function PlantDetail({ plantId, from }: PlantDetailProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
@@ -266,6 +267,18 @@ export function PlantDetail({ plantId }: PlantDetailProps) {
             Plants
           </Button>
         </Tooltip>
+        {from === "plots" && (
+          <Tooltip label="Back to Outdoor Plot Manager">
+            <Button
+              variant="subtle"
+              size="xs"
+              leftSection={<IconArrowLeft size={14} />}
+              onClick={() => navigate({ to: "/garden/plots" })}
+            >
+              Plot Manager
+            </Button>
+          </Tooltip>
+        )}
       </Group>
 
       <Group justify="space-between" align="flex-start">
