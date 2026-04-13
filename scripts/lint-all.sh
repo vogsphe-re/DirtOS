@@ -19,7 +19,6 @@ pnpm dlx markdownlint-cli2 \
 	"#site" \
 	"#.vscode" \
 	"#docs/.dev" \
-	"#api/debug" \
 	"#src-tauri/target" \
 	"#src-tauri/gen" \
 	"#inc/ha-dirtos"

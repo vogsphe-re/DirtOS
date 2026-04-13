@@ -11,6 +11,7 @@ import {
   PasswordInput,
   SegmentedControl,
   Stack,
+  Tabs,
   Text,
   TextInput,
   Title,
@@ -19,9 +20,15 @@ import {
 import { notifications } from "@mantine/notifications";
 import {
   IconBarcode,
+  IconBell,
+  IconCloud,
+  IconDatabase,
   IconDeviceDesktop,
+  IconLeaf,
+  IconMap,
   IconMoon,
   IconPlus,
+  IconSettings,
   IconSun,
   IconTrash,
 } from "@tabler/icons-react";
@@ -193,6 +200,7 @@ function SettingsPage() {
   const setEnvironment = useEnvironmentStore((s) => s.setEnvironment);
 
   const [creatingNew, setCreatingNew] = useState(false);
+  const [activeTab, setActiveTab] = useState<string | null>("general");
 
   const { data: environments = [], isLoading } = useQuery({
     queryKey: ["environments"],
@@ -300,17 +308,17 @@ function SettingsPage() {
   };
 
   useEffect(() => {
-    const scrollToNotificationSettings = () => {
-      if (window.location.hash !== "#notifications-settings") return;
-      const target = document.getElementById("notifications-settings");
-      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const switchToNotificationsTab = () => {
+      if (window.location.hash === "#notifications-settings") {
+        setActiveTab("notifications");
+      }
     };
 
-    scrollToNotificationSettings();
-    window.addEventListener("hashchange", scrollToNotificationSettings);
+    switchToNotificationsTab();
+    window.addEventListener("hashchange", switchToNotificationsTab);
 
     return () => {
-      window.removeEventListener("hashchange", scrollToNotificationSettings);
+      window.removeEventListener("hashchange", switchToNotificationsTab);
     };
   }, []);
 
@@ -318,176 +326,214 @@ function SettingsPage() {
     <Stack p="md" maw={720}>
       <Title order={2}>Settings</Title>
 
-      <Card withBorder>
-        <Title order={4} mb="xs">Appearance</Title>
-        <Text size="sm" c="dimmed" mb="sm">
-          Default theme follows your desktop setting.
-        </Text>
-        <SegmentedControl
-          fullWidth
-          value={colorScheme}
-          onChange={(value) => setColorScheme(value as "light" | "dark" | "system")}
-          data={[
-            {
-              value: "system",
-              label: (
-                <Group gap={6} justify="center">
-                  <IconDeviceDesktop size={14} />
-                  <span>System</span>
-                </Group>
-              ),
-            },
-            {
-              value: "light",
-              label: (
-                <Group gap={6} justify="center">
-                  <IconSun size={14} />
-                  <span>Light</span>
-                </Group>
-              ),
-            },
-            {
-              value: "dark",
-              label: (
-                <Group gap={6} justify="center">
-                  <IconMoon size={14} />
-                  <span>Dark</span>
-                </Group>
-              ),
-            },
-          ]}
-        />
-        <Text size="sm" c="dimmed" mt="sm">
-          DirtOS uses Inter for interface text, IM Fell English for headings, and Roboto Mono for measurements and diagnostics.
-        </Text>
+      <Tabs value={activeTab} onChange={setActiveTab}>
+        <Tabs.List>
+          <Tabs.Tab value="general" leftSection={<IconSettings size={14} />}>
+            General
+          </Tabs.Tab>
+          <Tabs.Tab value="environments" leftSection={<IconMap size={14} />}>
+            Environments
+          </Tabs.Tab>
+          <Tabs.Tab value="garden" leftSection={<IconLeaf size={14} />}>
+            Garden
+          </Tabs.Tab>
+          <Tabs.Tab value="notifications" leftSection={<IconBell size={14} />}>
+            Notifications
+          </Tabs.Tab>
+          <Tabs.Tab value="integrations" leftSection={<IconCloud size={14} />}>
+            Integrations
+          </Tabs.Tab>
+          <Tabs.Tab value="data" leftSection={<IconDatabase size={14} />}>
+            Data
+          </Tabs.Tab>
+        </Tabs.List>
 
-        <Divider my="sm" />
+        {/* General: Appearance, Units, About */}
+        <Tabs.Panel value="general" pt="md">
+          <Stack gap="md">
+            <Card withBorder>
+              <Title order={4} mb="xs">Appearance</Title>
+              <Text size="sm" c="dimmed" mb="sm">
+                Default theme follows your desktop setting.
+              </Text>
+              <SegmentedControl
+                fullWidth
+                value={colorScheme}
+                onChange={(value) => setColorScheme(value as "light" | "dark" | "system")}
+                data={[
+                  {
+                    value: "system",
+                    label: (
+                      <Group gap={6} justify="center">
+                        <IconDeviceDesktop size={14} />
+                        <span>System</span>
+                      </Group>
+                    ),
+                  },
+                  {
+                    value: "light",
+                    label: (
+                      <Group gap={6} justify="center">
+                        <IconSun size={14} />
+                        <span>Light</span>
+                      </Group>
+                    ),
+                  },
+                  {
+                    value: "dark",
+                    label: (
+                      <Group gap={6} justify="center">
+                        <IconMoon size={14} />
+                        <span>Dark</span>
+                      </Group>
+                    ),
+                  },
+                ]}
+              />
+              <Text size="sm" c="dimmed" mt="sm">
+                DirtOS uses Inter for interface text, IM Fell English for headings, and Roboto Mono for measurements and diagnostics.
+              </Text>
 
-        <Title order={5} mb={4}>Units</Title>
-        <Text size="sm" c="dimmed" mb="sm">
-          Choose how temperatures, wind speeds, precipitation, and distances are displayed.
-        </Text>
-        <SegmentedControl
-          value={unitSystem}
-          onChange={(value) => setUnitSystem(value as UnitSystem)}
-          data={[
-            { value: "metric", label: "Metric (°C, m/s, mm, km)" },
-            { value: "imperial", label: "Imperial (°F, mph, in, mi)" },
-          ]}
-        />
-      </Card>
+              <Divider my="sm" />
 
-      <NotificationSettingsCard />
+              <Title order={5} mb={4}>Units</Title>
+              <Text size="sm" c="dimmed" mb="sm">
+                Choose how temperatures, wind speeds, precipitation, and distances are displayed.
+              </Text>
+              <SegmentedControl
+                value={unitSystem}
+                onChange={(value) => setUnitSystem(value as UnitSystem)}
+                data={[
+                  { value: "metric", label: "Metric (°C, m/s, mm, km)" },
+                  { value: "imperial", label: "Imperial (°F, mph, in, mi)" },
+                ]}
+              />
+            </Card>
 
-      <StorageLocationsCard />
-
-      {/* ---- Environments section ---- */}
-      <Card withBorder>
-        <Group justify="space-between" mb="md">
-          <Title order={4}>Environments</Title>
-          <Button
-            size="xs"
-            leftSection={<IconPlus size={14} />}
-            variant="light"
-            onClick={() => setCreatingNew(true)}
-            disabled={creatingNew}
-          >
-            Add environment
-          </Button>
-        </Group>
-
-        {creatingNew && (
-          <>
-            <EnvironmentForm
-              onSave={async (values) => { await createMutation.mutateAsync(values); }}
-              onCancel={() => setCreatingNew(false)}
-              busy={createMutation.isPending}
-            />
-            <Divider my="md" />
-          </>
-        )}
-
-        {isLoading && <Text c="dimmed" size="sm">Loading…</Text>}
-
-        <Stack gap="md">
-          {environments.map((env) => (
-            <EnvironmentCard
-              key={env.id}
-              env={env}
-              isActive={activeId === env.id}
-              onActivate={() => {
-                setActiveId(env.id);
-                setEnvironment(env);
-              }}
-              onSave={(values) =>
-                updateMutation.mutateAsync({ id: env.id, values })
-              }
-              onDelete={() => deleteMutation.mutate(env.id)}
-              busy={updateMutation.isPending || deleteMutation.isPending}
-            />
-          ))}
-          {!isLoading && environments.length === 0 && !creatingNew && (
-            <Text c="dimmed" size="sm">
-              No environments yet. Add one above.
-            </Text>
-          )}
-        </Stack>
-      </Card>
-
-      <Card withBorder>
-        <Group justify="space-between" align="flex-start" gap="md">
-          <Stack gap={4} maw={520}>
-            <Title order={4}>Starter Gardens</Title>
-            <Text size="sm" c="dimmed">
-              Create a fresh DirtOS workspace from the bundled demo garden backup. This saves a
-              copy to your Documents folder and replaces the current local garden data with the
-              example workspace.
-            </Text>
+            <Card withBorder>
+              <Group justify="space-between" align="flex-start">
+                <Stack gap={4}>
+                  <Title order={4}>About</Title>
+                  <Text size="sm" c="dimmed">
+                    Version, release details, and platform notes are available on the About page.
+                  </Text>
+                </Stack>
+                <Button component="a" href="/about" variant="light">
+                  Open About
+                </Button>
+              </Group>
+            </Card>
           </Stack>
-          <Button
-            color="orange"
-            variant="light"
-            onClick={handleImportDemoGarden}
-            loading={importDemoGardenMutation.isPending}
-          >
-            Create new garden from demo
-          </Button>
-        </Group>
-      </Card>
+        </Tabs.Panel>
 
-      {/* ---- Issue Labels section ---- */}
-      <Card withBorder>
-        <LabelManager />
-      </Card>
+        {/* Environments: environment list + starter gardens */}
+        <Tabs.Panel value="environments" pt="md">
+          <Stack gap="md">
+            <Card withBorder>
+              <Group justify="space-between" mb="md">
+                <Title order={4}>Environments</Title>
+                <Button
+                  size="xs"
+                  leftSection={<IconPlus size={14} />}
+                  variant="light"
+                  onClick={() => setCreatingNew(true)}
+                  disabled={creatingNew}
+                >
+                  Add environment
+                </Button>
+              </Group>
 
-      {/* ---- Weather API Key section ---- */}
-      <WeatherApiKeyCard />
+              {creatingNew && (
+                <>
+                  <EnvironmentForm
+                    onSave={async (values) => { await createMutation.mutateAsync(values); }}
+                    onCancel={() => setCreatingNew(false)}
+                    busy={createMutation.isPending}
+                  />
+                  <Divider my="md" />
+                </>
+              )}
 
-      {/* ---- Trefle API Key section ---- */}
-      <TrefleApiKeyCard />
+              {isLoading && <Text c="dimmed" size="sm">Loading…</Text>}
 
-      {/* ---- EAN-Search integration section ---- */}
-      <EanSearchApiCard />
+              <Stack gap="md">
+                {environments.map((env) => (
+                  <EnvironmentCard
+                    key={env.id}
+                    env={env}
+                    isActive={activeId === env.id}
+                    onActivate={() => {
+                      setActiveId(env.id);
+                      setEnvironment(env);
+                    }}
+                    onSave={(values) =>
+                      updateMutation.mutateAsync({ id: env.id, values })
+                    }
+                    onDelete={() => deleteMutation.mutate(env.id)}
+                    busy={updateMutation.isPending || deleteMutation.isPending}
+                  />
+                ))}
+                {!isLoading && environments.length === 0 && !creatingNew && (
+                  <Text c="dimmed" size="sm">
+                    No environments yet. Add one above.
+                  </Text>
+                )}
+              </Stack>
+            </Card>
 
-      {/* ---- Integrations & Extensions ---- */}
-      <IntegrationExtensionsPanel activeEnvironmentId={activeId} />
-
-      {/* ---- Backups / Import Export ---- */}
-      <BackupManagerPanel />
-
-      <Card withBorder>
-        <Group justify="space-between" align="flex-start">
-          <Stack gap={4}>
-            <Title order={4}>About</Title>
-            <Text size="sm" c="dimmed">
-              Version, release details, and platform notes are available on the About page.
-            </Text>
+            <Card withBorder>
+              <Group justify="space-between" align="flex-start" gap="md">
+                <Stack gap={4} maw={520}>
+                  <Title order={4}>Starter Gardens</Title>
+                  <Text size="sm" c="dimmed">
+                    Create a fresh DirtOS workspace from the bundled demo garden backup. This saves a
+                    copy to your Documents folder and replaces the current local garden data with the
+                    example workspace.
+                  </Text>
+                </Stack>
+                <Button
+                  color="orange"
+                  variant="light"
+                  onClick={handleImportDemoGarden}
+                  loading={importDemoGardenMutation.isPending}
+                >
+                  Create new garden from demo
+                </Button>
+              </Group>
+            </Card>
           </Stack>
-          <Button component="a" href="/about" variant="light">
-            Open About
-          </Button>
-        </Group>
-      </Card>
+        </Tabs.Panel>
+
+        {/* Garden: issue labels */}
+        <Tabs.Panel value="garden" pt="md">
+          <Card withBorder>
+            <LabelManager />
+          </Card>
+        </Tabs.Panel>
+
+        {/* Notifications */}
+        <Tabs.Panel value="notifications" pt="md">
+          <NotificationSettingsCard />
+        </Tabs.Panel>
+
+        {/* Integrations: API keys + extension panels */}
+        <Tabs.Panel value="integrations" pt="md">
+          <Stack gap="md">
+            <WeatherApiKeyCard />
+            <TrefleApiKeyCard />
+            <EanSearchApiCard />
+            <IntegrationExtensionsPanel activeEnvironmentId={activeId} />
+          </Stack>
+        </Tabs.Panel>
+
+        {/* Data: storage paths + backups */}
+        <Tabs.Panel value="data" pt="md">
+          <Stack gap="md">
+            <StorageLocationsCard />
+            <BackupManagerPanel />
+          </Stack>
+        </Tabs.Panel>
+      </Tabs>
     </Stack>
   );
 }
