@@ -43,6 +43,8 @@ fi
 
 # Install dependencies and build the project with the deb bundle
 pnpm install
+echo "Running lint checks..."
+bash "$SCRIPT_DIR/lint-all.sh"
 echo "Building documentation..."
 pnpm docsmd
 echo "Running clean build..."
