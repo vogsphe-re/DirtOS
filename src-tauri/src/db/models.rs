@@ -152,6 +152,9 @@ pub enum IntegrationProvider {
     #[serde(rename = "n8n")]
     #[sqlx(rename = "n8n")]
     N8n,
+    #[serde(rename = "amazon_pa_api")]
+    #[sqlx(rename = "amazon_pa_api")]
+    AmazonPaApi,
 }
 
 #[derive(Debug, Clone, PartialEq, sqlx::Type, Serialize, Deserialize, Type)]
@@ -1352,6 +1355,10 @@ pub struct SeedLot {
     pub ean_category_name: Option<String>,
     pub ean_issuing_country: Option<String>,
     pub ean_last_lookup_at: Option<String>,
+    pub asin_code: Option<String>,
+    pub asin_product_title: Option<String>,
+    pub asin_brand: Option<String>,
+    pub asin_last_lookup_at: Option<String>,
     pub notes: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
@@ -1427,6 +1434,33 @@ pub struct SeedLotScanResult {
     pub seed_lot: SeedLot,
     pub action: SeedLotScanAction,
     pub lookup: Option<SeedEanLookup>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum SeedAsinLookupStatus {
+    Success,
+    NotFound,
+    CredentialsRequired,
+    Error,
+    Skipped,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct SeedAsinLookup {
+    pub asin: String,
+    pub title: Option<String>,
+    pub brand: Option<String>,
+    pub product_url: Option<String>,
+    pub lookup_status: SeedAsinLookupStatus,
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct SeedAsinScanResult {
+    pub seed_lot: SeedLot,
+    pub action: SeedLotScanAction,
+    pub lookup: Option<SeedAsinLookup>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]

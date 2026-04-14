@@ -16,6 +16,8 @@ external integrations used by DirtOS debug scripts in `scripts/debug/`.
 - `trefle-debug.README.md`
 - `ean-debug.postman_collection.json`
 - `ean-debug.README.md`
+- `asin-debug.postman_collection.json`
+- `asin-debug.README.md`
 - `wikipedia-debug.postman_collection.json`
 - `wikipedia-debug.README.md`
 - `species-debug.postman_collection.json`
@@ -41,6 +43,9 @@ Supported variables in `.env`:
 - `TREFLE_ACCESS_KEY`
 - `EAN_SEARCH_API_TOKEN` (preferred)
 - `EAN_SEARCH_TOKEN` (fallback)
+- `AMAZON_PA_ACCESS_KEY`
+- `AMAZON_PA_SECRET_KEY`
+- `AMAZON_PA_PARTNER_TAG`
 
 ## Notes
 

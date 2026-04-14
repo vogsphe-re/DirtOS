@@ -9,7 +9,7 @@ description: "Reference for provider configuration, map settings, and sync recor
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `provider` | enum | `inaturalist`, `wikipedia`, `eol`, `ean_search`, `osm`, `dropbox`, `google_drive`, `onedrive`, `home_assistant`, `n8n` |
+| `provider` | enum | `inaturalist`, `wikipedia`, `eol`, `ean_search`, `amazon_pa_api`, `osm`, `dropbox`, `google_drive`, `onedrive`, `home_assistant`, `n8n` |
 | `enabled` | boolean | Active/inactive state |
 | `auth_json` | string/null | Credential payload |
 | `settings_json` | string/null | Provider-specific settings |
@@ -23,6 +23,42 @@ Cloud provider conventions:
 
 - `auth_json` should contain an OAuth token (`access_token`, `token`, or `bearer_token`).
 - `settings_json` can define default cloud folder settings such as `remote_path`.
+
+### EAN-Search (`ean_search`)
+
+`auth_json` shape:
+
+```json
+{ "api_token": "<your-token>" }
+```
+
+`settings_json`: not used.
+
+`SeedEanLookupStatus` values: `success` | `not_found` | `rate_limited` | `token_required` | `error` | `skipped`
+
+### Amazon Product Advertising API (`amazon_pa_api`)
+
+`auth_json` shape:
+
+```json
+{
+  "access_key": "<AWS-access-key-ID>",
+  "secret_key": "<AWS-secret-access-key>",
+  "partner_tag": "<associates-partner-tag>"
+}
+```
+
+`settings_json` shape:
+
+```json
+{ "marketplace": "www.amazon.com" }
+```
+
+Supported marketplace values: `www.amazon.com`, `www.amazon.co.uk`, `www.amazon.de`,
+`www.amazon.fr`, `www.amazon.it`, `www.amazon.es`, `www.amazon.co.jp`,
+`www.amazon.com.au`, `www.amazon.ca`, `www.amazon.in`.
+
+`SeedAsinLookupStatus` values: `success` | `not_found` | `credentials_required` | `error` | `skipped`
 
 ## Map settings fields
 

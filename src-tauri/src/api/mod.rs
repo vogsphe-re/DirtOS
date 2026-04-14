@@ -36,6 +36,7 @@ pub fn build_router(pool: SqlitePool, app_handle: AppHandle) -> Router {
         .merge(routes::issues::router())
         .merge(routes::journal::router())
         .merge(routes::harvests::router())
+        .merge(routes::seed_store::router())
         .layer(cors)
         .with_state(state)
 }

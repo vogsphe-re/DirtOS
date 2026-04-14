@@ -1,17 +1,59 @@
+use axum::{
+    Router,
+    extract::{Path, Query, State},
+    http::StatusCode,
+    routing::{get, post},
+    Json,
+};
 use serde::Deserialize;
-use sqlx::SqlitePool;
-use tauri::State;
 
 use crate::db::{
     integrations,
     models::{
         IntegrationProvider, NewSeedLot, Pagination, SeedAsinLookup, SeedAsinLookupStatus,
         SeedAsinScanResult, SeedEanLookup, SeedEanLookupStatus, SeedLot, SeedLotScanAction,
-        SeedLotScanResult, SowSeedInput, UpdateSeedLot,
+        SeedLotScanResult, UpdateSeedLot,
     },
     seed_store::{self, AsinSeedMetadata, EanSeedMetadata},
 };
 use crate::services::{amazon_asin, ean_search};
+
+use super::{ApiError, ApiResult, AppState};
+
+pub fn router() -> Router<AppState> {
+    Router::new()
+        .route("/api/v1/seed-lots", get(list).post(create))
+        .route(
+            "/api/v1/seed-lots/{id}",
+            get(get_one).put(update).delete(remove),
+        )
+        .route("/api/v1/seed-lots/scan/ean", post(scan_ean))
+        .route("/api/v1/seed-lots/scan/asin", post(scan_asin))
+}
+
+// ---------------------------------------------------------------------------
+// Query / body types
+// ---------------------------------------------------------------------------
+
+#[derive(Deserialize)]
+pub struct ListQuery {
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+#[derive(Deserialize)]
+pub struct ScanEanBody {
+    pub barcode: String,
+}
+
+#[derive(Deserialize)]
+pub struct ScanAsinBody {
+    pub asin: String,
+}
+
+// ---------------------------------------------------------------------------
+// Credential extraction helpers (mirrors commands/seed_store.rs)
+// ---------------------------------------------------------------------------
 
 #[derive(Debug, Deserialize, Default)]
 struct EanSearchAuthConfig {
@@ -20,15 +62,15 @@ struct EanSearchAuthConfig {
 }
 
 fn extract_ean_token(auth_json: Option<&str>) -> Option<String> {
-    let parsed = auth_json
-        .and_then(|raw| serde_json::from_str::<EanSearchAuthConfig>(raw).ok())
+    let parsed: EanSearchAuthConfig = auth_json
+        .and_then(|raw| serde_json::from_str(raw).ok())
         .unwrap_or_default();
 
     parsed
         .api_token
         .or(parsed.token)
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -76,89 +118,98 @@ fn extract_amazon_credentials(
     })
 }
 
-#[tauri::command]
-#[specta::specta]
-pub async fn list_seed_store(
-    pool: State<'_, SqlitePool>,
-    limit: Option<i64>,
-    offset: Option<i64>,
-) -> Result<Vec<SeedLot>, String> {
-    let pagination = Pagination {
-        limit: limit.unwrap_or(200),
-        offset: offset.unwrap_or(0),
-    };
-    seed_store::list_seed_store(&pool, pagination)
-        .await
-        .map_err(|e| e.to_string())
+// ---------------------------------------------------------------------------
+// CRUD handlers
+// ---------------------------------------------------------------------------
+
+async fn list(
+    State(s): State<AppState>,
+    Query(q): Query<ListQuery>,
+) -> ApiResult<Vec<SeedLot>> {
+    let rows = seed_store::list_seed_store(
+        &s.pool,
+        Pagination {
+            limit: q.limit.unwrap_or(200),
+            offset: q.offset.unwrap_or(0),
+        },
+    )
+    .await?;
+    Ok(Json(rows))
 }
 
-#[tauri::command]
-#[specta::specta]
-pub async fn get_seed_store_item(
-    pool: State<'_, SqlitePool>,
-    id: i64,
-) -> Result<Option<SeedLot>, String> {
-    seed_store::get_seed_lot(&pool, id)
-        .await
-        .map_err(|e| e.to_string())
+async fn get_one(
+    State(s): State<AppState>,
+    Path(id): Path<i64>,
+) -> Result<Json<SeedLot>, (StatusCode, Json<serde_json::Value>)> {
+    match seed_store::get_seed_lot(&s.pool, id).await {
+        Ok(Some(row)) => Ok(Json(row)),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({ "error": "not found" })),
+        )),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": e.to_string() })),
+        )),
+    }
 }
 
-#[tauri::command]
-#[specta::specta]
-pub async fn create_seed_store_item(
-    pool: State<'_, SqlitePool>,
-    input: NewSeedLot,
-) -> Result<SeedLot, String> {
-    seed_store::create_seed_lot(&pool, input)
+async fn create(
+    State(s): State<AppState>,
+    Json(body): Json<NewSeedLot>,
+) -> ApiResult<SeedLot> {
+    let row = seed_store::create_seed_lot(&s.pool, body)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(ApiError::from)?;
+    Ok(Json(row))
 }
 
-#[tauri::command]
-#[specta::specta]
-pub async fn update_seed_store_item(
-    pool: State<'_, SqlitePool>,
-    id: i64,
-    input: UpdateSeedLot,
-) -> Result<Option<SeedLot>, String> {
-    seed_store::update_seed_lot(&pool, id, input)
-        .await
-        .map_err(|e| e.to_string())
+async fn update(
+    State(s): State<AppState>,
+    Path(id): Path<i64>,
+    Json(body): Json<UpdateSeedLot>,
+) -> Result<Json<SeedLot>, (StatusCode, Json<serde_json::Value>)> {
+    match seed_store::update_seed_lot(&s.pool, id, body).await {
+        Ok(Some(row)) => Ok(Json(row)),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({ "error": "not found" })),
+        )),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": e.to_string() })),
+        )),
+    }
 }
 
-#[tauri::command]
-#[specta::specta]
-pub async fn delete_seed_store_item(pool: State<'_, SqlitePool>, id: i64) -> Result<bool, String> {
-    seed_store::delete_seed_lot(&pool, id)
+async fn remove(
+    State(s): State<AppState>,
+    Path(id): Path<i64>,
+) -> Result<StatusCode, ApiError> {
+    seed_store::delete_seed_lot(&s.pool, id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(ApiError::from)?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
-#[tauri::command]
-#[specta::specta]
-pub async fn sow_seed_to_tray(
-    pool: State<'_, SqlitePool>,
-    input: SowSeedInput,
-) -> Result<i64, String> {
-    seed_store::sow_seed_to_tray(&pool, input)
-        .await
-        .map_err(|e| e.to_string())
-}
+// ---------------------------------------------------------------------------
+// EAN scan handler
+// ---------------------------------------------------------------------------
 
-#[tauri::command]
-#[specta::specta]
-pub async fn scan_seed_packet_ean(
-    pool: State<'_, SqlitePool>,
-    barcode: String,
-) -> Result<SeedLotScanResult, String> {
-    let normalized = ean_search::normalize_barcode(&barcode)?;
-    let existing = seed_store::get_seed_lot_by_ean(&pool, &normalized)
-        .await
-        .map_err(|e| e.to_string())?;
+async fn scan_ean(
+    State(s): State<AppState>,
+    Json(body): Json<ScanEanBody>,
+) -> ApiResult<SeedLotScanResult> {
+    let normalized = ean_search::normalize_barcode(&body.barcode)
+        .map_err(|e| ApiError::from(e))?;
 
-    let cfg = integrations::get_integration_config(&pool, IntegrationProvider::EanSearch)
+    let existing = seed_store::get_seed_lot_by_ean(&s.pool, &normalized)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(ApiError::from)?;
+
+    let cfg = integrations::get_integration_config(&s.pool, IntegrationProvider::EanSearch)
+        .await
+        .map_err(ApiError::from)?;
 
     let integration_enabled = cfg.as_ref().map(|c| c.enabled).unwrap_or(true);
     let configured_rate_limit = cfg.as_ref().and_then(|c| c.rate_limit_per_minute);
@@ -167,22 +218,14 @@ pub async fn scan_seed_packet_ean(
     let mut metadata: Option<EanSeedMetadata> = None;
 
     let lookup = if integration_enabled {
-        let client = ean_search::build_http_client()?;
-        match ean_search::lookup_barcode(
-            &client,
-            &normalized,
-            api_token.as_deref(),
-            configured_rate_limit,
-        )
-        .await
-        {
+        let client = ean_search::build_http_client().map_err(|e| ApiError::from(e))?;
+        match ean_search::lookup_barcode(&client, &normalized, api_token.as_deref(), configured_rate_limit).await {
             ean_search::EanLookupOutcome::Found(product) => {
                 metadata = Some(EanSeedMetadata {
                     product_name: product.product_name.clone(),
                     category_name: product.category_name.clone(),
                     issuing_country: product.issuing_country.clone(),
                 });
-
                 Some(SeedEanLookup {
                     ean_code: product.ean_code,
                     product_name: product.product_name,
@@ -200,10 +243,7 @@ pub async fn scan_seed_packet_ean(
                 lookup_status: SeedEanLookupStatus::NotFound,
                 message: Some("No matching product was found in EAN-Search".to_string()),
             }),
-            ean_search::EanLookupOutcome::RateLimited {
-                limit_per_minute,
-                message,
-            } => Some(SeedEanLookup {
+            ean_search::EanLookupOutcome::RateLimited { limit_per_minute, message } => Some(SeedEanLookup {
                 ean_code: normalized.clone(),
                 product_name: None,
                 category_name: None,
@@ -240,15 +280,10 @@ pub async fn scan_seed_packet_ean(
     };
 
     if let Some(lot) = existing {
-        let seed_lot = seed_store::enrich_seed_lot_from_ean_scan(
-            &pool,
-            lot.id,
-            &normalized,
-            metadata.as_ref(),
-        )
-        .await
-        .map_err(|e| e.to_string())?
-        .ok_or_else(|| "Seed lot not found while enriching scan result".to_string())?;
+        let seed_lot = seed_store::enrich_seed_lot_from_ean_scan(&s.pool, lot.id, &normalized, metadata.as_ref())
+            .await
+            .map_err(ApiError::from)?
+            .ok_or_else(|| ApiError::from("Seed lot not found while enriching scan result".to_string()))?;
 
         let action = if metadata.is_some() {
             SeedLotScanAction::Enriched
@@ -256,38 +291,38 @@ pub async fn scan_seed_packet_ean(
             SeedLotScanAction::Matched
         };
 
-        return Ok(SeedLotScanResult {
-            seed_lot,
-            action,
-            lookup,
-        });
+        return Ok(Json(SeedLotScanResult { seed_lot, action, lookup }));
     }
 
-    let seed_lot = seed_store::create_seed_lot_from_ean_scan(&pool, &normalized, metadata.as_ref())
+    let seed_lot = seed_store::create_seed_lot_from_ean_scan(&s.pool, &normalized, metadata.as_ref())
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(ApiError::from)?;
 
-    Ok(SeedLotScanResult {
+    Ok(Json(SeedLotScanResult {
         seed_lot,
         action: SeedLotScanAction::Created,
         lookup,
-    })
+    }))
 }
 
-#[tauri::command]
-#[specta::specta]
-pub async fn scan_seed_packet_asin(
-    pool: State<'_, SqlitePool>,
-    asin: String,
-) -> Result<SeedAsinScanResult, String> {
-    let normalised = amazon_asin::normalize_asin(&asin)?;
-    let existing = seed_store::get_seed_lot_by_asin(&pool, &normalised)
-        .await
-        .map_err(|e| e.to_string())?;
+// ---------------------------------------------------------------------------
+// ASIN scan handler
+// ---------------------------------------------------------------------------
 
-    let cfg = integrations::get_integration_config(&pool, IntegrationProvider::AmazonPaApi)
+async fn scan_asin(
+    State(s): State<AppState>,
+    Json(body): Json<ScanAsinBody>,
+) -> ApiResult<SeedAsinScanResult> {
+    let normalised = amazon_asin::normalize_asin(&body.asin)
+        .map_err(|e| ApiError::from(e))?;
+
+    let existing = seed_store::get_seed_lot_by_asin(&s.pool, &normalised)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(ApiError::from)?;
+
+    let cfg = integrations::get_integration_config(&s.pool, IntegrationProvider::AmazonPaApi)
+        .await
+        .map_err(ApiError::from)?;
 
     let integration_enabled = cfg.as_ref().map(|c| c.enabled).unwrap_or(false);
     let credentials = extract_amazon_credentials(
@@ -305,7 +340,7 @@ pub async fn scan_seed_packet_asin(
             marketplace: None,
         });
 
-        let client = ean_search::build_http_client()?;
+        let client = ean_search::build_http_client().map_err(|e| ApiError::from(e))?;
         match amazon_asin::lookup_asin(&client, &normalised, &creds).await {
             amazon_asin::AsinLookupOutcome::Found(product) => {
                 metadata = Some(AsinSeedMetadata {
@@ -313,7 +348,6 @@ pub async fn scan_seed_packet_asin(
                     brand: product.brand.clone(),
                     product_url: product.product_url.clone(),
                 });
-
                 Some(SeedAsinLookup {
                     asin: product.asin,
                     title: product.title,
@@ -329,20 +363,16 @@ pub async fn scan_seed_packet_asin(
                 brand: None,
                 product_url: None,
                 lookup_status: SeedAsinLookupStatus::NotFound,
-                message: Some(
-                    "No matching product was found in the Amazon catalog".to_string(),
-                ),
+                message: Some("No matching product was found in the Amazon catalog".to_string()),
             }),
-            amazon_asin::AsinLookupOutcome::CredentialsRequired { message } => {
-                Some(SeedAsinLookup {
-                    asin: normalised.clone(),
-                    title: None,
-                    brand: None,
-                    product_url: None,
-                    lookup_status: SeedAsinLookupStatus::CredentialsRequired,
-                    message: Some(message),
-                })
-            }
+            amazon_asin::AsinLookupOutcome::CredentialsRequired { message } => Some(SeedAsinLookup {
+                asin: normalised.clone(),
+                title: None,
+                brand: None,
+                product_url: None,
+                lookup_status: SeedAsinLookupStatus::CredentialsRequired,
+                message: Some(message),
+            }),
             amazon_asin::AsinLookupOutcome::Error { message } => Some(SeedAsinLookup {
                 asin: normalised.clone(),
                 title: None,
@@ -367,15 +397,10 @@ pub async fn scan_seed_packet_asin(
     };
 
     if let Some(lot) = existing {
-        let seed_lot = seed_store::enrich_seed_lot_from_asin_scan(
-            &pool,
-            lot.id,
-            &normalised,
-            metadata.as_ref(),
-        )
-        .await
-        .map_err(|e| e.to_string())?
-        .ok_or_else(|| "Seed lot not found while enriching ASIN scan result".to_string())?;
+        let seed_lot = seed_store::enrich_seed_lot_from_asin_scan(&s.pool, lot.id, &normalised, metadata.as_ref())
+            .await
+            .map_err(ApiError::from)?
+            .ok_or_else(|| ApiError::from("Seed lot not found while enriching ASIN scan result".to_string()))?;
 
         let action = if metadata.is_some() {
             SeedLotScanAction::Enriched
@@ -383,21 +408,16 @@ pub async fn scan_seed_packet_asin(
             SeedLotScanAction::Matched
         };
 
-        return Ok(SeedAsinScanResult {
-            seed_lot,
-            action,
-            lookup,
-        });
+        return Ok(Json(SeedAsinScanResult { seed_lot, action, lookup }));
     }
 
-    let seed_lot =
-        seed_store::create_seed_lot_from_asin_scan(&pool, &normalised, metadata.as_ref())
-            .await
-            .map_err(|e| e.to_string())?;
+    let seed_lot = seed_store::create_seed_lot_from_asin_scan(&s.pool, &normalised, metadata.as_ref())
+        .await
+        .map_err(ApiError::from)?;
 
-    Ok(SeedAsinScanResult {
+    Ok(Json(SeedAsinScanResult {
         seed_lot,
         action: SeedLotScanAction::Created,
         lookup,
-    })
+    }))
 }

@@ -1,3 +1,4 @@
+pub mod amazon_asin;
 pub mod asset_tag;
 pub mod backup;
 pub mod backup_jobs;

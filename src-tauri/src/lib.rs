@@ -309,6 +309,7 @@ fn specta_builder() -> Builder<tauri::Wry> {
         commands::delete_seed_store_item,
         commands::sow_seed_to_tray,
         commands::scan_seed_packet_ean,
+        commands::scan_seed_packet_asin,
         // Reports & seasons
         commands::list_seasons,
         commands::create_season,

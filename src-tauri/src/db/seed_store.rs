@@ -10,6 +10,13 @@ pub struct EanSeedMetadata {
     pub issuing_country: Option<String>,
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct AsinSeedMetadata {
+    pub title: Option<String>,
+    pub brand: Option<String>,
+    pub product_url: Option<String>,
+}
+
 pub async fn list_seed_store(
     pool: &SqlitePool,
     pagination: Pagination,
@@ -342,4 +349,140 @@ pub async fn sow_seed_to_tray(pool: &SqlitePool, input: SowSeedInput) -> Result<
     tx.commit().await?;
 
     Ok(plant_id)
+}
+
+// ---------------------------------------------------------------------------
+// ASIN scan helpers
+// ---------------------------------------------------------------------------
+
+pub async fn get_seed_lot_by_asin(
+    pool: &SqlitePool,
+    asin: &str,
+) -> Result<Option<SeedLot>, sqlx::Error> {
+    sqlx::query_as::<_, SeedLot>(
+        "SELECT * FROM seed_lots
+         WHERE asin_code = ?
+         ORDER BY updated_at DESC
+         LIMIT 1",
+    )
+    .bind(asin)
+    .fetch_optional(pool)
+    .await
+}
+
+fn packet_info_with_asin(existing: Option<&str>, asin: &str) -> Option<String> {
+    let fragment = format!("ASIN {asin}");
+    let current = existing.unwrap_or("").trim();
+
+    if current.is_empty() {
+        return Some(fragment);
+    }
+
+    if current
+        .to_ascii_uppercase()
+        .contains(&fragment.to_ascii_uppercase())
+    {
+        return None;
+    }
+
+    Some(format!("{current} | {fragment}"))
+}
+
+pub async fn create_seed_lot_from_asin_scan(
+    pool: &SqlitePool,
+    asin: &str,
+    metadata: Option<&AsinSeedMetadata>,
+) -> Result<SeedLot, sqlx::Error> {
+    let tag = asset_tag::generate_tag("SED");
+    let title = metadata.and_then(|m| m.title.clone());
+    let brand = metadata.and_then(|m| m.brand.clone());
+
+    let lot_label = title
+        .clone()
+        .or_else(|| Some(format!("Amazon product {asin}")));
+
+    let mut packet_parts = vec![format!("ASIN {asin}")];
+    if let Some(b) = &brand {
+        packet_parts.push(format!("Brand {b}"));
+    }
+    let packet_info = Some(packet_parts.join(" | "));
+
+    let result = sqlx::query(
+        "INSERT INTO seed_lots
+            (species_id, parent_plant_id, harvest_id, lot_label, quantity,
+             viability_pct, storage_location, collected_date,
+             source_type, vendor, purchase_date, expiration_date,
+             packet_info, asin_code, asin_product_title, asin_brand,
+             asin_last_lookup_at, notes, asset_id)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),?,?)",
+    )
+    .bind(Option::<i64>::None)
+    .bind(Option::<i64>::None)
+    .bind(Option::<i64>::None)
+    .bind(&lot_label)
+    .bind(Option::<f64>::None)
+    .bind(Option::<f64>::None)
+    .bind(Option::<String>::None)
+    .bind(Option::<String>::None)
+    .bind("purchased")
+    .bind(brand.clone())
+    .bind(Option::<String>::None)
+    .bind(Option::<String>::None)
+    .bind(&packet_info)
+    .bind(asin)
+    .bind(title)
+    .bind(brand)
+    .bind(Option::<String>::None)
+    .bind(&tag)
+    .execute(pool)
+    .await?;
+
+    get_seed_lot(pool, result.last_insert_rowid())
+        .await?
+        .ok_or(sqlx::Error::RowNotFound)
+}
+
+pub async fn enrich_seed_lot_from_asin_scan(
+    pool: &SqlitePool,
+    lot_id: i64,
+    asin: &str,
+    metadata: Option<&AsinSeedMetadata>,
+) -> Result<Option<SeedLot>, sqlx::Error> {
+    let Some(existing) = get_seed_lot(pool, lot_id).await? else {
+        return Ok(None);
+    };
+
+    let title = metadata.and_then(|m| m.title.clone());
+    let brand = metadata.and_then(|m| m.brand.clone());
+
+    let should_fill_label = existing
+        .lot_label
+        .as_deref()
+        .map(|v| v.trim().is_empty())
+        .unwrap_or(true);
+    let lot_label = if should_fill_label { title.clone() } else { None };
+
+    let packet_info = packet_info_with_asin(existing.packet_info.as_deref(), asin);
+
+    sqlx::query(
+        "UPDATE seed_lots SET
+            lot_label            = COALESCE(?, lot_label),
+            packet_info          = COALESCE(?, packet_info),
+            asin_code            = ?,
+            asin_product_title   = COALESCE(?, asin_product_title),
+            asin_brand           = COALESCE(?, asin_brand),
+            asin_last_lookup_at  = datetime('now'),
+            updated_at           = datetime('now')
+         WHERE id = ?",
+    )
+    .bind(lot_label)
+    .bind(packet_info)
+    .bind(asin)
+    .bind(title)
+    .bind(brand)
+    .bind(lot_id)
+    .execute(pool)
+    .await?;
+
+    get_seed_lot(pool, lot_id).await
 }

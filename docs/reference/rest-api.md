@@ -51,6 +51,7 @@ Most enum values use lowercase snake_case. `LocationType` values are PascalCase.
 | Issues | `/api/v1/issues` | `/api/v1/issues/{id}` |
 | Journal | `/api/v1/journal` | `/api/v1/journal/{id}` |
 | Harvests | `/api/v1/harvests` | `/api/v1/harvests/{id}` |
+| Seed lots | `/api/v1/seed-lots` | `/api/v1/seed-lots/{id}` |
 
 Location types currently supported by `LocationType`:
 `Plot`, `Space`, `Tent`, `Tray`, `Pot`, `Shed`, `OutdoorSite`, `IndoorSite`,
@@ -70,6 +71,17 @@ Plant payloads include lifecycle metadata fields:
 | `DELETE` | Remove a record — returns `204 No Content` |
 
 Harvests do not support `PUT` (delete and re-create to correct a record).
+
+Seed lot scan endpoints accept a JSON body and return the resulting seed lot
+together with lookup details:
+
+| Endpoint | Body field | Description |
+| --- | --- | --- |
+| `POST /api/v1/seed-lots/scan/ean` | `barcode` | EAN-8 / EAN-13 lookup via EAN-Search |
+| `POST /api/v1/seed-lots/scan/asin` | `asin` | Amazon ASIN lookup via PA API v5 |
+
+Scan endpoints create a new seed lot when none matching the barcode or ASIN
+exists, or enrich an existing one with product metadata when a match is found.
 
 Storage endpoints support moving user data to absolute local or UNC network paths.
 When a user data directory override is changed, responses include `restart_required`
@@ -178,7 +190,27 @@ curl -X POST http://127.0.0.1:7272/api/v1/backups/jobs/3/run \
   -d '{"encryption_password":null}'
 ```
 
-## Documentation and testing tools
+### List all seed lots
+
+```bash
+curl "http://127.0.0.1:7272/api/v1/seed-lots" | jq .
+```
+
+### Scan a seed packet by EAN barcode
+
+```bash
+curl -X POST http://127.0.0.1:7272/api/v1/seed-lots/scan/ean \
+  -H "Content-Type: application/json" \
+  -d '{"barcode": "5010356101123"}'
+```
+
+### Scan a seed packet by Amazon ASIN
+
+```bash
+curl -X POST http://127.0.0.1:7272/api/v1/seed-lots/scan/asin \
+  -H "Content-Type: application/json" \
+  -d '{"asin": "B08N5WRWNW"}'
+```
 
 The `api/` directory at the project root contains:
 

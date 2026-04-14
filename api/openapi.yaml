@@ -42,6 +42,8 @@ tags:
     description: User data and backup storage path configuration
   - name: Backups
     description: Backup job definitions and execution history
+  - name: Seed Store
+    description: Seed lot inventory with EAN barcode and Amazon ASIN enrichment
 
 paths:
   # ---------------------------------------------------------------------------
@@ -981,6 +983,156 @@ paths:
       responses:
         "204":
           description: Deleted successfully
+
+  # ---------------------------------------------------------------------------
+  # Seed Store
+  # ---------------------------------------------------------------------------
+  /api/v1/seed-lots:
+    get:
+      tags: [Seed Store]
+      summary: List seed lots
+      operationId: listSeedLots
+      parameters:
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: List of seed lots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SeedLot"
+    post:
+      tags: [Seed Store]
+      summary: Create a seed lot
+      operationId: createSeedLot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewSeedLot"
+      responses:
+        "200":
+          description: Created seed lot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeedLot"
+
+  /api/v1/seed-lots/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Seed Store]
+      summary: Get a seed lot
+      operationId: getSeedLot
+      responses:
+        "200":
+          description: Seed lot record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeedLot"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Seed Store]
+      summary: Update a seed lot
+      operationId: updateSeedLot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSeedLot"
+      responses:
+        "200":
+          description: Updated seed lot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeedLot"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Seed Store]
+      summary: Delete a seed lot
+      operationId: deleteSeedLot
+      responses:
+        "204":
+          description: Deleted successfully
+
+  /api/v1/seed-lots/scan/ean:
+    post:
+      tags: [Seed Store]
+      summary: Scan a seed packet by EAN barcode
+      description: |
+        Normalizes the barcode, queries EAN-Search (if enabled), then creates
+        or enriches a seed lot record. Returns the lot and lookup details.
+
+        Requires the EAN-Search integration to be configured in Settings for
+        full product enrichment. The endpoint still creates a bare seed lot
+        when the integration is disabled or the barcode is not found.
+      operationId: scanSeedPacketEan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [barcode]
+              properties:
+                barcode:
+                  type: string
+                  description: Raw EAN-8 or EAN-13 barcode (dashes and spaces are stripped)
+                  example: "5010356101123"
+      responses:
+        "200":
+          description: Scan result with seed lot and lookup status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeedLotScanResult"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/seed-lots/scan/asin:
+    post:
+      tags: [Seed Store]
+      summary: Scan a seed packet by Amazon ASIN
+      description: |
+        Normalizes the ASIN, queries the Amazon Product Advertising API v5
+        (if the `amazon_pa_api` integration is enabled), then creates or enriches
+        a seed lot record. Returns the lot and lookup details.
+
+        Requires a configured Amazon PA API integration (access key, secret key,
+        partner tag) in Settings. Without credentials the lookup status will be
+        `credentials_required` and a bare seed lot is still created.
+      operationId: scanSeedPacketAsin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [asin]
+              properties:
+                asin:
+                  type: string
+                  description: Amazon Standard Identification Number (10 alphanumeric characters)
+                  example: "B08N5WRWNW"
+      responses:
+        "200":
+          description: Scan result with seed lot and lookup status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeedAsinScanResult"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
 # ===========================================================================
 # Components
@@ -2289,3 +2441,294 @@ components:
           type: string
         is_base64:
           type: boolean
+
+    # -------------------------------------------------------------------------
+    # Seed Store
+    # -------------------------------------------------------------------------
+
+    SeedLot:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        parent_plant_id:
+          type: integer
+          format: int64
+          nullable: true
+        harvest_id:
+          type: integer
+          format: int64
+          nullable: true
+        species_id:
+          type: integer
+          format: int64
+          nullable: true
+        lot_label:
+          type: string
+          nullable: true
+        quantity:
+          type: number
+          format: double
+          nullable: true
+        viability_pct:
+          type: number
+          format: double
+          nullable: true
+        storage_location:
+          type: string
+          nullable: true
+        collected_date:
+          type: string
+          nullable: true
+        source_type:
+          type: string
+          description: Origin of the seed lot (e.g. `harvest`, `purchased`, `gift`)
+        asset_id:
+          type: string
+          nullable: true
+        vendor:
+          type: string
+          nullable: true
+        purchase_date:
+          type: string
+          nullable: true
+        expiration_date:
+          type: string
+          nullable: true
+        packet_info:
+          type: string
+          nullable: true
+        ean_code:
+          type: string
+          nullable: true
+        ean_product_name:
+          type: string
+          nullable: true
+        ean_category_name:
+          type: string
+          nullable: true
+        ean_issuing_country:
+          type: string
+          nullable: true
+        ean_last_lookup_at:
+          type: string
+          format: date-time
+          nullable: true
+        asin_code:
+          type: string
+          nullable: true
+          description: Amazon Standard Identification Number (10 chars)
+        asin_product_title:
+          type: string
+          nullable: true
+        asin_brand:
+          type: string
+          nullable: true
+        asin_last_lookup_at:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    NewSeedLot:
+      type: object
+      properties:
+        species_id:
+          type: integer
+          format: int64
+          nullable: true
+        parent_plant_id:
+          type: integer
+          format: int64
+          nullable: true
+        harvest_id:
+          type: integer
+          format: int64
+          nullable: true
+        lot_label:
+          type: string
+          nullable: true
+        quantity:
+          type: number
+          format: double
+          nullable: true
+        viability_pct:
+          type: number
+          format: double
+          nullable: true
+        storage_location:
+          type: string
+          nullable: true
+        collected_date:
+          type: string
+          nullable: true
+        source_type:
+          type: string
+          nullable: true
+        vendor:
+          type: string
+          nullable: true
+        purchase_date:
+          type: string
+          nullable: true
+        expiration_date:
+          type: string
+          nullable: true
+        packet_info:
+          type: string
+          nullable: true
+        ean_code:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    UpdateSeedLot:
+      type: object
+      properties:
+        species_id:
+          type: integer
+          format: int64
+          nullable: true
+        lot_label:
+          type: string
+          nullable: true
+        quantity:
+          type: number
+          format: double
+          nullable: true
+        viability_pct:
+          type: number
+          format: double
+          nullable: true
+        storage_location:
+          type: string
+          nullable: true
+        collected_date:
+          type: string
+          nullable: true
+        source_type:
+          type: string
+          nullable: true
+        vendor:
+          type: string
+          nullable: true
+        purchase_date:
+          type: string
+          nullable: true
+        expiration_date:
+          type: string
+          nullable: true
+        packet_info:
+          type: string
+          nullable: true
+        ean_code:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    SeedLotScanAction:
+      type: string
+      enum: [created, enriched, matched]
+      description: |
+        - `created` — a new seed lot was created from the scan
+        - `enriched` — an existing lot was updated with product data
+        - `matched` — an existing lot was found but the lookup returned no new data
+
+    SeedEanLookupStatus:
+      type: string
+      enum: [success, not_found, rate_limited, token_required, error, skipped]
+      description: |
+        - `success` — product found and data returned
+        - `not_found` — barcode not in EAN-Search database
+        - `rate_limited` — API rate limit exceeded
+        - `token_required` — anonymous quota exhausted; a token is needed
+        - `error` — unexpected API or network error
+        - `skipped` — EAN-Search integration is disabled
+
+    SeedEanLookup:
+      type: object
+      properties:
+        ean_code:
+          type: string
+        product_name:
+          type: string
+          nullable: true
+        category_name:
+          type: string
+          nullable: true
+        issuing_country:
+          type: string
+          nullable: true
+        lookup_status:
+          $ref: "#/components/schemas/SeedEanLookupStatus"
+        message:
+          type: string
+          nullable: true
+
+    SeedLotScanResult:
+      type: object
+      properties:
+        seed_lot:
+          $ref: "#/components/schemas/SeedLot"
+        action:
+          $ref: "#/components/schemas/SeedLotScanAction"
+        lookup:
+          allOf:
+            - $ref: "#/components/schemas/SeedEanLookup"
+          nullable: true
+
+    SeedAsinLookupStatus:
+      type: string
+      enum: [success, not_found, credentials_required, error, skipped]
+      description: |
+        - `success` — product found and data returned
+        - `not_found` — ASIN not found in the Amazon catalog
+        - `credentials_required` — AWS credentials missing or invalid
+        - `error` — unexpected API or network error
+        - `skipped` — Amazon PA API integration is disabled
+
+    SeedAsinLookup:
+      type: object
+      properties:
+        asin:
+          type: string
+          description: Amazon Standard Identification Number
+        title:
+          type: string
+          nullable: true
+        brand:
+          type: string
+          nullable: true
+        product_url:
+          type: string
+          nullable: true
+        lookup_status:
+          $ref: "#/components/schemas/SeedAsinLookupStatus"
+        message:
+          type: string
+          nullable: true
+
+    SeedAsinScanResult:
+      type: object
+      properties:
+        seed_lot:
+          $ref: "#/components/schemas/SeedLot"
+        action:
+          $ref: "#/components/schemas/SeedLotScanAction"
+        lookup:
+          allOf:
+            - $ref: "#/components/schemas/SeedAsinLookup"
+          nullable: true

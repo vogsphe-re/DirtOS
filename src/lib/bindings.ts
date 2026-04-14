@@ -1692,6 +1692,14 @@ async scanSeedPacketEan(barcode: string) : Promise<Result<SeedLotScanResult, str
     else return { status: "error", error: e  as any };
 }
 },
+async scanSeedPacketAsin(asin: string) : Promise<Result<SeedAsinScanResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("scan_seed_packet_asin", { asin }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async listSeasons(environmentId: number) : Promise<Result<Season[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("list_seasons", { environmentId }) };
@@ -2030,7 +2038,7 @@ export type IndoorReading = { id: number; indoor_environment_id: number; water_t
 export type IndoorReservoirTarget = { id: number; indoor_environment_id: number; ph_min: number | null; ph_max: number | null; ec_min: number | null; ec_max: number | null; ppm_min: number | null; ppm_max: number | null; updated_at: string }
 export type IndoorWaterChange = { id: number; indoor_environment_id: number; volume_liters: number | null; notes: string | null; created_at: string }
 export type IntegrationConfig = { id: number; provider: IntegrationProvider; enabled: boolean; auth_json: string | null; settings_json: string | null; sync_interval_minutes: number | null; cache_ttl_minutes: number | null; rate_limit_per_minute: number | null; last_synced_at: string | null; last_error: string | null; updated_at: string }
-export type IntegrationProvider = "inaturalist" | "wikipedia" | "eol" | "ean_search" | "osm" | "dropbox" | "google_drive" | "onedrive" | "home_assistant" | "n8n"
+export type IntegrationProvider = "inaturalist" | "wikipedia" | "eol" | "ean_search" | "osm" | "dropbox" | "google_drive" | "onedrive" | "home_assistant" | "n8n" | "amazon_pa_api"
 export type IntegrationSyncRun = { id: number; provider: string; operation: string; status: string; records_fetched: number | null; records_upserted: number | null; error_message: string | null; started_at: string; finished_at: string | null }
 export type IntegrationWebhookToken = { id: number; provider: string; name: string; token: string; is_active: boolean; created_at: string }
 export type Issue = { id: number; environment_id: number | null; plant_id: number | null; location_id: number | null; title: string; description: string | null; status: IssueStatus; priority: IssuePriority; created_at: string; updated_at: string; closed_at: string | null }
@@ -2084,7 +2092,10 @@ export type ScheduleType = "water" | "feed" | "maintenance" | "treatment" | "sam
 export type Season = { id: number; environment_id: number; name: string; start_date: string; end_date: string; notes: string | null; created_at: string }
 export type SeedEanLookup = { ean_code: string; product_name: string | null; category_name: string | null; issuing_country: string | null; lookup_status: SeedEanLookupStatus; message: string | null }
 export type SeedEanLookupStatus = "success" | "not_found" | "rate_limited" | "token_required" | "error" | "skipped"
-export type SeedLot = { id: number; parent_plant_id: number | null; harvest_id: number | null; species_id: number | null; lot_label: string | null; quantity: number | null; viability_pct: number | null; storage_location: string | null; collected_date: string | null; source_type: string; asset_id: string | null; vendor: string | null; purchase_date: string | null; expiration_date: string | null; packet_info: string | null; ean_code: string | null; ean_product_name: string | null; ean_category_name: string | null; ean_issuing_country: string | null; ean_last_lookup_at: string | null; notes: string | null; created_at: string; updated_at: string }
+export type SeedAsinLookup = { asin: string; title: string | null; brand: string | null; product_url: string | null; lookup_status: SeedAsinLookupStatus; message: string | null }
+export type SeedAsinLookupStatus = "success" | "not_found" | "credentials_required" | "error" | "skipped"
+export type SeedAsinScanResult = { seed_lot: SeedLot; action: SeedLotScanAction; lookup: SeedAsinLookup | null }
+export type SeedLot = { id: number; parent_plant_id: number | null; harvest_id: number | null; species_id: number | null; lot_label: string | null; quantity: number | null; viability_pct: number | null; storage_location: string | null; collected_date: string | null; source_type: string; asset_id: string | null; vendor: string | null; purchase_date: string | null; expiration_date: string | null; packet_info: string | null; ean_code: string | null; ean_product_name: string | null; ean_category_name: string | null; ean_issuing_country: string | null; ean_last_lookup_at: string | null; asin_code: string | null; asin_product_title: string | null; asin_brand: string | null; asin_last_lookup_at: string | null; notes: string | null; created_at: string; updated_at: string }
 export type SeedLotScanAction = "created" | "enriched" | "matched"
 export type SeedLotScanResult = { seed_lot: SeedLot; action: SeedLotScanAction; lookup: SeedEanLookup | null }
 export type SeedlingObservation = { id: number; plant_id: number; observed_at: string; height_cm: number | null; stem_thickness_mm: number | null; leaf_node_count: number | null; leaf_node_spacing_mm: number | null; notes: string | null; created_at: string }

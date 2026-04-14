@@ -4,6 +4,7 @@ import {
   Checkbox,
   Divider,
   Group,
+  Image,
   Loader,
   Select,
   SimpleGrid,
@@ -396,8 +397,26 @@ export function PlantDetail({ plantId, from }: PlantDetailProps) {
                   Edit
                 </Button>
               </Group>
-              {plant.asset_id && (
-                <AssetTagBadge tag={plant.asset_id} label={plant.name} />
+              {(plant.asset_id || species?.image_url) && (
+                <Group align="flex-start" gap="lg" wrap="nowrap">
+                  {plant.asset_id && (
+                    <AssetTagBadge
+                      tag={plant.asset_id}
+                      label={plant.name}
+                      barHeight={36}
+                    />
+                  )}
+                  {species?.image_url && (
+                    <Image
+                      src={species.image_url}
+                      alt={species.common_name}
+                      mah={90}
+                      maw={160}
+                      fit="contain"
+                      radius="sm"
+                    />
+                  )}
+                </Group>
               )}
               <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
                 <InfoItem

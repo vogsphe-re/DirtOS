@@ -7,6 +7,7 @@ pub mod journal;
 pub mod locations;
 pub mod plants;
 pub mod schedules;
+pub mod seed_store;
 pub mod sensors;
 pub mod storage;
 pub mod species;

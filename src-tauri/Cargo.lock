@@ -1157,6 +1157,7 @@ dependencies = [
  "chrono",
  "cron",
  "csv",
+ "hmac",
  "image",
  "pbkdf2",
  "rand 0.8.5",

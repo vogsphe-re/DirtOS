@@ -50,6 +50,8 @@ same request patterns used by DirtOS scripts and services.
   See [`api/debug/trefle-debug.README.md`](../../api/debug/trefle-debug.README.md).
 - EAN Search: `Lookup public (no token)` and `Lookup with token` for side-by-side behavior.
   See [`api/debug/ean-debug.README.md`](../../api/debug/ean-debug.README.md).
+- Amazon PA API: `Lookup ASIN` using AWS Sig V4 credentials (access key + secret key + partner tag required).
+  See [`api/debug/asin-debug.README.md`](../../api/debug/asin-debug.README.md).
 - Wikipedia: `OpenSearch` → set `wikiTitle` → `Page summary`.
   See [`api/debug/wikipedia-debug.README.md`](../../api/debug/wikipedia-debug.README.md).
 - Multi-source comparison: run the cross-provider collection with one query.
@@ -60,6 +62,7 @@ same request patterns used by DirtOS scripts and services.
 - EoL TraitBank can return `401 Unauthorized` depending on API access policy.
 - EAN anonymous requests can be rate-limited or rejected without a token.
 - Trefle requests require `trefleToken`.
+- Amazon PA API requests require a valid active Associates account with PA API access enabled.
 
 ## Core integration areas
 

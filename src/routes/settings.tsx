@@ -522,6 +522,7 @@ function SettingsPage() {
             <WeatherApiKeyCard />
             <TrefleApiKeyCard />
             <EanSearchApiCard />
+            <AmazonPaApiCard />
             <IntegrationExtensionsPanel activeEnvironmentId={activeId} />
           </Stack>
         </Tabs.Panel>
@@ -1000,6 +1001,203 @@ function EanSearchApiCard() {
             min={1}
             value={rateLimit}
             onChange={setRateLimit}
+          />
+
+          <Group justify="flex-end">
+            <Button onClick={save} loading={saving}>Save</Button>
+          </Group>
+        </Stack>
+      )}
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Amazon Product Advertising API card
+// ---------------------------------------------------------------------------
+
+const AMAZON_MARKETPLACES = [
+  { value: "www.amazon.com",     label: "US (amazon.com)" },
+  { value: "www.amazon.co.uk",   label: "UK (amazon.co.uk)" },
+  { value: "www.amazon.de",      label: "Germany (amazon.de)" },
+  { value: "www.amazon.fr",      label: "France (amazon.fr)" },
+  { value: "www.amazon.es",      label: "Spain (amazon.es)" },
+  { value: "www.amazon.it",      label: "Italy (amazon.it)" },
+  { value: "www.amazon.co.jp",   label: "Japan (amazon.co.jp)" },
+  { value: "www.amazon.com.au",  label: "Australia (amazon.com.au)" },
+  { value: "www.amazon.ca",      label: "Canada (amazon.ca)" },
+  { value: "www.amazon.in",      label: "India (amazon.in)" },
+];
+
+function parseAmazonAuth(authJson: string | null): {
+  access_key: string;
+  secret_key: string;
+  partner_tag: string;
+} | null {
+  if (!authJson) return null;
+  try {
+    const parsed = JSON.parse(authJson);
+    if (parsed?.access_key) return parsed;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function AmazonPaApiCard() {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [enabled, setEnabled] = useState(false);
+  const [accessKey, setAccessKey] = useState("");
+  const [secretKey, setSecretKey] = useState("");
+  const [partnerTag, setPartnerTag] = useState("");
+  const [marketplace, setMarketplace] = useState("www.amazon.com");
+  const [saving, setSaving] = useState(false);
+
+  const { data: integrationConfig } = useQuery({
+    queryKey: ["integration-config", "amazon_pa_api"],
+    queryFn: async () => {
+      const res = await commands.listIntegrationConfigs();
+      if (res.status === "error") throw new Error(res.error);
+      return res.data.find((cfg) => cfg.provider === "amazon_pa_api") ?? null;
+    },
+  });
+
+  const configuredAuth = parseAmazonAuth(integrationConfig?.auth_json ?? null);
+
+  useEffect(() => {
+    if (!integrationConfig) {
+      setEnabled(false);
+      setAccessKey("");
+      setSecretKey("");
+      setPartnerTag("");
+      setMarketplace("www.amazon.com");
+      return;
+    }
+
+    setEnabled(integrationConfig.enabled);
+    setAccessKey(configuredAuth?.access_key ?? "");
+    setPartnerTag(configuredAuth?.partner_tag ?? "");
+
+    const settings = integrationConfig.settings_json
+      ? (() => { try { return JSON.parse(integrationConfig.settings_json); } catch { return {}; } })()
+      : {};
+    setMarketplace(settings?.marketplace ?? "www.amazon.com");
+  }, [integrationConfig]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const ak = accessKey.trim();
+      const tag = partnerTag.trim();
+
+      // If the secret key field is blank, fall back to the previously stored value.
+      // The PasswordInput description explicitly says "Leave blank to keep the existing key."
+      const sk = secretKey.trim() || (configuredAuth?.secret_key ?? "");
+
+      const authJson =
+        ak && sk
+          ? JSON.stringify({ access_key: ak, secret_key: sk, partner_tag: tag })
+          : null;
+
+      const settingsJson = JSON.stringify({ marketplace });
+
+      const res = await commands.upsertIntegrationConfig("amazon_pa_api", {
+        enabled,
+        auth_json: authJson,
+        settings_json: settingsJson,
+        sync_interval_minutes: integrationConfig?.sync_interval_minutes ?? null,
+        cache_ttl_minutes: integrationConfig?.cache_ttl_minutes ?? null,
+        rate_limit_per_minute: integrationConfig?.rate_limit_per_minute ?? null,
+      });
+
+      if (res.status === "error") throw new Error(res.error);
+
+      qc.invalidateQueries({ queryKey: ["integration-config", "amazon_pa_api"] });
+      qc.invalidateQueries({ queryKey: ["integration-configs"] });
+      notifications.show({
+        title: "Amazon PA API settings saved",
+        message: "ASIN product lookup is updated.",
+        color: "green",
+      });
+      setEditing(false);
+      setSecretKey("");
+    } catch (e) {
+      notifications.show({ message: String(e), color: "red", title: "Error" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card withBorder>
+      <Group justify="space-between" mb="sm">
+        <Title order={4}>
+          <Group gap={8}>
+            <IconBarcode size={18} />
+            Amazon PA API
+          </Group>
+        </Title>
+        <Button size="xs" variant="subtle" onClick={() => setEditing((v) => !v)}>
+          {editing ? "Cancel" : "Configure"}
+        </Button>
+      </Group>
+
+      <Text size="sm" c="dimmed">
+        ASIN lookup enriches seed packets scanned with Amazon product codes.
+        Requires a Product Advertising API account (Amazon Associates).
+      </Text>
+
+      <Group gap="xs" mt="sm">
+        <Badge color={enabled ? "green" : "gray"} variant="light">
+          {enabled ? "Enabled" : "Disabled"}
+        </Badge>
+        <Badge color={configuredAuth ? "green" : "orange"} variant="light">
+          {configuredAuth ? "Credentials configured" : "Not configured"}
+        </Badge>
+      </Group>
+
+      {editing && (
+        <Stack gap="sm" mt="sm">
+          <SegmentedControl
+            value={enabled ? "enabled" : "disabled"}
+            onChange={(value) => setEnabled(value === "enabled")}
+            data={[
+              { value: "enabled", label: "Enabled" },
+              { value: "disabled", label: "Disabled" },
+            ]}
+          />
+
+          <TextInput
+            label="Access Key ID"
+            description="From your Amazon PA API credentials."
+            placeholder="AKIAIOSFODNN7EXAMPLE"
+            value={accessKey}
+            onChange={(e) => setAccessKey(e.currentTarget.value)}
+          />
+
+          <PasswordInput
+            label="Secret Access Key"
+            description="Leave blank to keep the existing key."
+            placeholder={configuredAuth ? "(unchanged)" : "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"}
+            value={secretKey}
+            onChange={(e) => setSecretKey(e.currentTarget.value)}
+          />
+
+          <TextInput
+            label="Partner Tag (Associates ID)"
+            description="Your Amazon Associates tracking tag."
+            placeholder="yourstore-20"
+            value={partnerTag}
+            onChange={(e) => setPartnerTag(e.currentTarget.value)}
+          />
+
+          <NativeSelect
+            label="Marketplace"
+            description="Select the Amazon store to search against."
+            value={marketplace}
+            onChange={(e) => setMarketplace(e.currentTarget.value)}
+            data={AMAZON_MARKETPLACES}
           />
 
           <Group justify="flex-end">

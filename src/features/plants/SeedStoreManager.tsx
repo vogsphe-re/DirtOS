@@ -38,6 +38,7 @@ import {
   type SeedlingTray,
   type SeedlingTrayCell,
   type SeedLotScanResult,
+  type SeedAsinScanResult,
 } from "../../lib/bindings";
 import { useAppStore } from "../../stores/appStore";
 import type { Species, TaxonResult } from "./types";
@@ -729,6 +730,7 @@ export default function SeedStoreManager() {
   const [filterSource, setFilterSource] = useState<string | null>(null);
   const [searchText, setSearchText] = useState("");
   const [eanScanInput, setEanScanInput] = useState("");
+  const [asinScanInput, setAsinScanInput] = useState("");
 
   // Fetch seed store inventory
   const { data: storeResult, isLoading } = useQuery({
@@ -792,6 +794,53 @@ export default function SeedStoreManager() {
     },
   });
 
+  const scanAsinMut = useMutation({
+    mutationFn: async (asin: string) => {
+      const res = await commands.scanSeedPacketAsin(asin);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data as SeedAsinScanResult;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["seed-store"] });
+
+      const actionLabel =
+        data.action === "created"
+          ? "created"
+          : data.action === "enriched"
+            ? "enriched"
+            : "matched";
+
+      const lotName = data.seed_lot.lot_label ?? `Lot #${data.seed_lot.id}`;
+      const lookupMessage = data.lookup?.message ? ` · ${data.lookup.message}` : "";
+
+      const notifColor = (() => {
+        switch (data.lookup?.lookup_status) {
+          case "success":               return "green";
+          case "credentials_required":  return "orange";
+          case "not_found":             return "yellow";
+          case "skipped":               return "yellow";
+          case "error":                 return "red";
+          default:                      return "green";
+        }
+      })();
+
+      notifications.show({
+        title: `Seed lot ${actionLabel}`,
+        message: `${lotName}${lookupMessage}`,
+        color: notifColor,
+      });
+
+      setAsinScanInput("");
+    },
+    onError: (e) => {
+      notifications.show({
+        title: "ASIN scan failed",
+        message: String(e),
+        color: "red",
+      });
+    },
+  });
+
   // Apply filters
   const filtered = seedLots.filter((lot) => {
     if (filterSource && lot.source_type !== filterSource) return false;
@@ -801,6 +850,8 @@ export default function SeedStoreManager() {
       const vendorStr = (lot.vendor ?? "").toLowerCase();
       const eanCode = (lot.ean_code ?? "").toLowerCase();
       const eanName = (lot.ean_product_name ?? "").toLowerCase();
+      const asinCode = (lot.asin_code ?? "").toLowerCase();
+      const asinTitle = (lot.asin_product_title ?? "").toLowerCase();
       const sp = speciesList.find((s) => s.id === lot.species_id);
       const speciesName = (sp?.common_name ?? "").toLowerCase();
       if (
@@ -809,6 +860,8 @@ export default function SeedStoreManager() {
         && !speciesName.includes(q)
         && !eanCode.includes(q)
         && !eanName.includes(q)
+        && !asinCode.includes(q)
+        && !asinTitle.includes(q)
       ) {
         return false;
       }
@@ -882,6 +935,34 @@ export default function SeedStoreManager() {
           </Group>
           <Text size="xs" c="dimmed" mt={6}>
             Scanning creates a new seed lot for unknown barcodes and enriches matching lots when data is available.
+          </Text>
+        </Card>
+
+        <Card withBorder p="sm">
+          <Group align="flex-end" wrap="wrap">
+            <TextInput
+              label="Scan Amazon ASIN"
+              placeholder="Example: B0CX1234AB"
+              value={asinScanInput}
+              onChange={(e) => setAsinScanInput(e.currentTarget.value)}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                if (!asinScanInput.trim()) return;
+                scanAsinMut.mutate(asinScanInput.trim());
+              }}
+              style={{ flex: 1, minWidth: 260 }}
+            />
+            <Button
+              leftSection={<IconBarcode size={16} />}
+              onClick={() => scanAsinMut.mutate(asinScanInput.trim())}
+              loading={scanAsinMut.isPending}
+              disabled={!asinScanInput.trim()}
+            >
+              Scan ASIN
+            </Button>
+          </Group>
+          <Text size="xs" c="dimmed" mt={6}>
+            Looks up the product by Amazon ASIN and creates or enriches a seed lot. Requires Amazon PA API credentials in Settings.
           </Text>
         </Card>
 
