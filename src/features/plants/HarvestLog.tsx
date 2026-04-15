@@ -213,34 +213,32 @@ export function HarvestLog({ plantId }: HarvestLogProps) {
                 <Table.Td>{h.notes ?? "—"}</Table.Td>
                 <Table.Td>
                   <Group gap={4} wrap="nowrap">
-                  <ActionIcon
-                    size="xs"
-                    variant="subtle"
-                    onClick={() => {
-                      setEditingHarvest(h);
-                      setEditValues({
-                        quality_rating: h.quality_rating != null ? String(h.quality_rating) : "",
-                        notes: h.notes ?? "",
-                        sale_ean: h.sale_ean ?? "",
-                        sale_asin: h.sale_asin ?? "",
-                      });
-                    }}
-                  >
-                    <IconEdit size={12} />
-                  </ActionIcon>
-                    <IconTrash size={12} />
-                  </ActionIcon>
-                  <ActionIcon
-                    size="xs"
-                    color="red"
-                    variant="subtle"
-                    loading={deleteHarvest.isPending}
-                    onClick={() => {
-                      if (confirm("Delete this harvest record?")) deleteHarvest.mutate(h.id);
-                    }}
-                  >
-                    <IconTrash size={12} />
-                  </ActionIcon>
+                    <ActionIcon
+                      size="xs"
+                      variant="subtle"
+                      onClick={() => {
+                        setEditingHarvest(h);
+                        setEditValues({
+                          quality_rating: h.quality_rating != null ? String(h.quality_rating) : "",
+                          notes: h.notes ?? "",
+                          sale_ean: h.sale_ean ?? "",
+                          sale_asin: h.sale_asin ?? "",
+                        });
+                      }}
+                    >
+                      <IconEdit size={12} />
+                    </ActionIcon>
+                    <ActionIcon
+                      size="xs"
+                      color="red"
+                      variant="subtle"
+                      loading={deleteHarvest.isPending}
+                      onClick={() => {
+                        if (confirm("Delete this harvest record?")) deleteHarvest.mutate(h.id);
+                      }}
+                    >
+                      <IconTrash size={12} />
+                    </ActionIcon>
                   </Group>
                 </Table.Td>
               </Table.Tr>
