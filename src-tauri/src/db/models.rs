@@ -453,6 +453,8 @@ pub struct Plant {
     pub lifecycle_override: Option<String>,
     pub notes: Option<String>,
     pub canvas_object_id: Option<String>,
+    pub sale_ean: Option<String>,
+    pub sale_asin: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -496,6 +498,8 @@ pub struct UpdatePlant {
     #[serde(default)]
     pub lifecycle_override: Option<String>,
     pub notes: Option<String>,
+    pub sale_ean: Option<String>,
+    pub sale_asin: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -1316,6 +1320,8 @@ pub struct Harvest {
     pub quality_rating: Option<i64>,
     pub notes: Option<String>,
     pub asset_id: Option<String>,
+    pub sale_ean: Option<String>,
+    pub sale_asin: Option<String>,
     pub created_at: NaiveDateTime,
 }
 
@@ -1327,6 +1333,16 @@ pub struct NewHarvest {
     pub unit: Option<String>,
     pub quality_rating: Option<i64>,
     pub notes: Option<String>,
+    pub sale_ean: Option<String>,
+    pub sale_asin: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct UpdateHarvest {
+    pub quality_rating: Option<i64>,
+    pub notes: Option<String>,
+    pub sale_ean: Option<String>,
+    pub sale_asin: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -1359,6 +1375,8 @@ pub struct SeedLot {
     pub asin_product_title: Option<String>,
     pub asin_brand: Option<String>,
     pub asin_last_lookup_at: Option<String>,
+    pub sale_ean: Option<String>,
+    pub sale_asin: Option<String>,
     pub notes: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
@@ -1380,6 +1398,8 @@ pub struct NewSeedLot {
     pub expiration_date: Option<String>,
     pub packet_info: Option<String>,
     pub ean_code: Option<String>,
+    pub sale_ean: Option<String>,
+    pub sale_asin: Option<String>,
     pub notes: Option<String>,
 }
 
@@ -1397,6 +1417,8 @@ pub struct UpdateSeedLot {
     pub expiration_date: Option<String>,
     pub packet_info: Option<String>,
     pub ean_code: Option<String>,
+    pub sale_ean: Option<String>,
+    pub sale_asin: Option<String>,
     pub notes: Option<String>,
 }
 

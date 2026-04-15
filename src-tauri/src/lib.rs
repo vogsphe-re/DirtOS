@@ -287,6 +287,7 @@ fn specta_builder() -> Builder<tauri::Wry> {
         commands::list_harvests,
         commands::list_all_harvests,
         commands::create_harvest,
+        commands::update_harvest,
         commands::delete_harvest,
         commands::get_harvest_summary,
         commands::list_seed_lots,

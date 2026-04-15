@@ -46,8 +46,8 @@ pub async fn create_seed_lot(pool: &SqlitePool, input: NewSeedLot) -> Result<See
              viability_pct, storage_location, collected_date,
              source_type, vendor, purchase_date, expiration_date,
              packet_info, ean_code, ean_product_name, ean_category_name,
-             ean_issuing_country, ean_last_lookup_at, notes, asset_id)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+             ean_issuing_country, ean_last_lookup_at, sale_ean, sale_asin, notes, asset_id)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
     )
     .bind(input.species_id)
     .bind(input.parent_plant_id)
@@ -67,6 +67,8 @@ pub async fn create_seed_lot(pool: &SqlitePool, input: NewSeedLot) -> Result<See
     .bind(Option::<String>::None)
     .bind(Option::<String>::None)
     .bind(Option::<String>::None)
+    .bind(&input.sale_ean)
+    .bind(&input.sale_asin)
     .bind(&input.notes)
     .bind(&tag)
     .execute(pool)
@@ -96,6 +98,8 @@ pub async fn update_seed_lot(
             expiration_date  = COALESCE(?, expiration_date),
             packet_info      = COALESCE(?, packet_info),
             ean_code         = COALESCE(?, ean_code),
+            sale_ean         = COALESCE(?, sale_ean),
+            sale_asin        = COALESCE(?, sale_asin),
             notes            = COALESCE(?, notes),
             updated_at       = datetime('now')
          WHERE id = ?",
@@ -112,6 +116,8 @@ pub async fn update_seed_lot(
     .bind(&input.expiration_date)
     .bind(&input.packet_info)
     .bind(&input.ean_code)
+    .bind(&input.sale_ean)
+    .bind(&input.sale_asin)
     .bind(&input.notes)
     .bind(id)
     .execute(pool)

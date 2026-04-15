@@ -106,7 +106,7 @@ export function GenealogyView({ plant }: GenealogyViewProps) {
           <Text size="xs" c="dimmed" fw={500} mb={4}>Grown from seed lot</Text>
           {seedLot ? (
             <Stack gap={2}>
-              <Text size="sm" fw={600}>{seedLot.lot_label ?? `Lot #${seedLot.id}`}</Text>
+              <Text size="sm" fw={600}>{seedLot.asset_id ?? seedLot.lot_label ?? `Lot #${seedLot.id}`}</Text>
               {seedLot.collected_date && (
                 <Text size="xs" c="dimmed">Collected: {seedLot.collected_date}</Text>
               )}

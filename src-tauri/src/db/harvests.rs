@@ -1,6 +1,6 @@
 use sqlx::SqlitePool;
 
-use super::models::{Harvest, HarvestSummary, NewHarvest, Pagination, ReportData, ReportDataPoint, Season, SeedLot, NewSeason};
+use super::models::{Harvest, HarvestSummary, NewHarvest, UpdateHarvest, Pagination, ReportData, ReportDataPoint, Season, SeedLot, NewSeason};
 use crate::services::asset_tag;
 
 async fn harvest_asset_id_exists(pool: &SqlitePool, asset_id: &str) -> Result<bool, sqlx::Error> {
@@ -96,8 +96,8 @@ pub async fn create_harvest(
     let tag = next_harvest_asset_id(pool, plant_tag.as_deref()).await?;
 
     let result = sqlx::query(
-        "INSERT INTO harvests (plant_id, harvest_date, quantity, unit, quality_rating, notes, asset_id)
-         VALUES (?,?,?,?,?,?,?)",
+        "INSERT INTO harvests (plant_id, harvest_date, quantity, unit, quality_rating, notes, asset_id, sale_ean, sale_asin)
+         VALUES (?,?,?,?,?,?,?,?,?)",
     )
     .bind(input.plant_id)
     .bind(&input.harvest_date)
@@ -106,12 +106,38 @@ pub async fn create_harvest(
     .bind(input.quality_rating)
     .bind(&input.notes)
     .bind(&tag)
+    .bind(&input.sale_ean)
+    .bind(&input.sale_asin)
     .execute(pool)
     .await?;
 
     get_harvest(pool, result.last_insert_rowid())
         .await?
         .ok_or(sqlx::Error::RowNotFound)
+}
+
+pub async fn update_harvest(
+    pool: &SqlitePool,
+    id: i64,
+    input: UpdateHarvest,
+) -> Result<Option<Harvest>, sqlx::Error> {
+    sqlx::query(
+        "UPDATE harvests SET
+            quality_rating = COALESCE(?, quality_rating),
+            notes          = COALESCE(?, notes),
+            sale_ean       = COALESCE(?, sale_ean),
+            sale_asin      = COALESCE(?, sale_asin)
+         WHERE id = ?",
+    )
+    .bind(input.quality_rating)
+    .bind(&input.notes)
+    .bind(&input.sale_ean)
+    .bind(&input.sale_asin)
+    .bind(id)
+    .execute(pool)
+    .await?;
+
+    get_harvest(pool, id).await
 }
 
 pub async fn delete_harvest(pool: &SqlitePool, id: i64) -> Result<bool, sqlx::Error> {

@@ -1,6 +1,6 @@
 use tauri::State;
 
-use crate::db::{self, models::{Harvest, HarvestSummary, NewHarvest, Pagination, SeedLot}};
+use crate::db::{self, models::{Harvest, HarvestSummary, NewHarvest, UpdateHarvest, Pagination, SeedLot}};
 
 // ---------------------------------------------------------------------------
 // Harvests
@@ -55,6 +55,18 @@ pub async fn create_harvest(
     input: NewHarvest,
 ) -> Result<Harvest, String> {
     db::harvests::create_harvest(&pool, input)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn update_harvest(
+    pool: State<'_, sqlx::SqlitePool>,
+    id: i64,
+    input: UpdateHarvest,
+) -> Result<Option<Harvest>, String> {
+    db::harvests::update_harvest(&pool, id, input)
         .await
         .map_err(|e| e.to_string())
 }

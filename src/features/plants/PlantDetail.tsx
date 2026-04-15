@@ -459,6 +459,8 @@ export function PlantDetail({ plantId, from }: PlantDetailProps) {
                   label="Purchase price"
                   value={plant.purchase_price != null ? `$${plant.purchase_price.toFixed(2)}` : null}
                 />
+                <InfoItem label="Sale EAN / UPC" value={plant.sale_ean} />
+                <InfoItem label="Sale ASIN" value={plant.sale_asin} />
               </SimpleGrid>
               {plant.notes && (
                 <>
@@ -570,6 +572,8 @@ function PlantEditForm({
     purchase_source: plant.purchase_source ?? "",
     purchase_date: plant.purchase_date ?? "",
     purchase_price: plant.purchase_price != null ? String(plant.purchase_price) : "",
+    sale_ean: plant.sale_ean ?? "",
+    sale_asin: plant.sale_asin ?? "",
     lifecycle_override: plant.lifecycle_override ?? "__species__",
     notes: plant.notes ?? "",
   });
@@ -605,6 +609,8 @@ function PlantEditForm({
         purchase_source: values.purchase_source.trim() || null,
         purchase_date: values.purchase_date || null,
         purchase_price: values.purchase_price ? parseFloat(values.purchase_price) : null,
+        sale_ean: values.sale_ean.trim() || null,
+        sale_asin: values.sale_asin.trim() || null,
         is_harvestable: isHarvestable,
         lifecycle_override:
           values.lifecycle_override === "__species__"
@@ -649,6 +655,8 @@ function PlantEditForm({
         <TextInput label="Purchase source" {...f("purchase_source")} />
         <TextInput label="Purchase date" type="date" {...f("purchase_date")} />
         <TextInput label="Purchase price" type="number" {...f("purchase_price")} />
+        <TextInput label="Sale EAN / UPC" placeholder="e.g. 0123456789012" {...f("sale_ean")} />
+        <TextInput label="Sale ASIN" placeholder="e.g. B08N5WRWNW" {...f("sale_asin")} />
         <Select
           label="Lifecycle Override"
           data={lifecycleOptions}

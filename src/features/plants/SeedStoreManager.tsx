@@ -86,6 +86,8 @@ function SeedFormModal({ opened, onClose, seedLot, speciesList }: SeedFormModalP
   const [expirationDate, setExpirationDate] = useState(seedLot?.expiration_date ?? "");
   const [packetInfo, setPacketInfo] = useState(seedLot?.packet_info ?? "");
   const [notes, setNotes] = useState(seedLot?.notes ?? "");
+  const [saleEan, setSaleEan] = useState(seedLot?.sale_ean ?? "");
+  const [saleAsin, setSaleAsin] = useState(seedLot?.sale_asin ?? "");
 
   useEffect(() => {
     if (!opened) return;
@@ -103,6 +105,8 @@ function SeedFormModal({ opened, onClose, seedLot, speciesList }: SeedFormModalP
     setExpirationDate(seedLot?.expiration_date ?? "");
     setPacketInfo(seedLot?.packet_info ?? "");
     setNotes(seedLot?.notes ?? "");
+    setSaleEan(seedLot?.sale_ean ?? "");
+    setSaleAsin(seedLot?.sale_asin ?? "");
   }, [opened, seedLot]);
 
   const { data: inatResults = [], isFetching: inatSearching } = useQuery({
@@ -256,6 +260,8 @@ function SeedFormModal({ opened, onClose, seedLot, speciesList }: SeedFormModalP
           species_id: sid,
           lot_label: lotLabel || null,
           ean_code: eanCode || null,
+          sale_ean: saleEan || null,
+          sale_asin: saleAsin || null,
           quantity: qty,
           viability_pct: viab,
           storage_location: storageLocation || null,
@@ -275,6 +281,8 @@ function SeedFormModal({ opened, onClose, seedLot, speciesList }: SeedFormModalP
         harvest_id: null,
         lot_label: lotLabel || null,
         ean_code: eanCode || null,
+        sale_ean: saleEan || null,
+        sale_asin: saleAsin || null,
         quantity: qty,
         viability_pct: viab,
         storage_location: storageLocation || null,
@@ -312,7 +320,7 @@ function SeedFormModal({ opened, onClose, seedLot, speciesList }: SeedFormModalP
           clearable
         />
         <TextInput
-          label="Lot Label"
+          label="Lot Name"
           placeholder="e.g. Tomato Roma 2025"
           value={lotLabel}
           onChange={(e) => setLotLabel(e.currentTarget.value)}
@@ -378,6 +386,20 @@ function SeedFormModal({ opened, onClose, seedLot, speciesList }: SeedFormModalP
           value={packetInfo}
           onChange={(e) => setPacketInfo(e.currentTarget.value)}
         />
+        <Group grow>
+          <TextInput
+            label="Sale EAN / UPC"
+            placeholder="Your own sale barcode"
+            value={saleEan}
+            onChange={(e) => setSaleEan(e.currentTarget.value)}
+          />
+          <TextInput
+            label="Sale ASIN"
+            placeholder="Your Amazon ASIN"
+            value={saleAsin}
+            onChange={(e) => setSaleAsin(e.currentTarget.value)}
+          />
+        </Group>
         <Textarea
           label="Notes"
           value={notes}
@@ -480,7 +502,7 @@ function SowToTrayModal({ opened, onClose, seedLot }: SowToTrayModalProps) {
     <Modal opened={opened} onClose={onClose} title="Sow Seed to Tray" size="lg">
       <Stack gap="sm">
         <Text size="sm" c="dimmed">
-          Sowing from: <strong>{seedLot.lot_label ?? `Lot #${seedLot.id}`}</strong>
+          Sowing from: <strong>{seedLot.asset_id ?? seedLot.lot_label ?? `Lot #${seedLot.id}`}</strong>
           {seedLot.quantity != null && ` (${seedLot.quantity} remaining)`}
         </Text>
 
@@ -605,11 +627,16 @@ function SeedStoreCard({
   return (
     <Card withBorder p="sm">
       <Group justify="space-between" mb={4}>
-        <Group gap={8}>
-          <IconPackage size={18} />
-          <Text fw={600} size="sm">
-            {lot.lot_label ?? `Lot #${lot.id}`}
-          </Text>
+        <Group gap={8} align="flex-start">
+          <IconPackage size={18} style={{ marginTop: 2 }} />
+          <Stack gap={0}>
+            <Text fw={600} size="sm">
+              {lot.lot_label ?? lot.asset_id ?? `Lot #${lot.id}`}
+            </Text>
+            {lot.asset_id && (
+              <Text size="xs" c="dimmed"><AssetTagInline tag={lot.asset_id} /></Text>
+            )}
+          </Stack>
         </Group>
         <Group gap={4}>
           <Tooltip label="Sow to tray">
@@ -707,11 +734,12 @@ function SeedStoreCard({
             {lot.notes}
           </Text>
         )}
-        {lot.asset_id && (
+        {(lot.sale_ean || lot.sale_asin) && (
           <Text size="xs" c="dimmed" mt={2}>
-            Tag: <AssetTagInline tag={lot.asset_id} />
+            Sale: {lot.sale_ean && <AssetTagInline tag={lot.sale_ean} />}{lot.sale_ean && lot.sale_asin && " / "}{lot.sale_asin && <AssetTagInline tag={lot.sale_asin} />}
           </Text>
         )}
+
       </Stack>
     </Card>
   );
@@ -774,7 +802,7 @@ export default function SeedStoreManager() {
             ? "enriched"
             : "matched";
 
-      const lotName = data.seed_lot.lot_label ?? `Lot #${data.seed_lot.id}`;
+      const lotName = data.seed_lot.asset_id ?? data.seed_lot.lot_label ?? `Lot #${data.seed_lot.id}`;
       const lookupMessage = data.lookup?.message ? ` · ${data.lookup.message}` : "";
 
       notifications.show({
@@ -810,7 +838,7 @@ export default function SeedStoreManager() {
             ? "enriched"
             : "matched";
 
-      const lotName = data.seed_lot.lot_label ?? `Lot #${data.seed_lot.id}`;
+      const lotName = data.seed_lot.asset_id ?? data.seed_lot.lot_label ?? `Lot #${data.seed_lot.id}`;
       const lookupMessage = data.lookup?.message ? ` · ${data.lookup.message}` : "";
 
       const notifColor = (() => {

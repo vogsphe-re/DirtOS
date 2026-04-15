@@ -1222,6 +1222,8 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
                 unit: Some("g".to_string()),
                 quality_rating: Some(5),
                 notes: Some("First full head harvest from spring run.".to_string()),
+                sale_ean: None,
+                sale_asin: None,
             },
         )
         .await?;
@@ -1235,6 +1237,8 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
                 unit: Some("g".to_string()),
                 quality_rating: Some(4),
                 notes: Some("Second cut from regrowth block.".to_string()),
+                sale_ean: None,
+                sale_asin: None,
             },
         )
         .await?;
@@ -1256,6 +1260,8 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
                 expiration_date: Some((today + Duration::days(540)).format("%Y-%m-%d").to_string()),
                 packet_info: None,
                 ean_code: None,
+                sale_ean: None,
+                sale_asin: None,
                 notes: Some("Saved from selected heads for repeat spring sowing.".to_string()),
             },
         )
@@ -1272,6 +1278,8 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
                 unit: Some("g".to_string()),
                 quality_rating: Some(4),
                 notes: Some("Bulk spinach cut before warm weather stretch.".to_string()),
+                sale_ean: None,
+                sale_asin: None,
             },
         )
         .await?;
@@ -1287,6 +1295,8 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
                 unit: Some("g".to_string()),
                 quality_rating: Some(5),
                 notes: Some("Pinch harvest for pesto batch and tip pruning.".to_string()),
+                sale_ean: None,
+                sale_asin: None,
             },
         )
         .await?;
@@ -1310,6 +1320,8 @@ async fn inner_seed(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
             expiration_date: Some((today + Duration::days(610)).format("%Y-%m-%d").to_string()),
             packet_info: Some("Packet #KS-410".to_string()),
             ean_code: None,
+            sale_ean: None,
+            sale_asin: None,
             notes: Some("Used for bed west and tent hardening succession.".to_string()),
         },
     )

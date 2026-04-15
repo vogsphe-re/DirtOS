@@ -114,6 +114,8 @@ pub async fn update_plant(
                 is_harvestable    = COALESCE(?, is_harvestable),
                 lifecycle_override = COALESCE(?, lifecycle_override),
             notes             = COALESCE(?, notes),
+            sale_ean          = COALESCE(?, sale_ean),
+            sale_asin         = COALESCE(?, sale_asin),
             updated_at        = datetime('now')
          WHERE id = ?",
     )
@@ -134,6 +136,8 @@ pub async fn update_plant(
     .bind(input.is_harvestable)
     .bind(input.lifecycle_override)
     .bind(input.notes)
+    .bind(input.sale_ean)
+    .bind(input.sale_asin)
     .bind(id)
     .execute(pool)
     .await?;

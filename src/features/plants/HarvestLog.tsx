@@ -16,12 +16,13 @@ import {
   TextInput,
   Title,
 } from "@mantine/core";
+import { Modal } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconChevronDown, IconChevronUp, IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconChevronDown, IconChevronUp, IconEdit, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { commands } from "../../lib/bindings";
-import type { Harvest, HarvestSummary, NewHarvest, SeedLot } from "../../lib/bindings";
+import type { Harvest, HarvestSummary, NewHarvest, UpdateHarvest, SeedLot } from "../../lib/bindings";
 import { AssetTagInline } from "../../components/AssetTagBadge";
 
 const UNIT_OPTIONS = [
@@ -43,6 +44,8 @@ export function HarvestLog({ plantId }: HarvestLogProps) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [showSeedLotForm, setShowSeedLotForm] = useState(false);
+  const [editingHarvest, setEditingHarvest] = useState<Harvest | null>(null);
+  const [editValues, setEditValues] = useState({ quality_rating: "", notes: "", sale_ean: "", sale_asin: "" });
 
   // ── Data fetching ──────────────────────────────────────────────────────────
   const { data: harvests = [], isLoading } = useQuery<Harvest[]>({
@@ -99,6 +102,21 @@ export function HarvestLog({ plantId }: HarvestLogProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["harvests", plantId] });
       queryClient.invalidateQueries({ queryKey: ["harvest-summary", plantId] });
+    },
+    onError: (err: Error) =>
+      notifications.show({ title: "Error", message: err.message, color: "red" }),
+  });
+
+  const updateHarvest = useMutation({
+    mutationFn: async ({ id, input }: { id: number; input: UpdateHarvest }) => {
+      const res = await commands.updateHarvest(id, input);
+      if (res.status === "error") throw new Error(res.error);
+      return res.data as Harvest | null;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["harvests", plantId] });
+      setEditingHarvest(null);
+      notifications.show({ message: "Harvest updated.", color: "blue" });
     },
     onError: (err: Error) =>
       notifications.show({ title: "Error", message: err.message, color: "red" }),
@@ -161,6 +179,7 @@ export function HarvestLog({ plantId }: HarvestLogProps) {
               <Table.Th>Quantity</Table.Th>
               <Table.Th>Quality</Table.Th>
               <Table.Th>Tag</Table.Th>
+              <Table.Th>Sale Codes</Table.Th>
               <Table.Th>Notes</Table.Th>
               <Table.Th />
             </Table.Tr>
@@ -184,8 +203,33 @@ export function HarvestLog({ plantId }: HarvestLogProps) {
                 <Table.Td>
                   {h.asset_id ? <AssetTagInline tag={h.asset_id} /> : "—"}
                 </Table.Td>
+                <Table.Td>
+                  <Stack gap={2}>
+                    {h.sale_ean && <AssetTagInline tag={h.sale_ean} />}
+                    {h.sale_asin && <AssetTagInline tag={h.sale_asin} />}
+                    {!h.sale_ean && !h.sale_asin && <Text size="xs" c="dimmed">—</Text>}
+                  </Stack>
+                </Table.Td>
                 <Table.Td>{h.notes ?? "—"}</Table.Td>
                 <Table.Td>
+                  <Group gap={4} wrap="nowrap">
+                  <ActionIcon
+                    size="xs"
+                    variant="subtle"
+                    onClick={() => {
+                      setEditingHarvest(h);
+                      setEditValues({
+                        quality_rating: h.quality_rating != null ? String(h.quality_rating) : "",
+                        notes: h.notes ?? "",
+                        sale_ean: h.sale_ean ?? "",
+                        sale_asin: h.sale_asin ?? "",
+                      });
+                    }}
+                  >
+                    <IconEdit size={12} />
+                  </ActionIcon>
+                    <IconTrash size={12} />
+                  </ActionIcon>
                   <ActionIcon
                     size="xs"
                     color="red"
@@ -197,6 +241,7 @@ export function HarvestLog({ plantId }: HarvestLogProps) {
                   >
                     <IconTrash size={12} />
                   </ActionIcon>
+                  </Group>
                 </Table.Td>
               </Table.Tr>
             ))}
@@ -247,7 +292,7 @@ export function HarvestLog({ plantId }: HarvestLogProps) {
           <Table.Tbody>
             {seedLots.map((s) => (
               <Table.Tr key={s.id}>
-                <Table.Td>{s.lot_label ?? `Lot #${s.id}`}</Table.Td>
+                <Table.Td>{s.asset_id ?? s.lot_label ?? `Lot #${s.id}`}</Table.Td>
                 <Table.Td>{s.quantity ?? "—"}</Table.Td>
                 <Table.Td>
                   {s.viability_pct != null ? `${s.viability_pct}%` : "—"}
@@ -262,6 +307,70 @@ export function HarvestLog({ plantId }: HarvestLogProps) {
           </Table.Tbody>
         </Table>
       )}
+
+      {/* ── Harvest edit modal ─────────────────────────────────────────────── */}
+      <Modal
+        opened={editingHarvest != null}
+        onClose={() => setEditingHarvest(null)}
+        title="Edit Harvest"
+        size="sm"
+      >
+        <Stack gap="sm">
+          <Select
+            label="Quality (1–5)"
+            data={[
+              { value: "1", label: "1 — Poor" },
+              { value: "2", label: "2 — Fair" },
+              { value: "3", label: "3 — Good" },
+              { value: "4", label: "4 — Very Good" },
+              { value: "5", label: "5 — Excellent" },
+            ]}
+            value={editValues.quality_rating}
+            onChange={(v) => setEditValues((prev) => ({ ...prev, quality_rating: v ?? "" }))}
+            clearable
+          />
+          <TextInput
+            label="Sale EAN / UPC"
+            placeholder="e.g. 0123456789012"
+            value={editValues.sale_ean}
+            onChange={(e) => setEditValues((prev) => ({ ...prev, sale_ean: e.currentTarget.value }))}
+          />
+          <TextInput
+            label="Sale ASIN"
+            placeholder="e.g. B08N5WRWNW"
+            value={editValues.sale_asin}
+            onChange={(e) => setEditValues((prev) => ({ ...prev, sale_asin: e.currentTarget.value }))}
+          />
+          <Textarea
+            label="Notes"
+            autosize
+            minRows={2}
+            value={editValues.notes}
+            onChange={(e) => setEditValues((prev) => ({ ...prev, notes: e.currentTarget.value }))}
+          />
+          <Group justify="flex-end">
+            <Button variant="default" size="xs" onClick={() => setEditingHarvest(null)}>Cancel</Button>
+            <Button
+              size="xs"
+              loading={updateHarvest.isPending}
+              onClick={() => {
+                if (!editingHarvest) return;
+                updateHarvest.mutate({
+                  id: editingHarvest.id,
+                  input: {
+                    quality_rating: editValues.quality_rating ? parseInt(editValues.quality_rating, 10) : null,
+                    notes: editValues.notes.trim() || null,
+                    sale_ean: editValues.sale_ean.trim() || null,
+                    sale_asin: editValues.sale_asin.trim() || null,
+                  },
+                });
+              }}
+            >
+              Save
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }
@@ -289,6 +398,8 @@ interface HarvestFormValues {
   unit: string;
   quality_rating: string;
   notes: string;
+  sale_ean: string;
+  sale_asin: string;
 }
 
 function HarvestForm({
@@ -307,6 +418,8 @@ function HarvestForm({
     unit: "g",
     quality_rating: "",
     notes: "",
+    sale_ean: "",
+    sale_asin: "",
   });
 
   const f = (key: keyof HarvestFormValues) => ({
@@ -327,6 +440,8 @@ function HarvestForm({
       unit: values.unit || null,
       quality_rating: values.quality_rating ? parseInt(values.quality_rating, 10) : null,
       notes: values.notes.trim() || null,
+      sale_ean: values.sale_ean.trim() || null,
+      sale_asin: values.sale_asin.trim() || null,
     });
   };
 
@@ -360,6 +475,10 @@ function HarvestForm({
             onChange={(v) => setValues((prev) => ({ ...prev, quality_rating: v ?? "" }))}
             clearable
           />
+        </SimpleGrid>
+        <SimpleGrid cols={2} spacing="sm">
+          <TextInput label="Sale EAN / UPC" placeholder="e.g. 0123456789012" {...f("sale_ean")} />
+          <TextInput label="Sale ASIN" placeholder="e.g. B08N5WRWNW" {...f("sale_asin")} />
         </SimpleGrid>
         <Textarea label="Notes" autosize minRows={2} {...f("notes")} />
         <Group justify="flex-end">
@@ -421,7 +540,7 @@ function SeedLotForm({
     <Card withBorder p="sm">
       <Stack gap="sm">
         <SimpleGrid cols={2} spacing="sm">
-          <TextInput label="Lot label" placeholder="e.g. 2025-tomato-a" {...f("lot_label")} />
+          <TextInput label="Lot Name" placeholder="e.g. 2025-tomato-a" {...f("lot_label")} />
           <TextInput label="Collected date" type="date" {...f("collected_date")} />
           <TextInput label="Quantity (seeds)" type="number" {...f("quantity")} />
           <TextInput label="Viability %" type="number" placeholder="0–100" {...f("viability_pct")} />
